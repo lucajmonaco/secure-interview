@@ -1,0 +1,177 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const session = require('express-session');
+const bcrypt = require('bcryptjs');
+const { v4: uuidv4 } = require('uuid');
+const path = require('path');
+const Database = require('better-sqlite3');
+
+const app = express();
+const server = http.createServer(app);
+const io = new Server(server, { cors: { origin: '*' } });
+const PORT = process.env.PORT || 3000;
+
+const db = new Database(path.join(__dirname, 'proctor.db'));
+db.exec(`
+  CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL, name TEXT NOT NULL, org TEXT NOT NULL, role TEXT DEFAULT 'interviewer', created_at INTEGER DEFAULT (strftime('%s','now')));
+  CREATE TABLE IF NOT EXISTS teams (id TEXT PRIMARY KEY, name TEXT NOT NULL, org TEXT NOT NULL, owner_id TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')));
+  CREATE TABLE IF NOT EXISTS team_members (team_id TEXT NOT NULL, user_id TEXT NOT NULL, role TEXT DEFAULT 'member', PRIMARY KEY (team_id, user_id));
+  CREATE TABLE IF NOT EXISTS sessions (id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, title TEXT NOT NULL, candidate_name TEXT, interviewer_id TEXT NOT NULL, team_id TEXT, status TEXT DEFAULT 'waiting', trust_score INTEGER DEFAULT 100, flags TEXT DEFAULT '[]', questions TEXT DEFAULT '[]', display_count INTEGER DEFAULT 1, recording_url TEXT, started_at INTEGER, ended_at INTEGER, created_at INTEGER DEFAULT (strftime('%s', 'now')));
+  CREATE TABLE IF NOT EXISTS flags (id TEXT PRIMARY KEY, session_id TEXT NOT NULL, time_offset TEXT NOT NULL, text TEXT NOT NULL, detail TEXT, severity TEXT NOT NULL, created_at INTEGER DEFAULT (strftime('%s', 'now')));
+`);
+
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+app.use(express.static(path.join(__dirname, 'public')));
+app.use(session({ secret: 'secure-interview-secret-'+Math.random().toString(36), resave: false, saveUninitialized: false, cookie: { maxAge: 7*24*60*60*1000 } }));
+
+function requireAuth(req,res,next){ if(!req.session.userId)return res.status(401).json({error:'Not authenticated'}); next(); }
+function generateCode(){ const c='ABCDEFGHJKLMNPQRSTUVWXYZ23456789'; let r=''; for(let i=0;i<6;i++){if(i===3)r+='-';r+=c[Math.floor(Math.random()*c.length)];} return r; }
+
+app.post('/api/auth/signup', async(req,res)=>{
+  const {email,password,name,org}=req.body;
+  if(!email||!password||!name||!org)return res.json({error:'All fields required'});
+  if(password.length<6)return res.json({error:'Password must be at least 6 characters'});
+  try{
+    const hashed=await bcrypt.hash(password,10);
+    const id=uuidv4();
+    db.prepare('INSERT INTO users(id,email,password,name,org)VALUES(?,?,?,?,?)').run(id,email.toLowerCase(),hashed,name,org);
+    req.session.userId=id; req.session.userName=name; req.session.userOrg=org;
+    res.json({ok:true,name,org});
+  }catch(e){
+    if(e.message.includes('UNIQUE'))return res.json({error:'Email already registered'});
+    res.json({error:'Signup failed: '+e.message});
+  }
+});
+
+app.post('/api/auth/login', async(req,res)=>{
+  const {email,password}=req.body;
+  const user=db.prepare('SELECT* FROM users WHERE email=?').get(email.toLowerCase());
+  if(!user)return res.json({error:'No account found with that email'});
+  const match=await bcrypt.compare(password,user.password);
+  if(!match)return res.json({error:'Incorrect password'});
+  req.session.userId=user.id; req.session.userName=user.name; req.session.userOrg=user.org;
+  res.json({ok:true,name:user.name,org:user.org});
+});
+
+app.post('/api/auth/logout',(req,res)=>{ req.session.destroy(); res.json({ok:true}); });
+app.get('/api/auth/me',(req,res)=>{
+  if(!req.session.userId)return res.json({loggedIn:false});
+  const user=db.prepare('SELECT id,email,name,org,role FROM users WHERE id=?').get(req.session.userId);
+  res.json({loggedIn:true,...user});
+});
+
+app.post('/api/sessions',requireAuth,(req,res)=>{
+  const {title,candidateName,teamId,questions}=req.body;
+  const id=uuidv4();
+  let code; do{ code=generateCode(); }while(db.prepare('SELECT id FROM sessions WHERE code=?').get(code));
+  db.prepare('INSERT INTO sessions(id,code,title,candidate_name,interviewer_id,team_id,questions,started_at)VALUES(?,?,?,?,?,?,?,?)').run(id,code,title||'Interview Session',candidateName||'Candidate',req.session.userId,teamId||null,JSON.stringify(questions||[]),Math.floor(Date.now()/1000));
+  res.json({ok:true,id,code});
+});
+
+app.get('/api/sessions',requireAuth,(req,res)=>{
+  const sessions=db.prepare('SELECT s.*, u.name as interviewer_name FROM sessions s JOIN users u ON s.interviewer_id=u.id WHERE s.interviewer_id=? OR s.team_id IN (SELECT team_id FROM team_members WHERE user_id=?) ORDER BY s.created_at DESC LIMIT 50').all(req.session.userId,req.session.userId);
+  res.json(sessions.map(s=>({...s,flags:JSON.parse(s.flags||'[]'),questions:JSON.parse(s.questions||'[]')})));
+});
+
+app.get('/api/sessions/:id',requireAuth,(req,res)=>{
+  const s=db.prepare('SELECT* FROM sessions WHERE id=?').get(req.params.id);
+  if(!s)return res.json({error:'Session not found'});
+  const flags=db.prepare('SELECT* FROM flags WHERE session_id=? ORDER BY created_at').all(req.params.id);
+  res.json({...s,flags,questions:JSON.parse(s.questions||'[]')});
+});
+
+app.get('/api/join/:code',(req,res)=>{
+  const s=db.prepare('SELECT id,code,title,candidate_name,status FROM sessions WHERE code=?').get(req.params.code.toUpperCase());
+  if(!s)return res.json({error:'Session not found'});
+  if(s.status==='ended')return res.json({error:'This session has already ended'});
+  res.json({ok:true,...s});
+});
+
+app.patch('/api/sessions/:id',requireAuth,(req,res)=>{
+  const {status,trustScore,displayCount,candidateName}=req.body;
+  const s=db.prepare('SELECT* FROM sessions WHERE id=? AND interviewer_id=?').get(req.params.id,req.session.userId);
+  if(!s)return res.json({error:'Not found'});
+  if(status)$db.prepare('UPDATE sessions SET status=? WHERE id=?').run(status,req.params.id);
+  if(trustScore!==undefined)db.prepare('UPDATE sessions SET trust_score=? WHERE id=?').run(trustScore,req.params.id);
+  if(displayCount!==undefined)db.prepare('UPDATE sessions SET display_count=? WHERE id=?').run(displayCount,req.params.id);
+  if(candidateName)db.prepare('UPDATE sessions SET candidate_name=? WHERE id=?').run(candidateName,req.params.id);
+  if(status==='ended')db.prepare('UPDATE sessions SET ended_at=? WHERE id=?').run(Math.floor(Date.now()/1000),req.params.id);
+  res.json({ok:true});
+});
+
+app.post('/api/sessions/:id/flags',(req,res)=>{
+  const {text,detail,severity,timeOffset}=req.body;
+  const id=uuidv4();
+  db.prepare('INSERT INTO flags(id,session_id,time_offset,text,detail,severity)VALUES(?,?,?,?,?,?)').run(id,req.params.id,timeOffset||'00:00',text,detail||'',severity||'medium');
+  res.json({ok:true,id});
+});
+
+app.post('/api/teams',requireAuth,(req,res)=>{
+  const {name}=req.body; if(!name)return res.json({error:'Team name required'});
+  const user=db.prepare('SELECT* FROM users WHERE id=?').get(req.session.userId);
+  const id=uuidv4(); let code; do{code=uuidv4().slice(0,8).toUpperCase();}while(db.prepare('SELECT id FROM teams WHERE invite_code=?').get(code));
+  db.prepare('INSERT INTO teams(id,name,org,owner_id,invite_code)VALUES(?,?,?,?,?)').run(id,name,user.org,req.session.userId,code);
+  db.prepare('INSERT INTO team_members(team_id,user_id,role)VALUES(?,?,?)').run(id,req.session.userId,'owner');
+  res.json({ok:true,id,inviteCode:code});
+});
+
+app.get('/api/teams',requireAuth,(req,res)=>{
+  const teams=db.prepare('SELECT t.* FROM teams t JOIN team_members tm ON t.id=tm.team_id WHERE tm.user_id=?').all(req.session.userId);
+  res.json(teams.map(t=>({...t,members:db.prepare('SELECT u.id,u.name,u.email,tm.role FROM team_members tm JOIN users u ON tm.user_id=u.id WHERE tm.team_id=?').all(t.id)})));
+});
+
+app.post('/api/teams/join',requireAuth,(req,res)=>{
+  const {inviteCode}=req.body;
+  const team=db.prepare('SELECT* FROM teams WHERE invite_code=?').get(inviteCode);
+  if(!team)return res.json({error:'Invalid invite code'});
+  if(db.prepare('SELECT* FROM team_members WHERE team_id=? AND user_id=?').get(team.id,req.session.userId))return res.json({error:'Already a member'});
+  db.prepare('INSERT INTO team_members(team_id,user_id)VALUES(?,?)').run(team.id,req.session.userId);
+  res.json({ok:true,teamName:team.name});
+});
+
+app.delete('/api/teams/:id/members/:userId',requireAuth,(req,res)=>{
+  if(!db.prepare('SELECT* FROM teams WHERE id=? AND owner_id=?').get(req.params.id,req.session.userId))return res.json({error:'Not authorized'});
+  db.prepare('DELETE FROM team_members WHERE team_id=? AND user_id=?').run(req.params.id,req.params.userId);
+  res.json({ok:true});
+});
+
+app.get('/',(req,res)=>res.sendFile(path.join(__dirname,'public/pages/index.html')));
+app.get('/dashboard',(req,res)=>res.sendFile(path.join(__dirname,'public/pages/dashboard.html')));
+app.get('/session/:id',(req,res)=>res.sendFile(path.join(__dirname,'public/pages/session.html')));
+app.get('/join/:code',(req,res)=>res.sendFile(path.join(__dirname,'public/pages/candidate.html')));
+
+const rooms={};
+io.on('connection',(socket)=>{
+  socket.on('join-room',({sessionId,role})=>{
+    socket.join(sessionId);
+    if(!rooms[sessionId])rooms[sessionId]={};
+    rooms[sessionId][role]=socket.id;
+    socket.data.sessionId=sessionId; socket.data.role=role;
+    socket.to(sessionId).emit('peer-joined',{role});
+    const others=Object.entries(rooms[sessionId]).filter(([r])=>r!==role);
+    if(others.length)socket.emit('peer-already-present',{role:others[0][0]});
+  });
+  socket.on('webrtc-offer',({sessionId,offer})=>{ socket.to(sessionId).emit('webrtc-offer',{offer}); });
+  socket.on('webrtc-answer',({...d})=>{ socket.to(d.sessionId).emit('webrtc-answer',{answer:d.answer}); });
+  socket.on('webrtc-ice',({(sessionId,candidate})=>{ socket.to(sessionId).emit('webrtc-ice',{
+candidate}); });
+  socket.on('recording-started',({sessionId})=>{ socket.to(sessionId).emit('recording-started'); });
+  socket.on('recording-stopped',({...d})=>{ socket.to(d.sessionId).emit('recording-stopped'); });
+  socket.on('next-question',({sessionId,qIdx})=>{ socket.to(sessionId).emit('next-question',{qIdx}); });
+  socket.on('candidate-flag',({sessionId,...flag})=>{
+    socket.to(sessionId).emit('candidate-flag',flag);
+    try{
+      db.prepare('INSERT INTO flags(id,session_id,time_offset,text,detail,severity)VALUES(?,?,?,?,?,?)').run(uuidv4(),sessionId,flag.time||'00:00',flag.text,flag.detail||'',flag.sev||'medium');
+      db.prepare('UPDATE sessions SET trust_score=MAX(0,trust_score-?) WHERE id=?').run({high:12,medium:6,low:2}[flag.sev]||5,sessionId);
+    }catch(e){}
+  });
+  socket.on('candidate-display-info',(data)=>{ socket.to(data.sessionId).emit('candidate-display-info',data); });
+  socket.on('disconnect',()=>{
+    const {sessionId,role}=socket.data;
+    if(sessionId&&rooms[sessionId]){ delete rooms[sessionId][role]; socket.to(sessionId).emit('peer-left',{role}); }
+  });
+});
+
+server.listen(PORT,()=>{ console.log(`\n⚜️  Secure Interview running at http://localhost:${PORT}\n`); });
