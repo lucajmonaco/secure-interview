@@ -35,4 +35,4 @@ io.on('connection',socket=>{
   socket.on('candidate-flag',({sessionId,...flag})=>{socket.to(sessionId).emit('candidate-flag',flag);try{db.prepare('INSERT INTO flags(id,session_id,time_offset,text,detail,severity)VALUES(?,?,?,?,?,?)').run(uuidv4(),sessionId,flag.time||'00:00',flag.text,flag.detail||'',flag.sev||'medium');const p={high:12,medium:6,low:2}[flag.sev]||5;db.prepare('UPDATE sessions SET trust_score=MAX(0,trust_score-?) WHERE id=?').run(p,sessionId);}catch(e){}});
   socket.on('disconnect',()=>{const{sessionId,role}=socket.data;if(sessionId&&rooms[sessionId]){delete rooms[sessionId][role];socket.to(sessionId).emit('peer-left',{role});}});
 });
-server.listen(PORT,()=>{console.log('Secure Interview running on port '+PORT);setInterval(()=>{require('http').get('http://localhost:'+PORT+'/api/auth/me',r=>{r.resume();}).on('error',()=>{});},14*60*1000);});
+server.listen(PORT,'0.0.0.0',()=>{console.log('Secure Interview running on port '+PORT);setInterval(()=>{require('http').get('http://localhost:'+PORT+'/api/auth/me',r=>{r.resume();}).on('error',()=>{});},14*60*1000);});
