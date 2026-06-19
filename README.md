@@ -1,20 +1,5 @@
-# Secure Interview — Setup Guide
+# Secure Interview
 
-## Requirements
-- Node.js 18+ (download from nodejs.org)
-- A modern browser (Chrome recommended)
+Deployment fix: 2026-06-19T02:28:38.299Z
 
-## Quick Start
-
-1. **Install dependencies**
-   ```
-   npm install
-   ```
-
-2. **Start the server**
-   ```
-   npm start
-   ```
-
-3. **Open your browser**
-   Go to: http://localhost:3000
+See README in repo for setup.
