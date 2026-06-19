@@ -8,9 +8,6 @@ const path = require('path');
 const Database = require('better-sqlite3');
 
 const app = express();
-console.log('__dirname:', __dirname);
-console.log('cwd:', process.cwd());
-const fs = require('fs'); console.log('public exists:', fs.existsSync(__dirname + '/public')); console.log('ls:', fs.readdirSync(__dirname).join(','));
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 3000;
