@@ -5,7 +5,9 @@ const session = require('express-session');
 const bcrypt = require('bcryptjs');
 const { v4: uuidv4 } = require('uuid');
 const path = require('path');
+const fs = require('fs');
 const Database = require('better-sqlite3');
+const multer = require('multer');
 
 const app = express();
 const server = http.createServer(app);
@@ -42,7 +44,31 @@ db.exec(`
     text TEXT NOT NULL, detail TEXT, severity TEXT NOT NULL,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
+  CREATE TABLE IF NOT EXISTS recordings (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    interviewer_id TEXT NOT NULL,
+    session_title TEXT NOT NULL,
+    candidate_name TEXT,
+    file_path TEXT NOT NULL,
+    file_size INTEGER DEFAULT 0,
+    duration_secs INTEGER DEFAULT 0,
+    trust_score INTEGER DEFAULT 100,
+    flag_count INTEGER DEFAULT 0,
+    created_at INTEGER DEFAULT (strftime('%s','now'))
+  );
 `);
+
+// Recordings storage directory
+const RECORDINGS_DIR = path.join(__dirname, 'recordings');
+if (!fs.existsSync(RECORDINGS_DIR)) fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
+
+// Multer for video uploads
+const storage = multer.diskStorage({
+  destination: function(req, file, cb) { cb(null, RECORDINGS_DIR); },
+  filename: function(req, file, cb) { cb(null, uuidv4() + '.webm'); }
+});
+const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB limit
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -68,6 +94,7 @@ function generateCode() {
   return code;
 }
 
+// ── AUTH ──
 app.post('/api/auth/signup', async (req, res) => {
   const { email, password, name, org } = req.body;
   if (!email || !password || !name || !org) return res.json({ error: 'All fields required' });
@@ -86,7 +113,7 @@ app.post('/api/auth/signup', async (req, res) => {
 
 app.post('/api/auth/login', async (req, res) => {
   const { email, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE email=?').get(email.toLowerCase());
+  const user = db.prepare('SELECT * FROM users WHERE email=?').get((email||'').toLowerCase());
   if (!user) return res.json({ error: 'No account found with that email' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.json({ error: 'Incorrect password' });
@@ -102,6 +129,7 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ loggedIn: true, ...user });
 });
 
+// ── SESSIONS ──
 app.post('/api/sessions', requireAuth, (req, res) => {
   const { title, candidateName, teamId, questions } = req.body;
   const id = uuidv4();
@@ -118,7 +146,7 @@ app.get('/api/sessions', requireAuth, (req, res) => {
   res.json(sessions.map(s => ({ ...s, flags: JSON.parse(s.flags || '[]'), questions: JSON.parse(s.questions || '[]') })));
 });
 
-app.get('/api/sessions/:id', requireAuth, (req, res) => {
+app.get('/api/sessions/:id', (req, res) => {
   const s = db.prepare('SELECT * FROM sessions WHERE id=?').get(req.params.id);
   if (!s) return res.json({ error: 'Session not found' });
   const flags = db.prepare('SELECT * FROM flags WHERE session_id=? ORDER BY created_at').all(req.params.id);
@@ -126,10 +154,10 @@ app.get('/api/sessions/:id', requireAuth, (req, res) => {
 });
 
 app.get('/api/join/:code', (req, res) => {
-  const s = db.prepare('SELECT id,code,title,candidate_name,status FROM sessions WHERE code=?').get(req.params.code.toUpperCase());
+  const s = db.prepare('SELECT id,code,title,candidate_name,status,questions FROM sessions WHERE code=?').get(req.params.code.toUpperCase());
   if (!s) return res.json({ error: 'Session not found' });
   if (s.status === 'ended') return res.json({ error: 'This session has already ended' });
-  res.json({ ok: true, ...s });
+  res.json({ ok: true, ...s, questions: JSON.parse(s.questions || '[]') });
 });
 
 app.patch('/api/sessions/:id', requireAuth, (req, res) => {
@@ -151,6 +179,73 @@ app.post('/api/sessions/:id/flags', (req, res) => {
   res.json({ ok: true, id });
 });
 
+// ── RECORDINGS ──
+// Upload a recording after session ends
+app.post('/api/recordings/upload', requireAuth, upload.single('recording'), async (req, res) => {
+  try {
+    const { sessionId, durationSecs } = req.body;
+    if (!req.file) return res.json({ error: 'No file uploaded' });
+
+    const sess = db.prepare('SELECT * FROM sessions WHERE id=?').get(sessionId);
+    if (!sess) return res.json({ error: 'Session not found' });
+
+    const flags = db.prepare('SELECT COUNT(*) as cnt FROM flags WHERE session_id=?').get(sessionId);
+    const id = uuidv4();
+
+    db.prepare('INSERT INTO recordings (id,session_id,interviewer_id,session_title,candidate_name,file_path,file_size,duration_secs,trust_score,flag_count) VALUES (?,?,?,?,?,?,?,?,?,?)')
+      .run(id, sessionId, req.session.userId, sess.title, sess.candidate_name, req.file.path, req.file.size, parseInt(durationSecs) || 0, sess.trust_score || 100, flags.cnt || 0);
+
+    res.json({ ok: true, id });
+  } catch(e) {
+    res.json({ error: e.message });
+  }
+});
+
+// List recordings for current user
+app.get('/api/recordings', requireAuth, (req, res) => {
+  const recs = db.prepare('SELECT * FROM recordings WHERE interviewer_id=? ORDER BY created_at DESC').all(req.session.userId);
+  res.json(recs);
+});
+
+// Stream a recording file
+app.get('/api/recordings/:id/stream', requireAuth, (req, res) => {
+  const rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
+  if (!rec) return res.status(404).json({ error: 'Not found' });
+  if (!fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'File not found' });
+
+  const stat = fs.statSync(rec.file_path);
+  const total = stat.size;
+  const range = req.headers.range;
+
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+    const chunkSize = end - start + 1;
+    const fileStream = fs.createReadStream(rec.file_path, { start, end });
+    res.writeHead(206, {
+      'Content-Range': 'bytes ' + start + '-' + end + '/' + total,
+      'Accept-Ranges': 'bytes',
+      'Content-Length': chunkSize,
+      'Content-Type': 'video/webm'
+    });
+    fileStream.pipe(res);
+  } else {
+    res.writeHead(200, { 'Content-Length': total, 'Content-Type': 'video/webm' });
+    fs.createReadStream(rec.file_path).pipe(res);
+  }
+});
+
+// Delete a recording
+app.delete('/api/recordings/:id', requireAuth, (req, res) => {
+  const rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
+  if (!rec) return res.status(404).json({ error: 'Not found' });
+  try { if (fs.existsSync(rec.file_path)) fs.unlinkSync(rec.file_path); } catch(e) {}
+  db.prepare('DELETE FROM recordings WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
+// ── TEAMS ──
 app.post('/api/teams', requireAuth, (req, res) => {
   const { name } = req.body;
   if (!name) return res.json({ error: 'Team name required' });
@@ -177,26 +272,15 @@ app.post('/api/teams/join', requireAuth, (req, res) => {
   res.json({ ok: true, teamName: team.name });
 });
 
+// ── PAGE ROUTES ──
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'index.html')));
+app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'dashboard.html')));
+app.get('/session/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'session.html')));
+app.get('/join/:code', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'candidate.html')));
+app.get('/recordings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'recordings.html')));
+app.get('/recordings/share/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'recordings.html')));
 
-app.get('/diag', (req, res) => {
-  const fs = require('fs'), p = require('path');
-  const dirs = [
-    __dirname,
-    p.join(__dirname, 'public'),
-    p.join(__dirname, 'public', 'pages'),
-    '/app', '/app/public', '/app/public/pages',
-    '/home/app', '/home/app/public', '/home/app/public/pages',
-    process.cwd(), p.join(process.cwd(),'public'), p.join(process.cwd(),'public','pages')
-  ];
-  const result = { __dirname, cwd: process.cwd() };
-  dirs.forEach(d => { try { result[d] = fs.readdirSync(d); } catch(e) { result[d] = e.message; } });
-  res.json(result);
-});
-app.get('/', (req, res) => { try { res.setHeader('Content-Type','text/html'); res.send(require('fs').readFileSync(require('path').join(__dirname,'public','pages','index.html'))); } catch(e) { res.status(500).send('ERR:'+e.message); } });
-app.get('/dashboard', (req, res) => { try { res.setHeader('Content-Type','text/html'); res.send(require('fs').readFileSync(require('path').join(__dirname,'public','pages','dashboard.html'))); } catch(e) { res.status(500).send('ERR:'+e.message); } });
-app.get('/session/:id', (req, res) => { try { res.setHeader('Content-Type','text/html'); res.send(require('fs').readFileSync(require('path').join(__dirname,'public','pages','session.html'))); } catch(e) { res.status(500).send('ERR:'+e.message); } });
-app.get('/join/:code', (req, res) => { try { res.setHeader('Content-Type','text/html'); res.send(require('fs').readFileSync(require('path').join(__dirname,'public','pages','candidate.html'))); } catch(e) { res.status(500).send('ERR:'+e.message); } });
-
+// ── SOCKET.IO ──
 const rooms = {};
 io.on('connection', (socket) => {
   socket.on('join-room', ({ sessionId, role }) => {
@@ -211,8 +295,6 @@ io.on('connection', (socket) => {
   socket.on('webrtc-offer', ({ sessionId, offer }) => socket.to(sessionId).emit('webrtc-offer', { offer }));
   socket.on('webrtc-answer', ({ sessionId, answer }) => socket.to(sessionId).emit('webrtc-answer', { answer }));
   socket.on('webrtc-ice', ({ sessionId, candidate }) => socket.to(sessionId).emit('webrtc-ice', { candidate }));
-  socket.on('recording-started', ({ sessionId }) => socket.to(sessionId).emit('recording-started'));
-  socket.on('recording-stopped', ({ sessionId }) => socket.to(sessionId).emit('recording-stopped'));
   socket.on('next-question', ({ sessionId, qIdx }) => socket.to(sessionId).emit('next-question', { qIdx }));
   socket.on('candidate-flag', ({ sessionId, flag }) => {
     socket.to(sessionId).emit('candidate-flag', flag);
@@ -229,7 +311,6 @@ io.on('connection', (socket) => {
   });
 });
 
-// build: 1781912861173
 server.listen(PORT, '0.0.0.0', () => {
   console.log('Secure Interview running on port ' + PORT);
 });
