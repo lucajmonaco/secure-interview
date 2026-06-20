@@ -1,19 +1,34 @@
-// utils.js
-async function apiFetch(url, options) {
-  const res = await fetch(url, options);
-  return res.json();
-}
-const get = url => apiFetch(url, { method: 'GET' });
-const post = (url, body) => apiFetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-const patch = (url, body) => apiFetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-const del = url => apiFetch(url, { method: 'DELETE' });
+// utils.js - Secure Interview
 const $ = id => document.getElementById(id);
 
+async function get(url) {
+  const r = await fetch(url, { method: 'GET' });
+  return r.json();
+}
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+async function patch(url, body) {
+  const r = await fetch(url, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+  return r.json();
+}
+
+function showModal(id) {
+  const el = document.getElementById(id);
+  if (el) { el.style.display = 'flex'; el.style.position = 'fixed'; el.style.inset = '0'; el.style.background = 'rgba(0,0,0,0.8)'; el.style.alignItems = 'center'; el.style.justifyContent = 'center'; el.style.zIndex = '1000'; }
+}
+function hideModal(id) {
+  const el = document.getElementById(id);
+  if (el) el.style.display = 'none';
+}
+
 function toast(msg, type) {
-  let c = $('toast-container');
-  if (!c) { c = document.createElement('div'); c.id = 'toast-container'; document.body.appendChild(c); }
+  let c = document.getElementById('toast-container');
+  if (!c) { c = document.createElement('div'); c.id = 'toast-container'; c.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px'; document.body.appendChild(c); }
   const t = document.createElement('div');
-  t.className = 'toast' + (type ? ' toast-' + type : '');
+  const colors = { green: '#3fb950', red: '#f85149', amber: '#e3b341' };
+  t.style.cssText = 'background:#161b22;border:1px solid ' + (colors[type] || '#30363d') + ';border-radius:6px;padding:10px 16px;font-size:13px;color:' + (colors[type] || '#e6edf3') + ';min-width:200px';
   t.textContent = msg;
   c.appendChild(t);
   setTimeout(() => t.remove(), 3500);
@@ -33,6 +48,3 @@ async function requireLogin(back) {
 function trustClass(score) {
   return score >= 80 ? 'trust-hi' : score >= 60 ? 'trust-mid' : 'trust-lo';
 }
-
-function showModal(id) { const el = $(id); if (el) el.style.display = 'flex'; }
-function hideModal(id) { const el = $(id); if (el) el.style.display = 'none'; }
