@@ -7,111 +7,159 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-logo">&#127737; Secure Interview</div>
+  <div class="nav-logo">Secure Interview</div>
   <div class="nav-right">
     <span id="n-name" style="font-size:12px;color:var(--text2);display:none"></span>
     <a href="/dashboard" class="btn btn-outline" id="n-dash" style="display:none">Dashboard</a>
     <button class="btn btn-outline" id="n-in">Sign In</button>
     <button class="btn btn-primary" id="n-up">Get Started</button>
-    <button class="btn btn-outline" id="n-out" style="display:none">Sign Out</button>
+    <button class="btn btn-outline" id="n-out" style="display:none" onclick="doLogout()">Sign Out</button>
   </div>
 </nav>
 <main>
 <div class="hero">
   <h1>AI-Powered Interview Integrity</h1>
-  <p class="hero-sub">Real-time WebRTC proctoring with trust scoring, flag detection, and session recording.</p>
+  <p class="hero-sub">Real-time WebRTC proctoring, trust scoring, flag detection, and session recording for your entire team.</p>
   <div class="hero-btns">
     <button class="btn btn-primary btn-lg" id="h-start">Start Free Trial</button>
-    <button class="btn btn-outline btn-lg" id="h-demo">Sign In</button>
+    <button class="btn btn-outline btn-lg" id="h-in">Sign In</button>
   </div>
 </div>
 <div class="features">
   <div class="features-grid">
-    <div class="fcard"><h3>&#128249; Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
-    <div class="fcard"><h3>&#127919; Trust Score</h3><p>Real-time AI scoring that flags suspicious behavior instantly.</p></div>
-    <div class="fcard"><h3>&#9889; Instant Alerts</h3><p>Get notified the moment something looks off during the interview.</p></div>
-    <div class="fcard"><h3>&#128190; Session Recording</h3><p>Record full sessions and download as video files.</p></div>
+    <div class="fcard"><h3>Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
+    <div class="fcard"><h3>Trust Score</h3><p>Real-time scoring that flags suspicious behavior instantly.</p></div>
+    <div class="fcard"><h3>Team Management</h3><p>Company codes let your whole recruiting team share sessions.</p></div>
+    <div class="fcard"><h3>Session Recording</h3><p>Record, compress and share interviews from your recordings library.</p></div>
   </div>
 </div>
 </main>
 
+<!-- SIGN IN Modal -->
 <div id="ov-signin" style="display:none">
   <div class="modal-inner">
     <button class="modal-x" onclick="hideModal('ov-signin')">&#10005;</button>
     <h2>Sign In</h2>
-    <label class="label">Email</label>
+    <label class="label">Company Code</label>
+    <input type="text" id="si-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+    <label class="label">Work Email</label>
     <input type="email" id="si-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label>
     <input type="password" id="si-pass" class="input" placeholder="Password">
     <div id="si-err" class="err" style="display:none;margin-bottom:10px"></div>
     <button class="btn btn-primary btn-block" id="si-btn" onclick="doSignIn()">Sign In</button>
-    <p class="auth-switch">No account? <a href="#" onclick="switchToSignUp();return false">Sign up free</a></p>
+    <p class="auth-switch">New user? <a href="#" onclick="switchTo('ov-join');return false">Join your company</a> &bull; <a href="#" onclick="switchTo('ov-create');return false">Create company account</a></p>
   </div>
 </div>
 
-<div id="ov-signup" style="display:none">
+<!-- CREATE COMPANY Modal -->
+<div id="ov-create" style="display:none">
   <div class="modal-inner">
-    <button class="modal-x" onclick="hideModal('ov-signup')">&#10005;</button>
-    <h2>Get Started Free</h2>
-    <label class="label">Full Name</label>
-    <input type="text" id="su-name" class="input" placeholder="Your Name">
+    <button class="modal-x" onclick="hideModal('ov-create')">&#10005;</button>
+    <h2>Create Company Account</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">You'll get a unique company code to share with your team.</p>
+    <label class="label">Company Name</label>
+    <input type="text" id="cr-org" class="input" placeholder="e.g. Acme Corp">
+    <label class="label">Your Full Name</label>
+    <input type="text" id="cr-name" class="input" placeholder="Your Name">
     <label class="label">Work Email</label>
-    <input type="email" id="su-email" class="input" placeholder="you@company.com">
-    <label class="label">Company</label>
-    <input type="text" id="su-org" class="input" placeholder="Company Name">
+    <input type="email" id="cr-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label>
-    <input type="password" id="su-pass" class="input" placeholder="Min 6 characters">
-    <div id="su-err" class="err" style="display:none;margin-bottom:10px"></div>
-    <button class="btn btn-primary btn-block" id="su-btn" onclick="doSignUp()">Create Account</button>
-    <p class="auth-switch">Have an account? <a href="#" onclick="switchToSignIn();return false">Sign in</a></p>
+    <input type="password" id="cr-pass" class="input" placeholder="Min 6 characters">
+    <div id="cr-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-primary btn-block" id="cr-btn" onclick="doCreate()">Create Account</button>
+    <p class="auth-switch">Already have a company code? <a href="#" onclick="switchTo('ov-join');return false">Join your company</a></p>
+  </div>
+</div>
+
+<!-- JOIN COMPANY Modal -->
+<div id="ov-join" style="display:none">
+  <div class="modal-inner">
+    <button class="modal-x" onclick="hideModal('ov-join')">&#10005;</button>
+    <h2>Join Your Company</h2>
+    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Ask your admin for your company code, then create your account.</p>
+    <label class="label">Company Code</label>
+    <input type="text" id="jo-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+    <label class="label">Your Full Name</label>
+    <input type="text" id="jo-name" class="input" placeholder="Your Name">
+    <label class="label">Work Email</label>
+    <input type="email" id="jo-email" class="input" placeholder="you@company.com">
+    <label class="label">Password</label>
+    <input type="password" id="jo-pass" class="input" placeholder="Min 6 characters">
+    <div id="jo-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-primary btn-block" id="jo-btn" onclick="doJoin()">Create Account &amp; Join</button>
+    <p class="auth-switch">Already have an account? <a href="#" onclick="switchTo('ov-signin');return false">Sign in</a></p>
   </div>
 </div>
 
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-function switchToSignIn(){hideModal('ov-signup');showModal('ov-signin');}
-function switchToSignUp(){hideModal('ov-signin');showModal('ov-signup');}
+document.getElementById('n-in').onclick = function(){ showModal('ov-signin'); };
+document.getElementById('n-up').onclick = function(){ showModal('ov-create'); };
+document.getElementById('h-start').onclick = function(){ showModal('ov-create'); };
+document.getElementById('h-in').onclick = function(){ showModal('ov-signin'); };
 
-document.getElementById('n-in').onclick=()=>showModal('ov-signin');
-document.getElementById('n-up').onclick=()=>showModal('ov-signup');
-document.getElementById('h-start').onclick=()=>showModal('ov-signup');
-document.getElementById('h-demo').onclick=()=>showModal('ov-signin');
-document.getElementById('n-out').onclick=doLogout;
-
-// Close on backdrop click
-['ov-signin','ov-signup'].forEach(id=>{
-  document.getElementById(id).addEventListener('click',function(e){
-    if(e.target===this)hideModal(id);
-  });
+['ov-signin','ov-create','ov-join'].forEach(function(id){
+  document.getElementById(id).addEventListener('click', function(e){ if(e.target===this) hideModal(id); });
 });
 
-async function doSignIn(){
-  const btn=document.getElementById('si-btn'),err=document.getElementById('si-err');
-  btn.disabled=true;btn.textContent='Signing in...';err.style.display='none';
-  const res=await post('/api/auth/login',{email:document.getElementById('si-email').value,password:document.getElementById('si-pass').value});
-  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Sign In';return;}
-  window.location.href='/dashboard';
+function switchTo(id) {
+  ['ov-signin','ov-create','ov-join'].forEach(function(x){ hideModal(x); });
+  showModal(id);
 }
 
-async function doSignUp(){
-  const btn=document.getElementById('su-btn'),err=document.getElementById('su-err');
-  btn.disabled=true;btn.textContent='Creating...';err.style.display='none';
-  const name=document.getElementById('su-name').value,email=document.getElementById('su-email').value,org=document.getElementById('su-org').value,pass=document.getElementById('su-pass').value;
-  if(!name||!email||!org||!pass){err.textContent='All fields required';err.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;}
-  const res=await post('/api/auth/signup',{name,email,org,password:pass});
-  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;}
-  window.location.href='/dashboard';
+async function doSignIn() {
+  var btn = document.getElementById('si-btn'), err = document.getElementById('si-err');
+  btn.disabled = true; btn.textContent = 'Signing in...'; err.style.display = 'none';
+  var res = await post('/api/auth/login', {
+    orgCode: document.getElementById('si-code').value.trim().toUpperCase(),
+    email: document.getElementById('si-email').value.trim(),
+    password: document.getElementById('si-pass').value
+  });
+  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Sign In'; return; }
+  window.location.href = '/dashboard';
 }
 
-async function doLogout(){await post('/api/auth/logout');window.location.reload();}
+async function doCreate() {
+  var btn = document.getElementById('cr-btn'), err = document.getElementById('cr-err');
+  btn.disabled = true; btn.textContent = 'Creating...'; err.style.display = 'none';
+  var res = await post('/api/auth/org/create', {
+    orgName: document.getElementById('cr-org').value.trim(),
+    name: document.getElementById('cr-name').value.trim(),
+    email: document.getElementById('cr-email').value.trim(),
+    password: document.getElementById('cr-pass').value
+  });
+  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Create Account'; return; }
+  // Show the org code to the user before redirecting
+  alert('Account created! Your company code is: ' + res.orgCode + '\n\nShare this code with your team so they can join.');
+  window.location.href = '/dashboard';
+}
 
-async function init(){
-  const me=await get('/api/auth/me');
-  if(me&&me.loggedIn){
-    document.getElementById('n-name').textContent=me.name;document.getElementById('n-name').style.display='';
-    document.getElementById('n-dash').style.display='';document.getElementById('n-out').style.display='';
-    document.getElementById('n-in').style.display='none';document.getElementById('n-up').style.display='none';
+async function doJoin() {
+  var btn = document.getElementById('jo-btn'), err = document.getElementById('jo-err');
+  btn.disabled = true; btn.textContent = 'Joining...'; err.style.display = 'none';
+  var res = await post('/api/auth/org/join', {
+    orgCode: document.getElementById('jo-code').value.trim().toUpperCase(),
+    name: document.getElementById('jo-name').value.trim(),
+    email: document.getElementById('jo-email').value.trim(),
+    password: document.getElementById('jo-pass').value
+  });
+  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Create Account & Join'; return; }
+  window.location.href = '/dashboard';
+}
+
+async function doLogout() { await post('/api/auth/logout'); window.location.reload(); }
+
+async function init() {
+  var me = await get('/api/auth/me');
+  if (me && me.loggedIn) {
+    document.getElementById('n-name').textContent = me.name + ' (' + me.orgCode + ')';
+    document.getElementById('n-name').style.display = '';
+    document.getElementById('n-dash').style.display = '';
+    document.getElementById('n-out').style.display = '';
+    document.getElementById('n-in').style.display = 'none';
+    document.getElementById('n-up').style.display = 'none';
   }
 }
 init();
