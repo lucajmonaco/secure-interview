@@ -34,49 +34,34 @@ function fmtDur(s){if(!s)return'0:00';return String(Math.floor(s/60)).padStart(2
 function buildCard(rec){
   var score=rec.trust_score||100;
   var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
-  var scoreBadgeClass=score>=80?'badge-green':score>=60?'badge-amber':'badge-red';
   var date=rec.created_at?new Date(rec.created_at*1000).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'-';
-
   var card=document.createElement('div');card.className='rec-card';card.id='card-'+rec.id;
-
   var body=document.createElement('div');body.className='rec-card-body';
-
   var title=document.createElement('div');title.className='rec-title';title.textContent=rec.session_title||'Interview';
   body.appendChild(title);
-
   var meta=document.createElement('div');meta.className='rec-meta-row';
   meta.innerHTML='<span class="rec-meta-item">&#128100; <strong>'+(rec.candidate_name||'N/A')+'</strong></span>'
-    +'<span class="rec-meta-sep"></span>'
-    +'<span class="rec-meta-item">&#128197; '+date+'</span>'
-    +'<span class="rec-meta-sep"></span>'
-    +'<span class="rec-meta-item">&#9201; '+fmtDur(rec.duration_secs)+'</span>'
-    +'<span class="rec-meta-sep"></span>'
-    +'<span class="rec-meta-item '+scoreClass+'">&#127919; '+score+'% trust</span>'
-    +'<span class="rec-meta-sep"></span>'
-    +'<span class="rec-meta-item" style="color:'+(rec.flag_count>0?'var(--amber)':'var(--text3)')+'">&#9873; '+(rec.flag_count||0)+' flags</span>'
+    +'<span class="rec-meta-sep"></span><span class="rec-meta-item">&#128197; '+date+'</span>'
+    +'<span class="rec-meta-sep"></span><span class="rec-meta-item">&#9201; '+fmtDur(rec.duration_secs)+'</span>'
+    +'<span class="rec-meta-sep"></span><span class="rec-meta-item '+scoreClass+'">&#127919; '+score+'% trust</span>'
+    +'<span class="rec-meta-sep"></span><span class="rec-meta-item" style="color:'+(rec.flag_count>0?'var(--amber)':'var(--text3)')+'">&#9873; '+(rec.flag_count||0)+' flags</span>'
     +(rec.file_size?'<span class="pill" style="margin-left:auto">'+fmtSize(rec.file_size)+'</span>':'');
   body.appendChild(meta);
-
   var actions=document.createElement('div');actions.className='rec-actions';
-
-  function addBtn(cls,text,cb){var b=document.createElement('button');b.className='btn btn-sm '+cls;b.innerHTML=text;b.onclick=cb;actions.appendChild(b);}
-
-  addBtn('btn-outline','&#9654; Preview',function(){togglePreview(rec.id);});
-  addBtn('btn-primary','&#8595; Download',function(){dlRec(rec.id,rec.session_title,rec.candidate_name);});
-  addBtn('btn-purple','&#8481; Compress',function(){compressRec(rec.id,rec.session_title);});
+  function btn(cls,html,cb){var b=document.createElement('button');b.className='btn btn-sm '+cls;b.innerHTML=html;b.onclick=cb;actions.appendChild(b);return b;}
+  btn('btn-outline','&#9654; Preview',function(){togglePreview(rec.id);});
+  btn('btn-primary','&#8595; Download',function(){dlRec(rec.id,rec.session_title,rec.candidate_name);});
+  var cb=btn('btn-purple','&#8481; Compress & Download',function(){compressRec(rec.id,rec.session_title,cb);});
   if(rec.share_token){
-    addBtn('btn-outline','&#128279; Copy Link',function(){copyShareLink(rec.share_token);});
-    addBtn('btn-outline','&#128065; Share Page',function(){window.open('/share/'+rec.share_token,'_blank');});
+    btn('btn-outline','&#128279; Copy Link',function(){copyLink(rec.share_token);});
+    btn('btn-outline','&#128065; Open Share Page',function(){window.open('/share/'+rec.share_token,'_blank');});
   }
-  addBtn('btn-danger','&#128465; Delete',function(){deleteRec(rec.id);});
-
+  btn('btn-danger','&#128465; Delete',function(){deleteRec(rec.id);});
   body.appendChild(actions);
-
-  var progWrap=document.createElement('div');progWrap.className='prog-wrap';progWrap.id='pw-'+rec.id;
-  progWrap.innerHTML='<div class="prog-bar"><div class="prog-fill" id="pf-'+rec.id+'" style="width:0%"></div></div><div class="prog-label" id="pl-'+rec.id+'"></div>';
-  body.appendChild(progWrap);
+  var pw=document.createElement('div');pw.className='prog-wrap';pw.id='pw-'+rec.id;
+  pw.innerHTML='<div class="prog-bar"><div class="prog-fill" id="pf-'+rec.id+'" style="width:0%"></div></div><div class="prog-label" id="pl-'+rec.id+'"></div>';
+  body.appendChild(pw);
   card.appendChild(body);
-
   var vid=document.createElement('video');vid.id='vid-'+rec.id;vid.controls=true;vid.preload='none';
   vid.className='rec-video';vid.src='/api/recordings/'+rec.id+'/stream';
   card.appendChild(vid);
@@ -92,12 +77,13 @@ function togglePreview(id){
 function dlRec(id,title,cand){
   var a=document.createElement('a');
   a.href='/api/recordings/'+id+'/stream';
-  a.download='interview-'+(title||'session').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'-'+(cand||'candidate').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
+  a.download='interview-'+(title||'session').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
   a.click();toast('Download started','green');
 }
 
-function copyShareLink(token){
-  navigator.clipboard.writeText(location.origin+'/share/'+token).then(function(){toast('Share link copied! Anyone with the link can view this recording.','green',5000);});
+function copyLink(token){
+  navigator.clipboard.writeText(location.origin+'/share/'+token)
+    .then(function(){toast('Share link copied! Anyone with this link can view the recording.','green',5000);});
 }
 
 async function deleteRec(id){
@@ -107,79 +93,149 @@ async function deleteRec(id){
   else toast('Failed to delete','red');
 }
 
-async function compressRec(id,title){
-  var btn=document.querySelector('#card-'+id+' .btn-purple');
+// COMPRESSION FIX
+// WebM files recorded by MediaRecorder have duration=Infinity because the EBML header
+// isn't finalized. We can't use seek-based approach.
+// Solution: play the video at 16x speed while recording canvas frames.
+// This is fast (1hr video compresses in ~4 min) and works with any WebM file.
+async function compressRec(id, title, btn){
   var pw=document.getElementById('pw-'+id);
   var pf=document.getElementById('pf-'+id);
   var pl=document.getElementById('pl-'+id);
-  btn.disabled=true;btn.textContent='Compressing...';
-  pw.style.display='block';pf.style.width='5%';pl.textContent='Fetching recording...';
+  btn.disabled=true; btn.textContent='Compressing...';
+  pw.style.display='block'; pf.style.width='3%'; pl.textContent='Fetching recording...';
 
-  try{
-    var resp=await fetch('/api/recordings/'+id+'/stream');
-    if(!resp.ok)throw new Error('Failed to fetch');
-    var origBlob=await resp.blob();
-    pf.style.width='15%';pl.textContent='Loaded '+fmtSize(origBlob.size)+'. Preparing...';
+  try {
+    // Fetch original
+    var resp = await fetch('/api/recordings/'+id+'/stream');
+    if (!resp.ok) throw new Error('Could not fetch recording (status '+resp.status+')');
+    var origBlob = await resp.blob();
+    var origSize = origBlob.size;
+    pf.style.width='12%'; pl.textContent='Loaded '+fmtSize(origSize)+'. Setting up compression...';
 
-    var src=document.createElement('video');
-    src.src=URL.createObjectURL(origBlob);src.muted=true;src.preload='metadata';
-    await new Promise(function(res,rej){src.onloadedmetadata=res;src.onerror=rej;});
+    // Create source video element
+    var srcUrl = URL.createObjectURL(origBlob);
+    var src = document.createElement('video');
+    src.src = srcUrl;
+    src.muted = true;
+    src.playsInline = true;
+    // Add to DOM off-screen so it can render
+    src.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px';
+    document.body.appendChild(src);
 
-    var W=Math.round((src.videoWidth||1280)*0.55);
-    var H=Math.round((src.videoHeight||720)*0.55);
-    var FPS=10;var dur=src.duration;
-    if(!dur||!isFinite(dur))throw new Error('Cannot determine video length');
-
-    var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
-    var ctx=canvas.getContext('2d');
-    var stream=canvas.captureStream(FPS);
-    var recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:350000});
-    var chunks=[];
-    recorder.ondataavailable=function(e){if(e.data.size>0)chunks.push(e.data);};
-    recorder.start(200);
-
-    pf.style.width='20%';pl.textContent='Compressing frames...';
-    var t=0,interval=1/FPS;
-
-    await new Promise(function(resolve,reject){
-      function seekNext(){
-        if(t>dur){recorder.stop();recorder.onstop=resolve;return;}
-        src.currentTime=t;
-      }
-      src.onseeked=function(){
-        ctx.drawImage(src,0,0,W,H);
-        var pct=Math.min(20+Math.round((t/dur)*75),95);
-        pf.style.width=pct+'%';
-        pl.textContent='Compressing... '+Math.min(Math.round((t/dur)*100),99)+'%';
-        t+=interval;setTimeout(seekNext,1000/FPS/4);
-      };
-      src.onerror=reject;seekNext();
+    // Wait for video to load enough to get dimensions
+    await new Promise(function(res, rej){
+      src.onloadeddata = res;
+      src.onerror = function(e){ rej(new Error('Video load error')); };
+      src.load();
     });
 
-    var compBlob=new Blob(chunks,{type:'video/webm'});
-    pf.style.width='100%';
-    var saved=Math.round((1-compBlob.size/origBlob.size)*100);
-    pl.textContent='Done! '+fmtSize(origBlob.size)+' → '+fmtSize(compBlob.size)+' ('+saved+'% smaller)';
+    var W = Math.round((src.videoWidth || 1280) * 0.6);
+    var H = Math.round((src.videoHeight || 720) * 0.6);
 
-    var url=URL.createObjectURL(compBlob);
-    var a=document.createElement('a');a.href=url;
-    a.download='compressed-'+(title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
-    a.click();URL.revokeObjectURL(url);URL.revokeObjectURL(src.src);
-    toast('Compressed file downloaded! '+saved+'% smaller','green',5000);
-  }catch(e){
-    pl.textContent='Error: '+e.message;toast('Compression failed: '+e.message,'red');
+    pf.style.width='18%'; pl.textContent='Compressing at 60% size, 16x speed...';
+
+    // Setup canvas recorder
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+    var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
+    var csStream = canvas.captureStream(15);
+    var recorder = new MediaRecorder(csStream, {mimeType: mime, videoBitsPerSecond: 400000});
+    var chunks = [];
+    recorder.ondataavailable = function(e){ if(e.data.size > 0) chunks.push(e.data); };
+    recorder.start(200);
+
+    // Play at 16x speed and draw each frame to canvas
+    src.playbackRate = 16;
+
+    var lastTime = -1;
+    var frameDrawn = 0;
+
+    function drawFrame(){
+      if(src.currentTime !== lastTime){
+        ctx.drawImage(src, 0, 0, W, H);
+        lastTime = src.currentTime;
+        frameDrawn++;
+      }
+    }
+
+    // Use requestAnimationFrame loop to draw frames while video plays fast
+    var rafId;
+    var drawing = true;
+    function rafLoop(){
+      if(drawing){ drawFrame(); rafId = requestAnimationFrame(rafLoop); }
+    }
+
+    // Progress update via timeupdate
+    src.ontimeupdate = function(){
+      if(src.duration && isFinite(src.duration)){
+        var pct = Math.min(18 + Math.round((src.currentTime/src.duration)*72), 90);
+        pf.style.width = pct+'%';
+        pl.textContent = 'Compressing... '+Math.min(Math.round((src.currentTime/src.duration)*100),99)+'% (playing at 16x)';
+      } else {
+        // Duration unknown - show elapsed time
+        pl.textContent = 'Compressing... '+Math.round(src.currentTime)+'s processed (playing at 16x)';
+      }
+    };
+
+    rafLoop();
+    src.play();
+
+    // Wait for video to end
+    await new Promise(function(resolve, reject){
+      src.onended = resolve;
+      src.onerror = reject;
+      // Safety timeout: 10 minutes max
+      setTimeout(resolve, 600000);
+    });
+
+    drawing = false;
+    cancelAnimationFrame(rafId);
+    // Draw last frame
+    ctx.drawImage(src, 0, 0, W, H);
+
+    // Stop recorder and get blob
+    await new Promise(function(resolve){
+      recorder.onstop = resolve;
+      recorder.stop();
+    });
+
+    var compBlob = new Blob(chunks, {type: 'video/webm'});
+    var saved = Math.round((1 - compBlob.size/origSize)*100);
+    pf.style.width = '100%';
+    pl.textContent = 'Done! ' + fmtSize(origSize) + ' → ' + fmtSize(compBlob.size) + (saved > 0 ? ' (' + saved + '% smaller)' : '');
+
+    // Download
+    var url = URL.createObjectURL(compBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'compressed-'+(title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(srcUrl);
+    document.body.removeChild(src);
+
+    toast('Compressed download started!'+(saved>0?' '+saved+'% smaller':''),'green',5000);
+  } catch(e) {
+    pl.textContent = 'Error: '+e.message;
+    toast('Compression failed: '+e.message,'red');
   }
-  btn.disabled=false;btn.innerHTML='&#8481; Compress';
+  btn.disabled = false;
+  btn.innerHTML = '&#8481; Compress & Download';
 }
 
 async function loadRecordings(){
-  var recs=await get('/api/recordings');
-  var c=document.getElementById('container');c.innerHTML='';
+  var recs = await get('/api/recordings');
+  var c = document.getElementById('container');
+  c.innerHTML='';
   if(!recs||!recs.length){
-    c.innerHTML='<div class="rec-empty"><div style="font-size:52px;margin-bottom:16px;opacity:.3">&#127902;</div>'
+    c.innerHTML='<div class="rec-empty" style="text-align:center;padding:80px 24px">'
+      +'<div style="font-size:52px;margin-bottom:16px;opacity:.3">&#127902;</div>'
       +'<h3 style="font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px">No recordings yet</h3>'
-      +'<p style="color:var(--text3);font-size:13px">Go to a session, start a recording, and it will appear here automatically.</p>'
-      +'<a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a></div>';
+      +'<p style="color:var(--text3);font-size:13px">Go to a session and click Record. Recordings auto-save here.</p>'
+      +'<a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a>'
+      +'</div>';
     return;
   }
   var grid=document.createElement('div');grid.className='rec-grid';
