@@ -5,49 +5,54 @@
 <title>Interview - Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
+<style>
+.lockout-timer{font-size:56px;font-weight:900;color:#ef4444;margin:16px 0;font-family:monospace;letter-spacing:4px}
+.lockout-bar{width:300px;height:8px;background:#1a1a1a;border-radius:4px;overflow:hidden;margin:0 auto 20px}
+.lockout-bar-fill{height:100%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:4px;transition:width 1s linear}
+.resume-btn-wrap button:disabled{opacity:.4;cursor:not-allowed;background:#374151}
+</style>
 </head>
 <body class="cand-body" style="background:#050709">
 
 <div id="warn-banner" class="warn-banner"></div>
 
-<!-- PRE-JOIN TAB BLOCK: shown if other tabs open before joining -->
-<div id="tab-block-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
+<!-- TAB SWITCH LOCKOUT OVERLAY - cannot be dismissed, has mandatory countdown -->
+<div id="lockout-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.98);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
+  <div style="font-size:56px;margin-bottom:16px">!</div>
+  <div style="font-size:24px;font-weight:800;color:#ef4444;margin-bottom:8px" id="lockout-title">Tab Switch Detected</div>
+  <div style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:20px" id="lockout-msg">
+    You switched away from this interview tab.<br>
+    This has been flagged and your interviewer has been notified.
+  </div>
+  <div style="color:#ef4444;font-size:13px;font-weight:700;margin-bottom:20px" id="lockout-violation-count"></div>
+  <div class="lockout-timer" id="lockout-timer">0:30</div>
+  <div class="lockout-bar"><div class="lockout-bar-fill" id="lockout-bar-fill" style="width:100%"></div></div>
+  <div style="color:#64748b;font-size:13px;margin-bottom:20px" id="lockout-wait-msg">Wait for the timer to expire before you can resume.</div>
+  <div class="resume-btn-wrap">
+    <button id="lockout-resume-btn" onclick="tryResume()" disabled style="padding:13px 36px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">
+      Resume Interview
+    </button>
+  </div>
+  <div style="font-size:12px;color:#374151;margin-top:16px" id="lockout-note">Each tab switch increases the wait time.</div>
+</div>
+
+<!-- PRE-JOIN TAB BLOCK -->
+<div id="tab-block-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
   <div style="font-size:56px;margin-bottom:20px;color:#ef4444">!</div>
   <h2 style="font-size:26px;font-weight:800;color:#ef4444;margin-bottom:12px">Other Tabs Detected</h2>
   <p style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:8px">
-    You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other browser tab(s) open.<br>
-    All other tabs must be closed before you can join this interview.
+    You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other same-origin tab(s) open.<br>
+    Please close them before joining.
   </p>
-  <p style="color:#ef4444;font-size:13px;font-weight:600;margin-bottom:24px">The session cannot start until all other tabs are closed.</p>
-  <button onclick="recheckTabsPreJoin()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I Closed All Tabs - Check Again</button>
+  <button onclick="recheckTabsPreJoin()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-top:16px">Check Again</button>
 </div>
 
-<!-- DURING-INTERVIEW TAB ENFORCEMENT: cannot dismiss, must close tabs -->
-<div id="tab-enforcement-overlay" style="display:none;position:fixed;inset:0;z-index:9998;background:rgba(0,0,0,0.98);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
-  <div style="font-size:56px;margin-bottom:20px;color:#ef4444">!</div>
-  <div style="font-size:24px;font-weight:800;color:#ef4444;margin-bottom:12px" id="enforce-title">Tab Switch Detected</div>
-  <div style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:8px" id="enforce-msg">
-    You switched away from this interview.<br>
-    Your interviewer has been notified.
-  </div>
-  <div style="color:#ef4444;font-size:13px;font-weight:700;margin-bottom:8px">
-    YOU MUST CLOSE ALL OTHER TABS AND WINDOWS<br>BEFORE RETURNING TO THE INTERVIEW.
-  </div>
-  <div style="color:#64748b;font-size:12px;margin-bottom:28px" id="enforce-count-msg"></div>
-  <button onclick="tryResumeInterview()" style="padding:13px 36px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit;margin-bottom:12px">I Closed All Other Tabs - Resume Interview</button>
-  <div style="font-size:12px;color:#374151" id="enforce-checking"></div>
-</div>
-
-<!-- PAUSE OVERLAY: generic pause (app switch, blur) -->
+<!-- PAUSE OVERLAY (window blur / app switch) -->
 <div id="pause-overlay">
   <div class="pause-icon">||</div>
   <div class="pause-title">Session Paused</div>
-  <div class="pause-sub">
-    You left the interview window.<br>
-    Your interviewer has been notified.<br>
-    <strong style="color:#f59e0b">Close all other windows and return here to resume.</strong>
-  </div>
-  <button class="pause-return-btn" onclick="tryResumeInterview()">I am Back - Resume Interview</button>
+  <div class="pause-sub">You switched to another application.<br>Return to this window to resume.</div>
+  <button class="pause-return-btn" onclick="resumeFromBlur()">Resume Interview</button>
   <div class="pause-count" id="pause-count"></div>
 </div>
 
@@ -57,7 +62,7 @@
   <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
   <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">
     Your camera and microphone will be activated.<br>
-    <strong style="color:#ef4444;font-size:13px">All activity is monitored. All other browser tabs must be closed before joining and kept closed throughout.</strong>
+    <strong style="color:#ef4444;font-size:13px">Switching tabs during the interview will lock your session for 30 seconds and flag your account.</strong>
   </p>
 
   <div id="device-panel" style="display:none;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 20px;width:100%;max-width:480px;text-align:left">
@@ -93,7 +98,6 @@
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
-      <span id="session-paused-chip" class="badge badge-red" style="display:none">Paused</span>
       <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">Gaze Away</span>
     </div>
   </div>
@@ -117,7 +121,7 @@
 <div id="goodbye-screen" class="goodbye-screen" style="display:none">
   <div class="goodbye-icon">&#10004;&#65039;</div>
   <div class="goodbye-title">Thank You!</div>
-  <div class="goodbye-sub">The interview has concluded. Thank you for your time. The team will be in touch with next steps soon.</div>
+  <div class="goodbye-sub">The interview has concluded. Thank you for your time.</div>
   <div class="goodbye-pill">Interview Complete</div>
   <div class="goodbye-note">You may now safely close this window.</div>
 </div>
@@ -128,229 +132,237 @@
 <script>
 var code = location.pathname.split('/').pop().toUpperCase();
 var socket, pc, localStream, previewStream, sessionData, startTime = Date.now();
-var interviewStarted = false;
+var interviewActive = false;
 
-// ── FLAG SYSTEM (no spam, no entities in JS strings) ──
+// ── FLAGS ──
 var flaggedOnce = {}, flagCooldowns = {};
-function elapsed(){ var s=Math.floor((Date.now()-startTime)/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-function warn(msg){ var b=$('warn-banner'); b.textContent=msg; b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(function(){ b.style.display='none'; },5000); }
-function sendFlagOnce(key,text,detail,severity){ if(flaggedOnce[key])return; flaggedOnce[key]=true; doSendFlag(text,detail,severity); }
-function sendFlagCooldown(key,text,detail,severity,cd){ var now=Date.now(); if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return; flagCooldowns[key]=now; doSendFlag(text,detail,severity); }
+function elapsed(){var s=Math.floor((Date.now()-startTime)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function warn(msg){var b=$('warn-banner');b.textContent=msg;b.style.display='block';clearTimeout(b._t);b._t=setTimeout(function(){b.style.display='none';},5000);}
+function sendFlagOnce(key,text,detail,severity){if(flaggedOnce[key])return;flaggedOnce[key]=true;doSendFlag(text,detail,severity);}
+function sendFlagCooldown(key,text,detail,severity,cd){var now=Date.now();if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return;flagCooldowns[key]=now;doSendFlag(text,detail,severity);}
 function doSendFlag(text,detail,severity){
   var flag={text:text,detail:detail,severity:severity,time:elapsed()};
-  if(socket) socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag});
+  if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag});
   fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){});
 }
 
-// ── TAB ENFORCEMENT ──
-var tabId = Math.random().toString(36).slice(2);
-var bc = null;
-var isPaused = false, pauseCount = 0, blurTimer = null;
-var enforceOverlayShown = false;
+// ── TAB SWITCH LOCKOUT SYSTEM ──
+// visibilitychange fires on ANY tab switch - this is the correct API.
+// The enforcement is a MANDATORY COUNTDOWN TIMER - not a tab count check.
+// This works regardless of where the candidate went (ChatGPT, Google, etc.)
+var lockoutActive = false;
+var lockoutViolations = 0;
+var lockoutCountdownInterval = null;
+var BASE_LOCKOUT_SECONDS = 30; // 30s first offense, 60s second, 90s third...
 
-// Check how many OTHER tabs of this origin are open
-function checkOtherTabsOpen(){
-  return new Promise(function(resolve){
-    if(!window.BroadcastChannel){resolve(0);return;}
-    var responses = 0;
-    try{
-      var ch = new BroadcastChannel('secure_interview_tabs');
-      var t = setTimeout(function(){ ch.close(); resolve(responses); }, 700);
-      ch.onmessage = function(e){ if(e.data.type==='TAB_RESPONSE'&&e.data.id!==tabId) responses++; };
-      ch.postMessage({type:'TAB_OPEN_CHECK',id:tabId});
-    }catch(e){resolve(0);}
-  });
-}
+function startLockout(reason){
+  if(!interviewActive) return;
+  if(lockoutActive) return; // already locked
+  lockoutActive = true;
+  lockoutViolations++;
 
-// PRE-JOIN: block if other tabs open
-async function recheckTabsPreJoin(){
-  var btn = document.querySelector('#tab-block-overlay button');
-  if(btn){btn.textContent='Checking...';btn.disabled=true;}
-  var count = await checkOtherTabsOpen();
-  if(count > 0){
-    $('other-tab-count').textContent = count;
-    if(btn){btn.textContent='I Closed All Tabs - Check Again';btn.disabled=false;}
-  } else {
-    $('tab-block-overlay').style.display = 'none';
-    doJoin();
-  }
-}
+  // Flag the violation
+  var severity = lockoutViolations >= 3 ? 'high' : 'medium';
+  sendFlagCooldown('tab-switch-'+lockoutViolations,
+    'Tab Switch #'+lockoutViolations,
+    reason + ' (violation #'+lockoutViolations+')',
+    severity, 2000);
 
-// DURING INTERVIEW: enforce tab closure, cannot resume without closing tabs
-async function tryResumeInterview(){
-  var checkEl = $('enforce-checking');
-  if(checkEl) checkEl.textContent = 'Checking for open tabs...';
-  var resumeBtn = document.querySelector('#tab-enforcement-overlay button');
-  var pauseBtn = document.querySelector('#pause-overlay .pause-return-btn');
-  if(resumeBtn){resumeBtn.disabled=true;resumeBtn.textContent='Checking...';}
-  if(pauseBtn){pauseBtn.disabled=true;}
-
-  var count = await checkOtherTabsOpen();
-  if(count > 0){
-    // Still open — refuse to resume
-    if(checkEl) checkEl.textContent = 'Still detecting ' + count + ' other tab(s). Close them and try again.';
-    $('enforce-count-msg').textContent = count + ' tab(s) still open.';
-    if(resumeBtn){resumeBtn.disabled=false;resumeBtn.textContent='I Closed All Other Tabs - Resume Interview';}
-    if(pauseBtn){pauseBtn.disabled=false;}
-    // Flag the attempt
-    sendFlagCooldown('resume-with-tabs','Tried to Resume With Tabs Open','Candidate attempted to resume interview while '+count+' other tab(s) were still open','high',5000);
-  } else {
-    // All clear — actually resume
-    if(checkEl) checkEl.textContent = '';
-    hideEnforcementOverlay();
-    resumeSession();
-    if(resumeBtn){resumeBtn.disabled=false;resumeBtn.textContent='I Closed All Other Tabs - Resume Interview';}
-    if(pauseBtn){pauseBtn.disabled=false;}
-  }
-}
-
-function showEnforcementOverlay(title, msg){
-  enforceOverlayShown = true;
-  $('enforce-title').textContent = title || 'Tab Switch Detected';
-  $('enforce-msg').innerHTML = msg || 'You switched away from this interview.<br>Your interviewer has been notified.';
-  $('enforce-count-msg').textContent = '';
-  $('enforce-checking').textContent = '';
-  $('tab-enforcement-overlay').style.display = 'flex';
-  // Hide generic pause overlay since enforcement overlay is stricter
-  $('pause-overlay').classList.remove('active');
-  $('session-paused-chip').style.display = '';
+  // Mute mic
   if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
+
+  // Calculate lockout duration: 30s * violation count
+  var lockoutSecs = BASE_LOCKOUT_SECONDS * lockoutViolations;
+
+  // Update overlay text
+  $('lockout-title').textContent = 'Tab Switch Detected (#'+lockoutViolations+')';
+  $('lockout-msg').innerHTML = reason+'<br>Your interviewer has been notified.<br><strong style="color:#f59e0b">You must wait before you can resume.</strong>';
+  $('lockout-violation-count').textContent = lockoutViolations > 1 ?
+    'This is violation #'+lockoutViolations+'. Wait time has increased to '+lockoutSecs+' seconds.' : '';
+  $('lockout-note').textContent = 'Wait time: '+lockoutSecs+'s (increases with each violation)';
+
+  // Show overlay
+  $('lockout-overlay').style.display = 'flex';
+  $('lockout-resume-btn').disabled = true;
+
+  // Start countdown
+  var remaining = lockoutSecs;
+  var barFill = $('lockout-bar-fill');
+  var timerEl = $('lockout-timer');
+  var waitMsg = $('lockout-wait-msg');
+
+  function updateTimer(){
+    var m = Math.floor(remaining/60), s = remaining%60;
+    timerEl.textContent = m+':'+(s<10?'0':'')+s;
+    barFill.style.width = Math.round((remaining/lockoutSecs)*100)+'%';
+    if(remaining > 0){
+      remaining--;
+      lockoutCountdownInterval = setTimeout(updateTimer, 1000);
+    } else {
+      // Timer expired - enable the button
+      timerEl.textContent = '0:00';
+      barFill.style.width = '0%';
+      waitMsg.textContent = 'You may now return to the interview.';
+      waitMsg.style.color = '#22c55e';
+      $('lockout-resume-btn').disabled = false;
+      $('lockout-resume-btn').style.background = '#22c55e';
+      $('lockout-resume-btn').textContent = 'Resume Interview';
+    }
+  }
+  updateTimer();
 }
 
-function hideEnforcementOverlay(){
-  enforceOverlayShown = false;
-  $('tab-enforcement-overlay').style.display = 'none';
-  $('pause-overlay').classList.remove('active');
+function tryResume(){
+  // Only allowed after countdown completes (button is enabled by timer)
+  if($('lockout-resume-btn').disabled) return;
+  endLockout();
 }
 
-function pauseSession(title, msg){
-  if(enforceOverlayShown) return; // enforcement overlay takes priority
-  isPaused = true; pauseCount++;
-  $('pause-count').textContent = 'Session paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.';
-  $('pause-overlay').classList.add('active');
-  $('session-paused-chip').style.display = '';
-  if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
-}
-
-function resumeSession(){
-  isPaused = false;
-  $('pause-overlay').classList.remove('active');
-  $('session-paused-chip').style.display = 'none';
+function endLockout(){
+  lockoutActive = false;
+  clearTimeout(lockoutCountdownInterval);
+  $('lockout-overlay').style.display = 'none';
+  $('lockout-wait-msg').style.color = '';
+  $('lockout-resume-btn').style.background = '#3b82f6';
+  $('lockout-resume-btn').textContent = 'Resume Interview';
+  // Restore mic
   if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
 }
 
-// ── BroadcastChannel: announce presence + detect new tabs ──
+// ── GENERIC PAUSE (window blur - app switch) ──
+var isPaused = false, pauseCount = 0, blurTimer = null;
+function pauseSession(){
+  if(lockoutActive||isPaused) return;
+  isPaused=true; pauseCount++;
+  $('pause-overlay').classList.add('active');
+  $('pause-count').textContent='Session paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.';
+  if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
+}
+function resumeFromBlur(){
+  if(lockoutActive) return; // lockout takes priority
+  isPaused=false;
+  $('pause-overlay').classList.remove('active');
+  if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
+}
+
+// ── BroadcastChannel (detect same-origin tab opens during interview) ──
+var tabId = Math.random().toString(36).slice(2);
+var bc = null;
 function initTabChannel(){
   try{
     bc = new BroadcastChannel('secure_interview_tabs');
     bc.postMessage({type:'TAB_ANNOUNCE',id:tabId});
     bc.onmessage = function(e){
       if(e.data.type==='TAB_OPEN_CHECK') bc.postMessage({type:'TAB_RESPONSE',id:tabId});
-      if(e.data.type==='TAB_ANNOUNCE'&&e.data.id!==tabId&&interviewStarted){
-        // Another tab opened DURING interview
-        sendFlagCooldown('new-tab-during','New Tab Opened During Interview','Candidate opened a new browser tab during the interview','high',5000);
-        showEnforcementOverlay('New Tab Opened!','You opened a new browser tab during the interview.<br>This has been flagged and your interviewer has been notified.');
+      if(e.data.type==='TAB_ANNOUNCE'&&e.data.id!==tabId&&interviewActive){
+        sendFlagOnce('same-origin-tab','New Same-Origin Tab Opened','Candidate opened another SecureInterview tab during interview','high');
       }
     };
-  }catch(e){console.warn('BroadcastChannel not supported');}
+  }catch(e){}
+}
+function checkSameOriginTabs(){
+  return new Promise(function(resolve){
+    if(!window.BroadcastChannel){resolve(0);return;}
+    var count=0;
+    try{
+      var ch=new BroadcastChannel('secure_interview_tabs');
+      var t=setTimeout(function(){ch.close();resolve(count);},700);
+      ch.onmessage=function(e){if(e.data.type==='TAB_RESPONSE'&&e.data.id!==tabId)count++;};
+      ch.postMessage({type:'TAB_OPEN_CHECK',id:tabId});
+    }catch(e){resolve(0);}
+  });
 }
 
 // ── PROTECTION SETUP ──
 function setupProtection(){
-  interviewStarted = true;
+  interviewActive = true;
 
-  // visibilitychange — fires on Ctrl+Tab, clicking other tabs, Alt+Tab (all tab switches in same window)
+  // PRIMARY TAB DETECTION: visibilitychange fires on ANY tab switch
+  // This is browser-level - works for ALL destinations (ChatGPT, Google, etc.)
   document.addEventListener('visibilitychange', function(){
-    if(!interviewStarted) return;
+    if(!interviewActive) return;
     if(document.hidden){
-      sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab','high',3000);
-      showEnforcementOverlay(
-        'Tab Switch Detected',
-        'You switched to another browser tab.<br>This has been flagged.<br>You must close all other tabs to resume.'
-      );
+      // Tab became hidden = candidate switched to another tab
+      startLockout('You switched to another browser tab.');
     }
-    // Do NOT auto-resume on visible — force them to click the check button
+    // Do NOT auto-resume on visible - they must wait out the timer and click the button
   });
 
-  // window.blur — fires when switching to other apps, other windows, desktop
-  var blurCooldown = 0;
+  // SECONDARY: window blur fires when switching to other apps
+  var blurDebounce = 0;
   window.addEventListener('blur', function(){
-    if(!interviewStarted) return;
+    if(!interviewActive) return;
+    // debounce to avoid double-firing with visibilitychange
     var now = Date.now();
-    if(now - blurCooldown < 500) return; // debounce - visibilitychange + blur can both fire
-    blurCooldown = now;
-    sendFlagCooldown('window-blur','Window Switch','Candidate switched to another application or window','medium',3000);
-    pauseSession('Window Switch Detected','You switched to another application or window.');
-    blurTimer = setTimeout(function(){
-      if(isPaused||enforceOverlayShown){
-        sendFlagCooldown('extended-absence','Extended Absence','Candidate away for 10+ seconds','high',15000);
-      }
+    if(now - blurDebounce < 600) return;
+    blurDebounce = now;
+    if(!document.hidden){ // blur without visibility change = other app/window, not tab switch
+      sendFlagCooldown('window-blur','Window Switch','Candidate switched to another application or window','medium',3000);
+      pauseSession();
+    }
+    blurTimer=setTimeout(function(){
+      if(isPaused||lockoutActive) sendFlagCooldown('extended-absence','Extended Absence','Candidate away 10+ seconds','high',15000);
     },10000);
   });
-
   window.addEventListener('focus', function(){
     clearTimeout(blurTimer);
-    // Only auto-resume generic pause overlay (not enforcement overlay)
-    if(isPaused && !enforceOverlayShown && !document.hidden) resumeSession();
+    // Only auto-resume the BLUR pause (not the lockout)
+    if(isPaused&&!lockoutActive&&!document.hidden) resumeFromBlur();
   });
 
-  // Block copy/paste/cut
-  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying is not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy','medium',2000);});
-  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting is not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
-  document.addEventListener('cut',function(e){e.preventDefault();sendFlagCooldown('cut','Cut Detected','Candidate attempted to cut','low',2000);});
+  // Copy/paste/cut
+  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy','medium',2000);});
+  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
+  document.addEventListener('cut',function(e){e.preventDefault();sendFlagCooldown('cut','Cut Detected','Candidate cut content','low',2000);});
   document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Candidate right-clicked','low',2000);});
 
   // Keyboard
   document.addEventListener('keydown',function(e){
-    if(e.key==='F12'){e.preventDefault();warn('DevTools are not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
+    if(e.key==='F12'){e.preventDefault();warn('DevTools not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
     if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();sendFlagCooldown('refresh','Refresh Attempt','Candidate tried to refresh','medium',3000);}
-    // Block Ctrl+T (new tab), Ctrl+N (new window), Ctrl+W (close tab)
-    if((e.ctrlKey||e.metaKey)&&['t','n','w'].includes(e.key.toLowerCase())){
-      e.preventDefault();
-      warn('Opening new tabs is not allowed!');
-      sendFlagCooldown('new-tab-key','New Tab/Window Attempt','Candidate pressed Ctrl+'+e.key.toUpperCase()+' (new tab/window)','high',3000);
+    if((e.ctrlKey||e.metaKey)&&(e.key==='t'||e.key==='n')){
+      e.preventDefault();warn('New tabs not allowed!');
+      sendFlagCooldown('new-tab','New Tab Attempt','Candidate pressed Ctrl+'+e.key.toUpperCase(),'high',3000);
     }
-    // Block other shortcuts
     if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){
-      e.preventDefault();
-      sendFlagCooldown('shortcut-'+e.key,'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
+      e.preventDefault();sendFlagCooldown('shortcut-'+e.key,'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
     }
   });
 
-  // Display detection (once only)
+  // Display detection
   checkDisplays();
   setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},30000);
-  if(window.screen&&window.screen.addEventListener){
-    window.screen.addEventListener('change',function(){
-      sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display configuration during interview','high');
-    });
-  }
+  if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display config','high');});
 
-  // Window resize
+  // Resize (split screen)
   var origW=window.innerWidth,origH=window.innerHeight;
-  window.addEventListener('resize',function(){
-    var nW=window.innerWidth,nH=window.innerHeight;
-    if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){
-      sendFlagCooldown('resize','Window Resized','Candidate significantly resized interview window','low',10000);
-      origW=nW;origH=nH;
-    }
-  });
+  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Possible split-screen','low',10000);origW=nW;origH=nH;}});
 
   initTabChannel();
 }
 
-// ── DISPLAY DETECTION ──
+// ── PRE-JOIN TAB CHECK (same-origin only) ──
+async function recheckTabsPreJoin(){
+  var count = await checkSameOriginTabs();
+  if(count>0){$('other-tab-count').textContent=count;}
+  else{$('tab-block-overlay').style.display='none';doJoin();}
+}
+async function attemptJoin(){
+  var btn=$('join-btn');btn.disabled=true;btn.textContent='Checking...';
+  var count=await checkSameOriginTabs();
+  if(count>0){
+    $('other-tab-count').textContent=count;
+    $('tab-block-overlay').style.display='flex';
+    btn.disabled=false;btn.textContent='Join Interview';
+  } else doJoin();
+}
+
+// ── DISPLAY ──
 function checkDisplays(){
   if(flaggedOnce['multi-display'])return;
-  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){
-    sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays connected','high');
-    warn('Multiple displays detected - this has been flagged');
-    return;
-  }
+  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high');warn('Multiple displays detected - flagged');return;}
   var x=window.screenX||0,y=window.screenY||0;
-  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){
-    sendFlagOnce('multi-display','Window on Secondary Display','Candidate window on secondary monitor','high');
-  }
+  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Window on Secondary Display','Candidate window on secondary monitor','high');}
 }
 
 // ── AUDIO MONITORING ──
@@ -359,65 +371,58 @@ function initAudioMonitoring(stream){
   try{
     var actx=new (window.AudioContext||window.webkitAudioContext)();
     var src=actx.createMediaStreamSource(stream);
-    var analyser=actx.createAnalyser();
-    analyser.fftSize=2048; analyser.smoothingTimeConstant=0.8;
+    var analyser=actx.createAnalyser();analyser.fftSize=2048;analyser.smoothingTimeConstant=0.8;
     src.connect(analyser);
-    var data=new Uint8Array(analyser.frequencyBinCount);
-    var buf=[];
+    var data=new Uint8Array(analyser.frequencyBinCount),buf=[];
     audioCheckInterval=setInterval(function(){
       analyser.getByteFrequencyData(data);
-      var s=actx.sampleRate/2,fc=analyser.frequencyBinCount;
-      var bStart=Math.floor(300/s*fc),bEnd=Math.floor(3400/s*fc);
+      var sr2=actx.sampleRate/2,fc=analyser.frequencyBinCount;
+      var bs=Math.floor(300/sr2*fc),be=Math.floor(3400/sr2*fc);
       var peaks=0,last=0,rising=false;
-      for(var j=bStart;j<bEnd;j++){if(data[j]>last&&!rising){rising=true;}else if(data[j]<last&&rising&&last>60){peaks++;rising=false;}last=data[j];}
+      for(var j=bs;j<be;j++){if(data[j]>last&&!rising)rising=true;else if(data[j]<last&&rising&&last>60){peaks++;rising=false;}last=data[j];}
       buf.push(peaks);if(buf.length>10)buf.shift();
       var avg=buf.reduce(function(a,b){return a+b;},0)/buf.length;
-      var energy=0;for(var k=bStart;k<bEnd;k++)energy+=data[k];
-      if(avg>=2.5&&energy/(bEnd-bStart)>20){
-        sendFlagCooldown('bg-voice','Background Voice Detected','Audio analysis: second voice detected - possible coaching','high',20000);
-        warn('Background voice detected - coaching is not permitted');
-      }
+      var energy=0;for(var k=bs;k<be;k++)energy+=data[k];
+      if(avg>=2.5&&energy/(be-bs)>20){sendFlagCooldown('bg-voice','Background Voice Detected','Audio: second voice detected - possible coaching','high',20000);warn('Background voice detected');}
     },500);
-  }catch(e){console.warn('Audio monitor failed:',e.message);}
+  }catch(e){console.warn('Audio monitor:',e.message);}
 }
 
-// ── GAZE TRACKING ──
-var gazeOffStart=null, gazeTimer=null;
-var GAZE_SEC=5;
+// ── GAZE ──
+var gazeOffStart=null,gazeTimer=null;
 function initGazeTracking(videoEl){
   try{
-    if(typeof FaceMesh==='undefined'){console.warn('FaceMesh not loaded');return;}
+    if(typeof FaceMesh==='undefined'){return;}
     var fm=new FaceMesh({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/'+f;}});
     fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
     fm.onResults(function(results){
       if(!results.multiFaceLandmarks||!results.multiFaceLandmarks.length){
-        if(!gazeOffStart) gazeOffStart=Date.now();
+        if(!gazeOffStart)gazeOffStart=Date.now();
         var away=(Date.now()-gazeOffStart)/1000;
-        if(away>2) $('gaze-chip').style.display='';
-        if(away>GAZE_SEC) sendFlagCooldown('face-gone','Face Not Visible','Candidate face not visible for '+Math.round(away)+'s','high',10000);
+        if(away>2)$('gaze-chip').style.display='';
+        if(away>5)sendFlagCooldown('face-gone','Face Not Visible','Candidate face not visible for '+Math.round(away)+'s','high',10000);
         return;
       }
       var lm=results.multiFaceLandmarks[0];
       var li=lm[468],ri=lm[473];
       if(!li||!ri){gazeOffStart=null;$('gaze-chip').style.display='none';return;}
       var lo=lm[33],lin=lm[133],rin=lm[362],ro=lm[263];
-      var lg=(li.x-lo.x)/(lin.x-lo.x||0.001), rg=(ri.x-rin.x)/(ro.x-rin.x||0.001);
+      var lg=(li.x-lo.x)/((lin.x-lo.x)||0.001),rg=(ri.x-rin.x)/((ro.x-rin.x)||0.001);
       var avg=(lg+rg)/2;
       var lt=lm[159],lb=lm[145];
-      var vg=lt&&lb?(li.y-lt.y)/(lb.y-lt.y||0.001):0.5;
-      var away=avg<0.2||avg>0.8||vg<0.15||vg>0.85;
-      if(away){
-        if(!gazeOffStart) gazeOffStart=Date.now();
-        var ms=(Date.now()-gazeOffStart)/1000;
+      var vg=lt&&lb?(li.y-lt.y)/((lb.y-lt.y)||0.001):0.5;
+      if(avg<0.2||avg>0.8||vg<0.15||vg>0.85){
+        if(!gazeOffStart)gazeOffStart=Date.now();
+        var away=(Date.now()-gazeOffStart)/1000;
         $('gaze-chip').style.display='';
-        if(ms>GAZE_SEC) sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate looked away for '+Math.round(ms)+'s','medium',12000);
-      } else { gazeOffStart=null; $('gaze-chip').style.display='none'; }
+        if(away>5)sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate looked away for '+Math.round(away)+'s','medium',12000);
+      }else{gazeOffStart=null;$('gaze-chip').style.display='none';}
     });
     gazeTimer=setInterval(async function(){
-      if(!videoEl.readyState||videoEl.readyState<2) return;
+      if(!videoEl.readyState||videoEl.readyState<2)return;
       try{await fm.send({image:videoEl});}catch(e){}
     },500);
-  }catch(e){console.warn('Gaze init failed:',e.message);}
+  }catch(e){console.warn('Gaze:',e.message);}
 }
 
 // ── DEVICES ──
@@ -427,11 +432,7 @@ async function loadDevices(){
     var tmp=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
     tmp.getTracks().forEach(function(t){t.stop();});
     var devs=await navigator.mediaDevices.enumerateDevices();
-    function fill(id,list,label){
-      var sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';
-      list.forEach(function(d,i){var o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(label+' '+(i+1));sel.appendChild(o);});
-      if(!list.length){var o=document.createElement('option');o.textContent='No '+label+' found';sel.appendChild(o);}
-    }
+    function fill(id,list,label){var sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';list.forEach(function(d,i){var o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(label+' '+(i+1));sel.appendChild(o);});if(!list.length){var o=document.createElement('option');o.textContent='No '+label;sel.appendChild(o);}}
     fill('sel-camera',devs.filter(function(d){return d.kind==='videoinput';}),'Camera');
     fill('sel-mic',devs.filter(function(d){return d.kind==='audioinput';}),'Microphone');
     fill('sel-speaker',devs.filter(function(d){return d.kind==='audiooutput';}),'Speaker');
@@ -443,65 +444,43 @@ async function startPreview(){
   if(previewStream){previewStream.getTracks().forEach(function(t){t.stop();});}
   var cId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
   var mId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
-  try{
-    var c={video:cId?{deviceId:{exact:cId}}:{facingMode:'user'},audio:mId?{deviceId:{exact:mId}}:true};
-    previewStream=await navigator.mediaDevices.getUserMedia(c);
-    document.getElementById('preview-vid').srcObject=previewStream;
-    localStream=previewStream;
-  }catch(e){console.warn('Preview failed:',e.message);}
+  try{previewStream=await navigator.mediaDevices.getUserMedia({video:cId?{deviceId:{exact:cId}}:{facingMode:'user'},audio:mId?{deviceId:{exact:mId}}:true});document.getElementById('preview-vid').srcObject=previewStream;localStream=previewStream;}catch(e){}
 }
 
-// ── STOP MEDIA ──
 function stopAllMedia(){
+  interviewActive=false;
   if(localStream){localStream.getTracks().forEach(function(t){t.stop();});}
   if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();});}
   if(pc){pc.close();}
   if(audioCheckInterval){clearInterval(audioCheckInterval);}
   if(gazeTimer){clearInterval(gazeTimer);}
+  if(lockoutCountdownInterval){clearTimeout(lockoutCountdownInterval);}
   var lv=$('local-vid');if(lv)lv.srcObject=null;
   var rv=$('remote-vid');if(rv)rv.srcObject=null;
 }
 
 function showGoodbye(){
-  interviewStarted=false;
   stopAllMedia();
   $('interview-screen').style.display='none';
-  $('tab-enforcement-overlay').style.display='none';
+  $('lockout-overlay').style.display='none';
   $('pause-overlay').classList.remove('active');
   $('goodbye-screen').style.display='flex';
 }
 
-// ── PRE-JOIN: check tabs then join ──
-async function attemptJoin(){
-  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Checking tabs...';
-  var count=await checkOtherTabsOpen();
-  if(count>0){
-    $('other-tab-count').textContent=count;
-    $('tab-block-overlay').style.display='flex';
-    btn.disabled=false; btn.textContent='Join Interview';
-  } else { doJoin(); }
-}
-
 async function doJoin(){
-  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Starting camera...';
+  var btn=$('join-btn');btn.disabled=true;btn.textContent='Starting camera...';
   try{
     if(!localStream||localStream.getTracks().some(function(t){return t.readyState==='ended';})){
       var cId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
       var mId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
-      localStream=await navigator.mediaDevices.getUserMedia({
-        video:cId?{deviceId:{exact:cId},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},
-        audio:mId?{deviceId:{exact:mId}}:true
-      });
+      localStream=await navigator.mediaDevices.getUserMedia({video:cId?{deviceId:{exact:cId},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},audio:mId?{deviceId:{exact:mId}}:true});
     }
     $('local-vid').srcObject=localStream;
     var pv=document.getElementById('preview-vid');if(pv)pv.srcObject=null;
     if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();});previewStream=null;}
-  }catch(e){
-    $('join-info').textContent='Camera/mic access required: '+e.message;
-    btn.disabled=false; btn.textContent='Join Interview'; return;
-  }
+  }catch(e){$('join-info').textContent='Camera/mic required: '+e.message;btn.disabled=false;btn.textContent='Join Interview';return;}
   $('join-screen').style.display='none';
-  var is=$('interview-screen'); is.style.display='flex'; is.style.flexDirection='column';
+  var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
   $('i-title').textContent=sessionData&&sessionData.title||'Interview';
   startTime=Date.now();
   var spk=document.getElementById('sel-speaker')&&document.getElementById('sel-speaker').value;
@@ -527,7 +506,7 @@ function connectSocket(){
 
 async function createPC(){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
-  if(localStream) localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
   pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
   pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
@@ -540,8 +519,7 @@ async function init(){
   var s=await get('/api/join/'+code);
   if(s.error==='SESSION_ENDED'){$('join-screen').style.display='none';showGoodbye();return;}
   if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;$('join-btn').textContent='Session Unavailable';return;}
-  sessionData=s;
-  $('join-info').textContent='Session: '+s.title;
+  sessionData=s;$('join-info').textContent='Session: '+s.title;
 }
 init();
 </script>
