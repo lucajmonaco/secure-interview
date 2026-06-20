@@ -9,10 +9,11 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essen
 COPY package.json ./
 RUN npm install
 COPY server.js ./
-# CACHE_BUST=1781970579684
+# CACHE_BUST=1781971835617
 COPY public ./public
 
 FROM base
 COPY --from=build /app /app
+RUN mkdir -p /app/recordings
 EXPOSE 8080
 CMD [ "node", "server.js" ]
