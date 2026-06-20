@@ -16,13 +16,24 @@ const PORT = process.env.PORT || 8080;
 
 const db = new Database(path.join(__dirname, 'proctor.db'));
 db.exec(`
-  CREATE TABLE IF NOT EXISTS users (
-    id TEXT PRIMARY KEY, email TEXT UNIQUE NOT NULL, password TEXT NOT NULL,
-    name TEXT NOT NULL, org TEXT NOT NULL, role TEXT DEFAULT 'interviewer',
+  CREATE TABLE IF NOT EXISTS orgs (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    code TEXT UNIQUE NOT NULL,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
+  CREATE TABLE IF NOT EXISTS users (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL,
+    password TEXT NOT NULL,
+    name TEXT NOT NULL,
+    org_id TEXT NOT NULL,
+    role TEXT DEFAULT 'interviewer',
+    created_at INTEGER DEFAULT (strftime('%s','now')),
+    UNIQUE(email, org_id)
+  );
   CREATE TABLE IF NOT EXISTS teams (
-    id TEXT PRIMARY KEY, name TEXT NOT NULL, org TEXT NOT NULL,
+    id TEXT PRIMARY KEY, name TEXT NOT NULL, org_id TEXT NOT NULL,
     owner_id TEXT NOT NULL, invite_code TEXT UNIQUE NOT NULL,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
@@ -32,10 +43,9 @@ db.exec(`
   );
   CREATE TABLE IF NOT EXISTS sessions (
     id TEXT PRIMARY KEY, code TEXT UNIQUE NOT NULL, title TEXT NOT NULL,
-    candidate_name TEXT, interviewer_id TEXT NOT NULL, team_id TEXT,
+    candidate_name TEXT, interviewer_id TEXT NOT NULL, org_id TEXT,
     status TEXT DEFAULT 'waiting', trust_score INTEGER DEFAULT 100,
     flags TEXT DEFAULT '[]', questions TEXT DEFAULT '[]',
-    display_count INTEGER DEFAULT 1, recording_url TEXT,
     started_at INTEGER, ended_at INTEGER,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
@@ -48,6 +58,7 @@ db.exec(`
     id TEXT PRIMARY KEY,
     session_id TEXT NOT NULL,
     interviewer_id TEXT NOT NULL,
+    org_id TEXT,
     session_title TEXT NOT NULL,
     candidate_name TEXT,
     file_path TEXT NOT NULL,
@@ -55,26 +66,32 @@ db.exec(`
     duration_secs INTEGER DEFAULT 0,
     trust_score INTEGER DEFAULT 100,
     flag_count INTEGER DEFAULT 0,
+    share_token TEXT UNIQUE,
     created_at INTEGER DEFAULT (strftime('%s','now'))
   );
 `);
 
-// Recordings storage directory
+// Migrate: add org_id to existing tables if missing
+try { db.prepare('ALTER TABLE sessions ADD COLUMN org_id TEXT').run(); } catch(e){}
+try { db.prepare('ALTER TABLE recordings ADD COLUMN org_id TEXT').run(); } catch(e){}
+try { db.prepare('ALTER TABLE recordings ADD COLUMN share_token TEXT').run(); } catch(e){}
+// Migrate users: add org_id column if missing (old schema had 'org' text column)
+try { db.prepare('ALTER TABLE users ADD COLUMN org_id TEXT').run(); } catch(e){}
+
 const RECORDINGS_DIR = path.join(__dirname, 'recordings');
 if (!fs.existsSync(RECORDINGS_DIR)) fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 
-// Multer for video uploads
 const storage = multer.diskStorage({
-  destination: function(req, file, cb) { cb(null, RECORDINGS_DIR); },
-  filename: function(req, file, cb) { cb(null, uuidv4() + '.webm'); }
+  destination: (req, file, cb) => cb(null, RECORDINGS_DIR),
+  filename: (req, file, cb) => cb(null, uuidv4() + '.webm')
 });
-const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } }); // 500MB limit
+const upload = multer({ storage, limits: { fileSize: 500 * 1024 * 1024 } });
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(session({
-  secret: 'secure-interview-secret-' + Math.random().toString(36),
+  secret: 'secure-interview-secret-key-2026',
   resave: false, saveUninitialized: false,
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
@@ -84,65 +101,102 @@ function requireAuth(req, res, next) {
   next();
 }
 
-function generateCode() {
+function generateCode(len) {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
   let code = '';
-  for (let i = 0; i < 6; i++) {
-    if (i === 3) code += '-';
-    code += chars[Math.floor(Math.random() * chars.length)];
-  }
+  for (let i = 0; i < len; i++) code += chars[Math.floor(Math.random() * chars.length)];
   return code;
 }
 
-// ── AUTH ──
-app.post('/api/auth/signup', async (req, res) => {
-  const { email, password, name, org } = req.body;
-  if (!email || !password || !name || !org) return res.json({ error: 'All fields required' });
+function generateSessionCode() {
+  return generateCode(3) + '-' + generateCode(3);
+}
+
+// ── ORG AUTH ──
+// Create a new organization (company signup)
+app.post('/api/auth/org/create', async (req, res) => {
+  const { orgName, email, password, name } = req.body;
+  if (!orgName || !email || !password || !name) return res.json({ error: 'All fields required' });
   if (password.length < 6) return res.json({ error: 'Password must be at least 6 characters' });
   try {
+    const orgId = uuidv4();
+    // Generate unique org code (6 chars)
+    let orgCode;
+    do { orgCode = generateCode(6); } while (db.prepare('SELECT id FROM orgs WHERE code=?').get(orgCode));
+    db.prepare('INSERT INTO orgs (id,name,code) VALUES (?,?,?)').run(orgId, orgName, orgCode);
     const hashed = await bcrypt.hash(password, 10);
-    const id = uuidv4();
-    db.prepare('INSERT INTO users (id,email,password,name,org) VALUES (?,?,?,?,?)').run(id, email.toLowerCase(), hashed, name, org);
-    req.session.userId = id; req.session.userName = name; req.session.userOrg = org;
-    res.json({ ok: true, name, org });
-  } catch (e) {
-    if (e.message.includes('UNIQUE')) return res.json({ error: 'Email already registered' });
-    res.json({ error: 'Signup failed: ' + e.message });
+    const userId = uuidv4();
+    db.prepare('INSERT INTO users (id,email,password,name,org_id,role) VALUES (?,?,?,?,?,?)').run(userId, email.toLowerCase(), hashed, name, orgId, 'admin');
+    req.session.userId = userId;
+    req.session.orgId = orgId;
+    req.session.orgCode = orgCode;
+    res.json({ ok: true, orgCode, orgName, name });
+  } catch(e) {
+    if (e.message.includes('UNIQUE')) return res.json({ error: 'That email is already registered for this org' });
+    res.json({ error: e.message });
   }
 });
 
+// Join an existing org (employee/recruiter signup)
+app.post('/api/auth/org/join', async (req, res) => {
+  const { orgCode, email, password, name } = req.body;
+  if (!orgCode || !email || !password || !name) return res.json({ error: 'All fields required' });
+  const org = db.prepare('SELECT * FROM orgs WHERE code=?').get(orgCode.toUpperCase());
+  if (!org) return res.json({ error: 'Invalid company code. Ask your admin for the code.' });
+  if (password.length < 6) return res.json({ error: 'Password must be at least 6 characters' });
+  try {
+    const hashed = await bcrypt.hash(password, 10);
+    const userId = uuidv4();
+    db.prepare('INSERT INTO users (id,email,password,name,org_id) VALUES (?,?,?,?,?)').run(userId, email.toLowerCase(), hashed, name, org.id);
+    req.session.userId = userId;
+    req.session.orgId = org.id;
+    req.session.orgCode = org.code;
+    res.json({ ok: true, orgName: org.name, orgCode: org.code, name });
+  } catch(e) {
+    if (e.message.includes('UNIQUE')) return res.json({ error: 'Email already registered at this company' });
+    res.json({ error: e.message });
+  }
+});
+
+// Sign into existing account with org code
 app.post('/api/auth/login', async (req, res) => {
-  const { email, password } = req.body;
-  const user = db.prepare('SELECT * FROM users WHERE email=?').get((email||'').toLowerCase());
-  if (!user) return res.json({ error: 'No account found with that email' });
+  const { orgCode, email, password } = req.body;
+  if (!orgCode || !email || !password) return res.json({ error: 'Company code, email and password required' });
+  const org = db.prepare('SELECT * FROM orgs WHERE code=?').get(orgCode.toUpperCase());
+  if (!org) return res.json({ error: 'Invalid company code' });
+  const user = db.prepare('SELECT * FROM users WHERE email=? AND org_id=?').get(email.toLowerCase(), org.id);
+  if (!user) return res.json({ error: 'No account found with that email at this company' });
   const match = await bcrypt.compare(password, user.password);
   if (!match) return res.json({ error: 'Incorrect password' });
-  req.session.userId = user.id; req.session.userName = user.name; req.session.userOrg = user.org;
-  res.json({ ok: true, name: user.name, org: user.org });
+  req.session.userId = user.id;
+  req.session.orgId = org.id;
+  req.session.orgCode = org.code;
+  res.json({ ok: true, name: user.name, orgName: org.name, orgCode: org.code, role: user.role });
 });
 
 app.post('/api/auth/logout', (req, res) => { req.session.destroy(); res.json({ ok: true }); });
 
 app.get('/api/auth/me', (req, res) => {
   if (!req.session.userId) return res.json({ loggedIn: false });
-  const user = db.prepare('SELECT id,email,name,org,role FROM users WHERE id=?').get(req.session.userId);
-  res.json({ loggedIn: true, ...user });
+  const user = db.prepare('SELECT id,email,name,org_id,role FROM users WHERE id=?').get(req.session.userId);
+  if (!user) return res.json({ loggedIn: false });
+  const org = db.prepare('SELECT name,code FROM orgs WHERE id=?').get(user.org_id);
+  res.json({ loggedIn: true, ...user, orgName: org?.name, orgCode: org?.code });
 });
 
 // ── SESSIONS ──
 app.post('/api/sessions', requireAuth, (req, res) => {
-  const { title, candidateName, teamId, questions } = req.body;
+  const { title, candidateName, questions } = req.body;
   const id = uuidv4();
   let code;
-  do { code = generateCode(); } while (db.prepare('SELECT id FROM sessions WHERE code=?').get(code));
-  db.prepare('INSERT INTO sessions (id,code,title,candidate_name,interviewer_id,team_id,questions,started_at) VALUES (?,?,?,?,?,?,?,?)')
-    .run(id, code, title || 'Interview Session', candidateName || 'Candidate', req.session.userId, teamId || null, JSON.stringify(questions || []), Math.floor(Date.now() / 1000));
+  do { code = generateSessionCode(); } while (db.prepare('SELECT id FROM sessions WHERE code=?').get(code));
+  db.prepare('INSERT INTO sessions (id,code,title,candidate_name,interviewer_id,org_id,questions,started_at) VALUES (?,?,?,?,?,?,?,?)')
+    .run(id, code, title || 'Interview Session', candidateName || 'Candidate', req.session.userId, req.session.orgId, JSON.stringify(questions || []), Math.floor(Date.now() / 1000));
   res.json({ ok: true, id, code });
 });
 
 app.get('/api/sessions', requireAuth, (req, res) => {
-  const sessions = db.prepare('SELECT s.*, u.name as interviewer_name FROM sessions s JOIN users u ON s.interviewer_id=u.id WHERE s.interviewer_id=? OR s.team_id IN (SELECT team_id FROM team_members WHERE user_id=?) ORDER BY s.created_at DESC LIMIT 50')
-    .all(req.session.userId, req.session.userId);
+  const sessions = db.prepare('SELECT * FROM sessions WHERE interviewer_id=? ORDER BY created_at DESC LIMIT 100').all(req.session.userId);
   res.json(sessions.map(s => ({ ...s, flags: JSON.parse(s.flags || '[]'), questions: JSON.parse(s.questions || '[]') })));
 });
 
@@ -156,18 +210,14 @@ app.get('/api/sessions/:id', (req, res) => {
 app.get('/api/join/:code', (req, res) => {
   const s = db.prepare('SELECT id,code,title,candidate_name,status,questions FROM sessions WHERE code=?').get(req.params.code.toUpperCase());
   if (!s) return res.json({ error: 'Session not found' });
-  if (s.status === 'ended') return res.json({ error: 'This session has already ended' });
+  if (s.status === 'ended') return res.json({ error: 'SESSION_ENDED' });
   res.json({ ok: true, ...s, questions: JSON.parse(s.questions || '[]') });
 });
 
 app.patch('/api/sessions/:id', requireAuth, (req, res) => {
-  const { status, trustScore, displayCount, candidateName } = req.body;
-  const s = db.prepare('SELECT * FROM sessions WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
-  if (!s) return res.json({ error: 'Not found' });
+  const { status, trustScore } = req.body;
   if (status) db.prepare('UPDATE sessions SET status=? WHERE id=?').run(status, req.params.id);
   if (trustScore !== undefined) db.prepare('UPDATE sessions SET trust_score=? WHERE id=?').run(trustScore, req.params.id);
-  if (displayCount !== undefined) db.prepare('UPDATE sessions SET display_count=? WHERE id=?').run(displayCount, req.params.id);
-  if (candidateName) db.prepare('UPDATE sessions SET candidate_name=? WHERE id=?').run(candidateName, req.params.id);
   if (status === 'ended') db.prepare('UPDATE sessions SET ended_at=? WHERE id=?').run(Math.floor(Date.now() / 1000), req.params.id);
   res.json({ ok: true });
 });
@@ -180,63 +230,45 @@ app.post('/api/sessions/:id/flags', (req, res) => {
 });
 
 // ── RECORDINGS ──
-// Upload a recording after session ends
 app.post('/api/recordings/upload', requireAuth, upload.single('recording'), async (req, res) => {
   try {
     const { sessionId, durationSecs } = req.body;
     if (!req.file) return res.json({ error: 'No file uploaded' });
-
     const sess = db.prepare('SELECT * FROM sessions WHERE id=?').get(sessionId);
     if (!sess) return res.json({ error: 'Session not found' });
-
-    const flags = db.prepare('SELECT COUNT(*) as cnt FROM flags WHERE session_id=?').get(sessionId);
+    const flagCount = db.prepare('SELECT COUNT(*) as cnt FROM flags WHERE session_id=?').get(sessionId);
+    const shareToken = uuidv4().replace(/-/g, '');
     const id = uuidv4();
-
-    db.prepare('INSERT INTO recordings (id,session_id,interviewer_id,session_title,candidate_name,file_path,file_size,duration_secs,trust_score,flag_count) VALUES (?,?,?,?,?,?,?,?,?,?)')
-      .run(id, sessionId, req.session.userId, sess.title, sess.candidate_name, req.file.path, req.file.size, parseInt(durationSecs) || 0, sess.trust_score || 100, flags.cnt || 0);
-
-    res.json({ ok: true, id });
-  } catch(e) {
-    res.json({ error: e.message });
-  }
+    db.prepare('INSERT INTO recordings (id,session_id,interviewer_id,org_id,session_title,candidate_name,file_path,file_size,duration_secs,trust_score,flag_count,share_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
+      .run(id, sessionId, req.session.userId, req.session.orgId, sess.title, sess.candidate_name, req.file.path, req.file.size, parseInt(durationSecs) || 0, sess.trust_score || 100, flagCount.cnt || 0, shareToken);
+    res.json({ ok: true, id, shareToken });
+  } catch(e) { res.json({ error: e.message }); }
 });
 
-// List recordings for current user
 app.get('/api/recordings', requireAuth, (req, res) => {
   const recs = db.prepare('SELECT * FROM recordings WHERE interviewer_id=? ORDER BY created_at DESC').all(req.session.userId);
   res.json(recs);
 });
 
-// Stream a recording file
 app.get('/api/recordings/:id/stream', requireAuth, (req, res) => {
   const rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
-  if (!rec) return res.status(404).json({ error: 'Not found' });
-  if (!fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'File not found' });
-
-  const stat = fs.statSync(rec.file_path);
-  const total = stat.size;
-  const range = req.headers.range;
-
-  if (range) {
-    const parts = range.replace(/bytes=/, '').split('-');
-    const start = parseInt(parts[0], 10);
-    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
-    const chunkSize = end - start + 1;
-    const fileStream = fs.createReadStream(rec.file_path, { start, end });
-    res.writeHead(206, {
-      'Content-Range': 'bytes ' + start + '-' + end + '/' + total,
-      'Accept-Ranges': 'bytes',
-      'Content-Length': chunkSize,
-      'Content-Type': 'video/webm'
-    });
-    fileStream.pipe(res);
-  } else {
-    res.writeHead(200, { 'Content-Length': total, 'Content-Type': 'video/webm' });
-    fs.createReadStream(rec.file_path).pipe(res);
-  }
+  if (!rec || !fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Not found' });
+  streamVideo(req, res, rec.file_path);
 });
 
-// Delete a recording
+// Public share stream (no auth needed, uses share token)
+app.get('/api/recordings/share/:token/stream', (req, res) => {
+  const rec = db.prepare('SELECT * FROM recordings WHERE share_token=?').get(req.params.token);
+  if (!rec || !fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Recording not found or expired' });
+  streamVideo(req, res, rec.file_path);
+});
+
+app.get('/api/recordings/share/:token/info', (req, res) => {
+  const rec = db.prepare('SELECT id,session_title,candidate_name,duration_secs,trust_score,flag_count,created_at FROM recordings WHERE share_token=?').get(req.params.token);
+  if (!rec) return res.status(404).json({ error: 'Recording not found' });
+  res.json(rec);
+});
+
 app.delete('/api/recordings/:id', requireAuth, (req, res) => {
   const rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
   if (!rec) return res.status(404).json({ error: 'Not found' });
@@ -245,15 +277,30 @@ app.delete('/api/recordings/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+function streamVideo(req, res, filePath) {
+  const stat = fs.statSync(filePath);
+  const total = stat.size;
+  const range = req.headers.range;
+  if (range) {
+    const parts = range.replace(/bytes=/, '').split('-');
+    const start = parseInt(parts[0], 10);
+    const end = parts[1] ? parseInt(parts[1], 10) : total - 1;
+    res.writeHead(206, { 'Content-Range': `bytes ${start}-${end}/${total}`, 'Accept-Ranges': 'bytes', 'Content-Length': end - start + 1, 'Content-Type': 'video/webm' });
+    fs.createReadStream(filePath, { start, end }).pipe(res);
+  } else {
+    res.writeHead(200, { 'Content-Length': total, 'Content-Type': 'video/webm', 'Accept-Ranges': 'bytes' });
+    fs.createReadStream(filePath).pipe(res);
+  }
+}
+
 // ── TEAMS ──
 app.post('/api/teams', requireAuth, (req, res) => {
   const { name } = req.body;
   if (!name) return res.json({ error: 'Team name required' });
-  const user = db.prepare('SELECT * FROM users WHERE id=?').get(req.session.userId);
   const id = uuidv4();
   let code;
   do { code = uuidv4().slice(0, 8).toUpperCase(); } while (db.prepare('SELECT id FROM teams WHERE invite_code=?').get(code));
-  db.prepare('INSERT INTO teams (id,name,org,owner_id,invite_code) VALUES (?,?,?,?,?)').run(id, name, user.org, req.session.userId, code);
+  db.prepare('INSERT INTO teams (id,name,org_id,owner_id,invite_code) VALUES (?,?,?,?,?)').run(id, name, req.session.orgId, req.session.userId, code);
   db.prepare('INSERT INTO team_members (team_id,user_id,role) VALUES (?,?,?)').run(id, req.session.userId, 'owner');
   res.json({ ok: true, id, inviteCode: code });
 });
@@ -278,7 +325,7 @@ app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 
 app.get('/session/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'session.html')));
 app.get('/join/:code', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'candidate.html')));
 app.get('/recordings', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'recordings.html')));
-app.get('/recordings/share/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'recordings.html')));
+app.get('/share/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'share.html')));
 
 // ── SOCKET.IO ──
 const rooms = {};
@@ -287,7 +334,8 @@ io.on('connection', (socket) => {
     socket.join(sessionId);
     if (!rooms[sessionId]) rooms[sessionId] = {};
     rooms[sessionId][role] = socket.id;
-    socket.data.sessionId = sessionId; socket.data.role = role;
+    socket.data.sessionId = sessionId;
+    socket.data.role = role;
     socket.to(sessionId).emit('peer-joined', { role });
     const others = Object.entries(rooms[sessionId]).filter(([r]) => r !== role);
     if (others.length) socket.emit('peer-already-present', { role: others[0][0] });
@@ -296,6 +344,7 @@ io.on('connection', (socket) => {
   socket.on('webrtc-answer', ({ sessionId, answer }) => socket.to(sessionId).emit('webrtc-answer', { answer }));
   socket.on('webrtc-ice', ({ sessionId, candidate }) => socket.to(sessionId).emit('webrtc-ice', { candidate }));
   socket.on('next-question', ({ sessionId, qIdx }) => socket.to(sessionId).emit('next-question', { qIdx }));
+  socket.on('session-ended', ({ sessionId }) => socket.to(sessionId).emit('session-ended'));
   socket.on('candidate-flag', ({ sessionId, flag }) => {
     socket.to(sessionId).emit('candidate-flag', flag);
     try {
@@ -303,7 +352,7 @@ io.on('connection', (socket) => {
       db.prepare('INSERT INTO flags (id,session_id,time_offset,text,detail,severity) VALUES (?,?,?,?,?,?)').run(id, sessionId, flag.time || '00:00', flag.text, flag.detail || '', flag.severity || 'medium');
       const penalty = { high: 12, medium: 6, low: 2 }[flag.severity] || 5;
       db.prepare('UPDATE sessions SET trust_score = MAX(0, trust_score - ?) WHERE id=?').run(penalty, sessionId);
-    } catch (e) {}
+    } catch(e) {}
   });
   socket.on('disconnect', () => {
     const { sessionId, role } = socket.data;
@@ -311,6 +360,4 @@ io.on('connection', (socket) => {
   });
 });
 
-server.listen(PORT, '0.0.0.0', () => {
-  console.log('Secure Interview running on port ' + PORT);
-});
+server.listen(PORT, '0.0.0.0', () => console.log('Secure Interview on port ' + PORT));
