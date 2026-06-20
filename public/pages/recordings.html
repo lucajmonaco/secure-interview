@@ -2,279 +2,198 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Recordings - Secure Interview</title>
+<title>Recordings — Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
-<style>
-.rec-grid{display:flex;flex-direction:column;gap:14px}
-.rec-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
-.rec-card-body{padding:16px 18px}
-.rec-title{font-size:15px;font-weight:600;margin-bottom:6px}
-.rec-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text2);margin-bottom:12px}
-.rec-actions{display:flex;gap:8px;flex-wrap:wrap}
-.rec-video{width:100%;max-height:400px;background:#000;display:none;border-top:1px solid var(--border)}
-.progress-wrap{margin-top:10px;display:none}
-.prog-bar{width:100%;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
-.prog-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .2s}
-.prog-label{font-size:11px;color:var(--text2);margin-top:4px}
-.empty{text-align:center;padding:60px 24px;color:var(--text3)}
-.empty-icon{font-size:56px;margin-bottom:16px}
-.score-hi{color:var(--green)} .score-mid{color:var(--amber)} .score-lo{color:var(--red)}
-.copied-flash{animation:flash .3s ease}
-@keyframes flash{0%{opacity:.5}100%{opacity:1}}
-</style>
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-logo">Secure Interview</div>
+  <div class="topbar-logo">SecureInterview</div>
   <div class="topbar-right">
-    <span id="user-info" style="font-size:12px;color:var(--text2)"></span>
-    <a href="/dashboard" class="btn">Dashboard</a>
-    <button class="btn" onclick="doLogout()">Sign out</button>
+    <span id="user-chip" style="font-size:12px;color:var(--text2)"></span>
+    <div class="topbar-sep"></div>
+    <a href="/dashboard" class="btn btn-outline btn-sm">Dashboard</a>
+    <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign out</button>
   </div>
 </div>
 <div class="page-wrap">
   <div class="page-hdr">
-    <div>
-      <h1>Recordings Library</h1>
-      <div style="font-size:12px;color:var(--text2);margin-top:2px">All recorded interview sessions for your account</div>
+    <div class="page-hdr-left">
+      <h1>&#127902; Recordings Library</h1>
+      <p>All recorded interview sessions for your account</p>
     </div>
-    <button class="btn" onclick="loadRecordings()">Refresh</button>
+    <button class="btn btn-outline btn-sm" onclick="loadRecordings()">&#8635; Refresh</button>
   </div>
-  <div id="container"><div class="empty"><div class="empty-icon">&#127902;</div>Loading...</div></div>
+  <div id="container"><div class="empty"><div class="empty-icon">&#8987;</div><p>Loading...</p></div></div>
 </div>
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-function fmtDate(ts){ if(!ts)return'-'; return new Date(ts*1000).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
-function fmtDur(s){ if(!s||s===0)return'0:00'; return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-function fmtSize(b){ if(!b)return''; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(1)+' MB'; }
-function scoreClass(s){ return s>=80?'score-hi':s>=60?'score-mid':'score-lo'; }
+function fmtSize(b){if(!b)return'';if(b<1048576)return(b/1024).toFixed(0)+' KB';return(b/1048576).toFixed(1)+' MB';}
+function fmtDur(s){if(!s)return'0:00';return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 
-function buildCard(rec) {
-  var div = document.createElement('div');
-  div.className = 'rec-card';
-  div.id = 'card-' + rec.id;
-  var score = rec.trust_score||100;
+function buildCard(rec){
+  var score=rec.trust_score||100;
+  var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
+  var scoreBadgeClass=score>=80?'badge-green':score>=60?'badge-amber':'badge-red';
+  var date=rec.created_at?new Date(rec.created_at*1000).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'-';
 
-  var body = document.createElement('div');
-  body.className = 'rec-card-body';
+  var card=document.createElement('div');card.className='rec-card';card.id='card-'+rec.id;
 
-  var title = document.createElement('div');
-  title.className = 'rec-title';
-  title.textContent = rec.session_title || 'Interview';
+  var body=document.createElement('div');body.className='rec-card-body';
+
+  var title=document.createElement('div');title.className='rec-title';title.textContent=rec.session_title||'Interview';
   body.appendChild(title);
 
-  var meta = document.createElement('div');
-  meta.className = 'rec-meta';
-  meta.innerHTML = '<span>Candidate: <strong>' + (rec.candidate_name||'N/A') + '</strong></span>'
-    + '<span>' + fmtDate(rec.created_at) + '</span>'
-    + '<span>Duration: ' + fmtDur(rec.duration_secs) + '</span>'
-    + '<span class="' + scoreClass(score) + '">Trust: <strong>' + score + '%</strong></span>'
-    + '<span>' + (rec.flag_count||0) + ' flags</span>'
-    + (rec.file_size ? '<span style="color:var(--text3)">' + fmtSize(rec.file_size) + '</span>' : '');
+  var meta=document.createElement('div');meta.className='rec-meta-row';
+  meta.innerHTML='<span class="rec-meta-item">&#128100; <strong>'+(rec.candidate_name||'N/A')+'</strong></span>'
+    +'<span class="rec-meta-sep"></span>'
+    +'<span class="rec-meta-item">&#128197; '+date+'</span>'
+    +'<span class="rec-meta-sep"></span>'
+    +'<span class="rec-meta-item">&#9201; '+fmtDur(rec.duration_secs)+'</span>'
+    +'<span class="rec-meta-sep"></span>'
+    +'<span class="rec-meta-item '+scoreClass+'">&#127919; '+score+'% trust</span>'
+    +'<span class="rec-meta-sep"></span>'
+    +'<span class="rec-meta-item" style="color:'+(rec.flag_count>0?'var(--amber)':'var(--text3)')+'">&#9873; '+(rec.flag_count||0)+' flags</span>'
+    +(rec.file_size?'<span class="pill" style="margin-left:auto">'+fmtSize(rec.file_size)+'</span>':'');
   body.appendChild(meta);
 
-  var actions = document.createElement('div');
-  actions.className = 'rec-actions';
+  var actions=document.createElement('div');actions.className='rec-actions';
 
-  // Preview button
-  var preBtn = document.createElement('button');
-  preBtn.className = 'btn'; preBtn.textContent = 'Preview';
-  preBtn.onclick = function(){ togglePreview(rec.id); };
-  actions.appendChild(preBtn);
+  function addBtn(cls,text,cb){var b=document.createElement('button');b.className='btn btn-sm '+cls;b.innerHTML=text;b.onclick=cb;actions.appendChild(b);}
 
-  // Download original
-  var dlBtn = document.createElement('button');
-  dlBtn.className = 'btn btn-primary'; dlBtn.textContent = 'Download';
-  dlBtn.onclick = function(){
-    var a = document.createElement('a');
-    a.href = '/api/recordings/' + rec.id + '/stream';
-    a.download = 'interview-' + (rec.session_title||'session').replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.webm';
-    a.click();
-    toast('Download started', 'green');
-  };
-  actions.appendChild(dlBtn);
-
-  // Compress & download
-  var compBtn = document.createElement('button');
-  compBtn.className = 'btn btn-outline'; compBtn.id = 'comp-' + rec.id;
-  compBtn.textContent = 'Compress & Download';
-  compBtn.onclick = function(){ compressRec(rec.id, rec.session_title); };
-  actions.appendChild(compBtn);
-
-  // Share link
-  var shareBtn = document.createElement('button');
-  shareBtn.className = 'btn'; shareBtn.textContent = 'Copy Share Link';
-  shareBtn.onclick = function(){
-    var url = location.origin + '/share/' + rec.share_token;
-    navigator.clipboard.writeText(url).then(function(){ toast('Share link copied! Anyone with the link can view this recording.', 'green'); });
-  };
-  actions.appendChild(shareBtn);
-
-  // Open share page
-  var openBtn = document.createElement('button');
-  openBtn.className = 'btn'; openBtn.textContent = 'Open Share Page';
-  openBtn.onclick = function(){ window.open('/share/' + rec.share_token, '_blank'); };
-  actions.appendChild(openBtn);
-
-  // Delete
-  var delBtn = document.createElement('button');
-  delBtn.className = 'btn btn-danger'; delBtn.textContent = 'Delete';
-  delBtn.onclick = function(){ deleteRec(rec.id); };
-  actions.appendChild(delBtn);
+  addBtn('btn-outline','&#9654; Preview',function(){togglePreview(rec.id);});
+  addBtn('btn-primary','&#8595; Download',function(){dlRec(rec.id,rec.session_title,rec.candidate_name);});
+  addBtn('btn-purple','&#8481; Compress',function(){compressRec(rec.id,rec.session_title);});
+  if(rec.share_token){
+    addBtn('btn-outline','&#128279; Copy Link',function(){copyShareLink(rec.share_token);});
+    addBtn('btn-outline','&#128065; Share Page',function(){window.open('/share/'+rec.share_token,'_blank');});
+  }
+  addBtn('btn-danger','&#128465; Delete',function(){deleteRec(rec.id);});
 
   body.appendChild(actions);
 
-  // Progress bar
-  var progWrap = document.createElement('div');
-  progWrap.className = 'progress-wrap'; progWrap.id = 'prog-wrap-' + rec.id;
-  progWrap.innerHTML = '<div class="prog-bar"><div class="prog-fill" id="prog-' + rec.id + '" style="width:0%"></div></div><div class="prog-label" id="prog-label-' + rec.id + '">Starting...</div>';
+  var progWrap=document.createElement('div');progWrap.className='prog-wrap';progWrap.id='pw-'+rec.id;
+  progWrap.innerHTML='<div class="prog-bar"><div class="prog-fill" id="pf-'+rec.id+'" style="width:0%"></div></div><div class="prog-label" id="pl-'+rec.id+'"></div>';
   body.appendChild(progWrap);
+  card.appendChild(body);
 
-  div.appendChild(body);
-
-  // Video element (hidden)
-  var vid = document.createElement('video');
-  vid.id = 'vid-' + rec.id; vid.controls = true; vid.preload = 'metadata';
-  vid.className = 'rec-video';
-  vid.src = '/api/recordings/' + rec.id + '/stream';
-  div.appendChild(vid);
-
-  return div;
+  var vid=document.createElement('video');vid.id='vid-'+rec.id;vid.controls=true;vid.preload='none';
+  vid.className='rec-video';vid.src='/api/recordings/'+rec.id+'/stream';
+  card.appendChild(vid);
+  return card;
 }
 
-function togglePreview(id) {
-  var vid = document.getElementById('vid-' + id);
-  if (vid.style.display === 'block') { vid.style.display = 'none'; vid.pause(); }
-  else { vid.style.display = 'block'; vid.play(); }
+function togglePreview(id){
+  var vid=document.getElementById('vid-'+id);
+  if(vid.style.display==='block'){vid.style.display='none';vid.pause();}
+  else{vid.style.display='block';vid.play();}
 }
 
-async function compressRec(id, title) {
-  var compBtn = document.getElementById('comp-' + id);
-  var progWrap = document.getElementById('prog-wrap-' + id);
-  var progFill = document.getElementById('prog-' + id);
-  var progLabel = document.getElementById('prog-label-' + id);
+function dlRec(id,title,cand){
+  var a=document.createElement('a');
+  a.href='/api/recordings/'+id+'/stream';
+  a.download='interview-'+(title||'session').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'-'+(cand||'candidate').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
+  a.click();toast('Download started','green');
+}
 
-  compBtn.disabled = true; compBtn.textContent = 'Compressing...';
-  progWrap.style.display = 'block'; progFill.style.width = '5%'; progLabel.textContent = 'Fetching recording...';
+function copyShareLink(token){
+  navigator.clipboard.writeText(location.origin+'/share/'+token).then(function(){toast('Share link copied! Anyone with the link can view this recording.','green',5000);});
+}
 
-  try {
-    // Fetch the recording
-    var resp = await fetch('/api/recordings/' + id + '/stream');
-    if (!resp.ok) throw new Error('Failed to fetch recording');
-    var origBlob = await resp.blob();
-    var origSize = origBlob.size;
-    progFill.style.width = '15%'; progLabel.textContent = 'Loaded ' + (origSize/1048576).toFixed(1) + ' MB. Preparing compression...';
+async function deleteRec(id){
+  if(!confirm('Permanently delete this recording?'))return;
+  var res=await fetch('/api/recordings/'+id,{method:'DELETE'});
+  if(res.ok){var c=document.getElementById('card-'+id);if(c)c.remove();toast('Recording deleted','amber');}
+  else toast('Failed to delete','red');
+}
 
-    // Create video element to read from
-    var srcVid = document.createElement('video');
-    srcVid.src = URL.createObjectURL(origBlob);
-    srcVid.muted = true;
-    srcVid.preload = 'metadata';
+async function compressRec(id,title){
+  var btn=document.querySelector('#card-'+id+' .btn-purple');
+  var pw=document.getElementById('pw-'+id);
+  var pf=document.getElementById('pf-'+id);
+  var pl=document.getElementById('pl-'+id);
+  btn.disabled=true;btn.textContent='Compressing...';
+  pw.style.display='block';pf.style.width='5%';pl.textContent='Fetching recording...';
 
-    await new Promise(function(res, rej) { srcVid.onloadedmetadata = res; srcVid.onerror = rej; });
+  try{
+    var resp=await fetch('/api/recordings/'+id+'/stream');
+    if(!resp.ok)throw new Error('Failed to fetch');
+    var origBlob=await resp.blob();
+    pf.style.width='15%';pl.textContent='Loaded '+fmtSize(origBlob.size)+'. Preparing...';
 
-    var W = Math.round(srcVid.videoWidth * 0.6) || 768;
-    var H = Math.round(srcVid.videoHeight * 0.6) || 432;
-    var FPS = 12;
-    var duration = srcVid.duration;
+    var src=document.createElement('video');
+    src.src=URL.createObjectURL(origBlob);src.muted=true;src.preload='metadata';
+    await new Promise(function(res,rej){src.onloadedmetadata=res;src.onerror=rej;});
 
-    if (!duration || duration === Infinity) throw new Error('Cannot determine video duration');
+    var W=Math.round((src.videoWidth||1280)*0.55);
+    var H=Math.round((src.videoHeight||720)*0.55);
+    var FPS=10;var dur=src.duration;
+    if(!dur||!isFinite(dur))throw new Error('Cannot determine video length');
 
-    // Setup canvas recorder
-    var canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    var ctx = canvas.getContext('2d');
-
-    var stream = canvas.captureStream(FPS);
-    var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
-    var recorder = new MediaRecorder(stream, {mimeType: mime, videoBitsPerSecond: 400000});
-    var chunks = [];
-    recorder.ondataavailable = function(e){ if(e.data.size>0) chunks.push(e.data); };
-
+    var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
+    var ctx=canvas.getContext('2d');
+    var stream=canvas.captureStream(FPS);
+    var recorder=new MediaRecorder(stream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:350000});
+    var chunks=[];
+    recorder.ondataavailable=function(e){if(e.data.size>0)chunks.push(e.data);};
     recorder.start(200);
-    progFill.style.width = '20%'; progLabel.textContent = 'Compressing... 0%';
 
-    // Seek through video frame by frame
-    var frameInterval = 1 / FPS;
-    var currentTime = 0;
+    pf.style.width='20%';pl.textContent='Compressing frames...';
+    var t=0,interval=1/FPS;
 
-    await new Promise(function(resolve, reject) {
-      function seekNext() {
-        if (currentTime > duration) {
-          recorder.stop();
-          recorder.onstop = resolve;
-          return;
-        }
-        srcVid.currentTime = currentTime;
+    await new Promise(function(resolve,reject){
+      function seekNext(){
+        if(t>dur){recorder.stop();recorder.onstop=resolve;return;}
+        src.currentTime=t;
       }
-
-      srcVid.onseeked = function() {
-        ctx.drawImage(srcVid, 0, 0, W, H);
-        var pct = Math.min(Math.round((currentTime / duration) * 75), 75);
-        progFill.style.width = (20 + pct) + '%';
-        progLabel.textContent = 'Compressing... ' + Math.round((currentTime/duration)*100) + '%';
-        currentTime += frameInterval;
-        // Small delay to allow canvas to render
-        setTimeout(seekNext, 5);
+      src.onseeked=function(){
+        ctx.drawImage(src,0,0,W,H);
+        var pct=Math.min(20+Math.round((t/dur)*75),95);
+        pf.style.width=pct+'%';
+        pl.textContent='Compressing... '+Math.min(Math.round((t/dur)*100),99)+'%';
+        t+=interval;setTimeout(seekNext,1000/FPS/4);
       };
-
-      srcVid.onerror = reject;
-      seekNext();
+      src.onerror=reject;seekNext();
     });
 
-    var compBlob = new Blob(chunks, {type: 'video/webm'});
-    progFill.style.width = '100%';
-    progLabel.textContent = 'Done! ' + (origSize/1048576).toFixed(1) + ' MB -> ' + (compBlob.size/1048576).toFixed(1) + ' MB (' + Math.round((1 - compBlob.size/origSize)*100) + '% smaller)';
+    var compBlob=new Blob(chunks,{type:'video/webm'});
+    pf.style.width='100%';
+    var saved=Math.round((1-compBlob.size/origBlob.size)*100);
+    pl.textContent='Done! '+fmtSize(origBlob.size)+' → '+fmtSize(compBlob.size)+' ('+saved+'% smaller)';
 
-    // Download compressed version
-    var url = URL.createObjectURL(compBlob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'compressed-' + (title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.webm';
-    a.click();
-    URL.revokeObjectURL(url);
-    URL.revokeObjectURL(srcVid.src);
-    toast('Compressed file downloaded!', 'green');
-
-  } catch(err) {
-    progLabel.textContent = 'Error: ' + err.message;
-    toast('Compression failed: ' + err.message, 'red');
+    var url=URL.createObjectURL(compBlob);
+    var a=document.createElement('a');a.href=url;
+    a.download='compressed-'+(title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
+    a.click();URL.revokeObjectURL(url);URL.revokeObjectURL(src.src);
+    toast('Compressed file downloaded! '+saved+'% smaller','green',5000);
+  }catch(e){
+    pl.textContent='Error: '+e.message;toast('Compression failed: '+e.message,'red');
   }
-
-  compBtn.disabled = false; compBtn.textContent = 'Compress & Download';
+  btn.disabled=false;btn.innerHTML='&#8481; Compress';
 }
 
-async function deleteRec(id) {
-  if (!confirm('Delete this recording permanently?')) return;
-  var res = await fetch('/api/recordings/' + id, {method:'DELETE'});
-  if (res.ok) { var card = document.getElementById('card-'+id); if(card) card.remove(); toast('Deleted', 'amber'); }
-  else toast('Failed to delete', 'red');
-}
-
-async function loadRecordings() {
-  var recs = await get('/api/recordings');
-  var container = document.getElementById('container');
-  container.innerHTML = '';
-  if (!recs || !recs.length) {
-    container.innerHTML = '<div class="empty"><div class="empty-icon">&#127902;</div><div style="font-size:16px;font-weight:600;margin-bottom:8px">No recordings yet</div><div style="color:var(--text2)">Go to a session and click Record to capture an interview.</div><a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a></div>';
+async function loadRecordings(){
+  var recs=await get('/api/recordings');
+  var c=document.getElementById('container');c.innerHTML='';
+  if(!recs||!recs.length){
+    c.innerHTML='<div class="rec-empty"><div style="font-size:52px;margin-bottom:16px;opacity:.3">&#127902;</div>'
+      +'<h3 style="font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px">No recordings yet</h3>'
+      +'<p style="color:var(--text3);font-size:13px">Go to a session, start a recording, and it will appear here automatically.</p>'
+      +'<a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a></div>';
     return;
   }
-  var grid = document.createElement('div');
-  grid.className = 'rec-grid';
-  recs.forEach(function(rec){ grid.appendChild(buildCard(rec)); });
-  container.appendChild(grid);
+  var grid=document.createElement('div');grid.className='rec-grid';
+  recs.forEach(function(rec){grid.appendChild(buildCard(rec));});
+  c.appendChild(grid);
 }
 
-async function doLogout() { await post('/api/auth/logout'); window.location.href = '/'; }
+async function doLogout(){await post('/api/auth/logout');window.location.href='/';}
 
-async function init() {
-  var me = await requireLogin('/');
-  if (!me) return;
-  document.getElementById('user-info').textContent = me.name + ' (' + (me.orgCode||'') + ')';
+async function init(){
+  var me=await requireLogin('/');if(!me)return;
+  $('user-chip').textContent=me.name+' ('+me.orgCode+')';
   await loadRecordings();
 }
-
 init();
 </script>
 </body>
