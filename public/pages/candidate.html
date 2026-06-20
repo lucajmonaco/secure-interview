@@ -33,7 +33,7 @@
       Resume Interview
     </button>
   </div>
-  <div style="font-size:12px;color:#374151;margin-top:16px" id="lockout-note">Each tab switch increases the wait time.</div>
+  <div style="font-size:12px;color:#374151;margin-top:16px" id="lockout-note">Close all other tabs. You must wait 30 seconds before resuming.</div>
 </div>
 
 <!-- PRE-JOIN TAB BLOCK -->
@@ -62,7 +62,7 @@
   <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
   <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">
     Your camera and microphone will be activated.<br>
-    <strong style="color:#ef4444;font-size:13px">Switching tabs during the interview will lock your session for 30 seconds and flag your account.</strong>
+    <strong style="color:#ef4444;font-size:13px">Switching tabs will immediately lock your session for 30 seconds and flag your account. You cannot return without waiting the full 30 seconds.</strong>
   </p>
 
   <div id="device-panel" style="display:none;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 20px;width:100%;max-width:480px;text-align:left">
@@ -134,7 +134,7 @@ var code = location.pathname.split('/').pop().toUpperCase();
 var socket, pc, localStream, previewStream, sessionData, startTime = Date.now();
 var interviewActive = false;
 
-// ── FLAGS ──
+// ââ FLAGS ââ
 var flaggedOnce = {}, flagCooldowns = {};
 function elapsed(){var s=Math.floor((Date.now()-startTime)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 function warn(msg){var b=$('warn-banner');b.textContent=msg;b.style.display='block';clearTimeout(b._t);b._t=setTimeout(function(){b.style.display='none';},5000);}
@@ -146,7 +146,7 @@ function doSendFlag(text,detail,severity){
   fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){});
 }
 
-// ── TAB SWITCH LOCKOUT SYSTEM ──
+// ââ TAB SWITCH LOCKOUT SYSTEM ââ
 // visibilitychange fires on ANY tab switch - this is the correct API.
 // The enforcement is a MANDATORY COUNTDOWN TIMER - not a tab count check.
 // This works regardless of where the candidate went (ChatGPT, Google, etc.)
@@ -172,14 +172,14 @@ function startLockout(reason){
   if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
 
   // Calculate lockout duration: 30s * violation count
-  var lockoutSecs = BASE_LOCKOUT_SECONDS * lockoutViolations;
+  var lockoutSecs = BASE_LOCKOUT_SECONDS; // Always 30s - flat penalty every time
 
   // Update overlay text
   $('lockout-title').textContent = 'Tab Switch Detected (#'+lockoutViolations+')';
-  $('lockout-msg').innerHTML = reason+'<br>Your interviewer has been notified.<br><strong style="color:#f59e0b">You must wait before you can resume.</strong>';
+  $('lockout-msg').innerHTML = reason+'<br>Your interviewer has been notified.<br><strong style="color:#ef4444">Close all other tabs now.</strong><br><span style="color:#f59e0b">Wait for the timer before returning.</span>';
   $('lockout-violation-count').textContent = lockoutViolations > 1 ?
-    'This is violation #'+lockoutViolations+'. Wait time has increased to '+lockoutSecs+' seconds.' : '';
-  $('lockout-note').textContent = 'Wait time: '+lockoutSecs+'s (increases with each violation)';
+    'This is tab switch violation #'+lockoutViolations+'.' : '';
+  $('lockout-note').textContent = 'Close all other tabs. You must wait 30 seconds before resuming.';
 
   // Show overlay
   $('lockout-overlay').style.display = 'flex';
@@ -229,7 +229,7 @@ function endLockout(){
   if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
 }
 
-// ── GENERIC PAUSE (window blur - app switch) ──
+// ââ GENERIC PAUSE (window blur - app switch) ââ
 var isPaused = false, pauseCount = 0, blurTimer = null;
 function pauseSession(){
   if(lockoutActive||isPaused) return;
@@ -245,7 +245,7 @@ function resumeFromBlur(){
   if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
 }
 
-// ── BroadcastChannel (detect same-origin tab opens during interview) ──
+// ââ BroadcastChannel (detect same-origin tab opens during interview) ââ
 var tabId = Math.random().toString(36).slice(2);
 var bc = null;
 function initTabChannel(){
@@ -273,7 +273,7 @@ function checkSameOriginTabs(){
   });
 }
 
-// ── PROTECTION SETUP ──
+// ââ PROTECTION SETUP ââ
 function setupProtection(){
   interviewActive = true;
 
@@ -341,7 +341,7 @@ function setupProtection(){
   initTabChannel();
 }
 
-// ── PRE-JOIN TAB CHECK (same-origin only) ──
+// ââ PRE-JOIN TAB CHECK (same-origin only) ââ
 async function recheckTabsPreJoin(){
   var count = await checkSameOriginTabs();
   if(count>0){$('other-tab-count').textContent=count;}
@@ -357,7 +357,7 @@ async function attemptJoin(){
   } else doJoin();
 }
 
-// ── DISPLAY ──
+// ââ DISPLAY ââ
 function checkDisplays(){
   if(flaggedOnce['multi-display'])return;
   if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high');warn('Multiple displays detected - flagged');return;}
@@ -365,7 +365,7 @@ function checkDisplays(){
   if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Window on Secondary Display','Candidate window on secondary monitor','high');}
 }
 
-// ── AUDIO MONITORING ──
+// ââ AUDIO MONITORING ââ
 var audioCheckInterval=null;
 function initAudioMonitoring(stream){
   try{
@@ -388,7 +388,7 @@ function initAudioMonitoring(stream){
   }catch(e){console.warn('Audio monitor:',e.message);}
 }
 
-// ── GAZE ──
+// ââ GAZE ââ
 var gazeOffStart=null,gazeTimer=null;
 function initGazeTracking(videoEl){
   try{
@@ -425,7 +425,7 @@ function initGazeTracking(videoEl){
   }catch(e){console.warn('Gaze:',e.message);}
 }
 
-// ── DEVICES ──
+// ââ DEVICES ââ
 var previewStream=null;
 async function loadDevices(){
   try{
