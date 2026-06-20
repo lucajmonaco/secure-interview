@@ -2,91 +2,104 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Secure Interview</title>
+<title>Secure Interview — AI-Powered Proctoring</title>
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-logo">Secure Interview</div>
+  <div class="nav-logo">SecureInterview</div>
   <div class="nav-right">
     <span id="n-name" style="font-size:12px;color:var(--text2);display:none"></span>
-    <a href="/dashboard" class="btn btn-outline" id="n-dash" style="display:none">Dashboard</a>
+    <a href="/dashboard" class="btn btn-outline btn-sm" id="n-dash" style="display:none">Dashboard</a>
     <button class="btn btn-outline" id="n-in">Sign In</button>
-    <button class="btn btn-primary" id="n-up">Get Started</button>
-    <button class="btn btn-outline" id="n-out" style="display:none" onclick="doLogout()">Sign Out</button>
+    <button class="btn btn-primary" id="n-up">Get Started Free</button>
+    <button class="btn btn-outline btn-sm" id="n-out" style="display:none" onclick="doLogout()">Sign Out</button>
   </div>
 </nav>
+
 <main>
-<div class="hero">
-  <h1>AI-Powered Interview Integrity</h1>
-  <p class="hero-sub">Real-time WebRTC proctoring, trust scoring, flag detection, and session recording for your entire team.</p>
+<div class="hero-section">
+  <div class="hero-tag">&#129302; AI-Powered Interview Integrity</div>
+  <h1 class="hero-title">Hire with <span class="grad">confidence</span>.</h1>
+  <p class="hero-sub">Real-time video proctoring, trust scoring, flag detection, and session recording — for your entire team.</p>
   <div class="hero-btns">
     <button class="btn btn-primary btn-lg" id="h-start">Start Free Trial</button>
     <button class="btn btn-outline btn-lg" id="h-in">Sign In</button>
   </div>
 </div>
-<div class="features">
+<div class="features-section">
+  <div class="section-label">Everything you need</div>
+  <h2 class="section-title">Built for serious hiring teams</h2>
   <div class="features-grid">
-    <div class="fcard"><h3>Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
-    <div class="fcard"><h3>Trust Score</h3><p>Real-time scoring that flags suspicious behavior instantly.</p></div>
-    <div class="fcard"><h3>Team Management</h3><p>Company codes let your whole recruiting team share sessions.</p></div>
-    <div class="fcard"><h3>Session Recording</h3><p>Record, compress and share interviews from your recordings library.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#128249;</div><h3>Live Video Proctoring</h3><p>WebRTC video — no plugins, no downloads. Works in any browser.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#127919;</div><h3>Real-Time Trust Score</h3><p>AI scoring flags suspicious behavior the moment it happens.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#128250;</div><h3>Screen Share Detection</h3><p>Detect multiple monitors and unauthorized screen sharing instantly.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#127970;</div><h3>Team Management</h3><p>Company codes let your whole team access shared sessions.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#128190;</div><h3>Session Recording</h3><p>Record, compress, and share interviews with a single link.</p></div>
+    <div class="fcard"><div class="fcard-icon">&#9889;</div><h3>Instant Flags</h3><p>Tab switches, copy-paste, DevTools — all caught and logged.</p></div>
   </div>
 </div>
 </main>
 
-<!-- SIGN IN Modal -->
+<!-- SIGN IN -->
 <div id="ov-signin" style="display:none">
   <div class="modal-inner">
     <button class="modal-x" onclick="hideModal('ov-signin')">&#10005;</button>
-    <h2>Sign In</h2>
+    <h2>Welcome back</h2>
+    <p class="modal-sub">Sign in to your company account.</p>
     <label class="label">Company Code</label>
-    <input type="text" id="si-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+    <input type="text" id="si-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;font-size:16px;letter-spacing:3px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
     <label class="label">Work Email</label>
     <input type="email" id="si-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label>
-    <input type="password" id="si-pass" class="input" placeholder="Password">
-    <div id="si-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <input type="password" id="si-pass" class="input" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
+    <div id="si-err" class="err" style="display:none"></div>
     <button class="btn btn-primary btn-block" id="si-btn" onclick="doSignIn()">Sign In</button>
-    <p class="auth-switch">New user? <a href="#" onclick="switchTo('ov-join');return false">Join your company</a> &bull; <a href="#" onclick="switchTo('ov-create');return false">Create company account</a></p>
+    <p class="auth-switch">New? <a href="#" onclick="switchTo('ov-create');return false">Create company account</a> &bull; <a href="#" onclick="switchTo('ov-join');return false">Join your company</a></p>
   </div>
 </div>
 
-<!-- CREATE COMPANY Modal -->
+<!-- CREATE COMPANY -->
 <div id="ov-create" style="display:none">
   <div class="modal-inner">
     <button class="modal-x" onclick="hideModal('ov-create')">&#10005;</button>
     <h2>Create Company Account</h2>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">You'll get a unique company code to share with your team.</p>
-    <label class="label">Company Name</label>
-    <input type="text" id="cr-org" class="input" placeholder="e.g. Acme Corp">
-    <label class="label">Your Full Name</label>
-    <input type="text" id="cr-name" class="input" placeholder="Your Name">
-    <label class="label">Work Email</label>
-    <input type="email" id="cr-email" class="input" placeholder="you@company.com">
-    <label class="label">Password</label>
-    <input type="password" id="cr-pass" class="input" placeholder="Min 6 characters">
-    <div id="cr-err" class="err" style="display:none;margin-bottom:10px"></div>
-    <button class="btn btn-primary btn-block" id="cr-btn" onclick="doCreate()">Create Account</button>
-    <p class="auth-switch">Already have a company code? <a href="#" onclick="switchTo('ov-join');return false">Join your company</a></p>
+    <p class="modal-sub">You'll get a unique 6-character code to share with your team.</p>
+    <div id="cr-code-display" style="display:none" class="org-code-display">
+      Your company code: <span class="org-code-val" id="cr-code-val"></span>
+      <div style="font-size:11px;color:var(--text2);margin-top:6px">Share this with your team so they can join.</div>
+    </div>
+    <div id="cr-form">
+      <label class="label">Company Name</label>
+      <input type="text" id="cr-org" class="input" placeholder="e.g. Acme Corp">
+      <label class="label">Your Full Name</label>
+      <input type="text" id="cr-name" class="input" placeholder="Your Name">
+      <label class="label">Work Email</label>
+      <input type="email" id="cr-email" class="input" placeholder="you@company.com">
+      <label class="label">Password</label>
+      <input type="password" id="cr-pass" class="input" placeholder="Min 6 characters">
+      <div id="cr-err" class="err" style="display:none"></div>
+      <button class="btn btn-primary btn-block" id="cr-btn" onclick="doCreate()">Create Account</button>
+    </div>
+    <p class="auth-switch" id="cr-switch">Already have a code? <a href="#" onclick="switchTo('ov-join');return false">Join your company</a></p>
   </div>
 </div>
 
-<!-- JOIN COMPANY Modal -->
+<!-- JOIN COMPANY -->
 <div id="ov-join" style="display:none">
   <div class="modal-inner">
     <button class="modal-x" onclick="hideModal('ov-join')">&#10005;</button>
     <h2>Join Your Company</h2>
-    <p style="font-size:12px;color:var(--text2);margin-bottom:16px">Ask your admin for your company code, then create your account.</p>
+    <p class="modal-sub">Ask your admin for your 6-character company code, then create your personal account.</p>
     <label class="label">Company Code</label>
-    <input type="text" id="jo-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;text-transform:uppercase" oninput="this.value=this.value.toUpperCase()">
+    <input type="text" id="jo-code" class="input" placeholder="e.g. ACME42" style="font-family:monospace;font-size:16px;letter-spacing:3px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
     <label class="label">Your Full Name</label>
     <input type="text" id="jo-name" class="input" placeholder="Your Name">
     <label class="label">Work Email</label>
     <input type="email" id="jo-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label>
     <input type="password" id="jo-pass" class="input" placeholder="Min 6 characters">
-    <div id="jo-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <div id="jo-err" class="err" style="display:none"></div>
     <button class="btn btn-primary btn-block" id="jo-btn" onclick="doJoin()">Create Account &amp; Join</button>
     <p class="auth-switch">Already have an account? <a href="#" onclick="switchTo('ov-signin');return false">Sign in</a></p>
   </div>
@@ -110,56 +123,40 @@ function switchTo(id) {
 }
 
 async function doSignIn() {
-  var btn = document.getElementById('si-btn'), err = document.getElementById('si-err');
-  btn.disabled = true; btn.textContent = 'Signing in...'; err.style.display = 'none';
-  var res = await post('/api/auth/login', {
-    orgCode: document.getElementById('si-code').value.trim().toUpperCase(),
-    email: document.getElementById('si-email').value.trim(),
-    password: document.getElementById('si-pass').value
-  });
-  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Sign In'; return; }
-  window.location.href = '/dashboard';
+  var btn=$('si-btn'), err=$('si-err');
+  btn.disabled=true; btn.textContent='Signing in...'; err.style.display='none';
+  var res=await post('/api/auth/login',{orgCode:$('si-code').value.trim(),email:$('si-email').value.trim(),password:$('si-pass').value});
+  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Sign In';return;}
+  window.location.href='/dashboard';
 }
 
 async function doCreate() {
-  var btn = document.getElementById('cr-btn'), err = document.getElementById('cr-err');
-  btn.disabled = true; btn.textContent = 'Creating...'; err.style.display = 'none';
-  var res = await post('/api/auth/org/create', {
-    orgName: document.getElementById('cr-org').value.trim(),
-    name: document.getElementById('cr-name').value.trim(),
-    email: document.getElementById('cr-email').value.trim(),
-    password: document.getElementById('cr-pass').value
-  });
-  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Create Account'; return; }
-  // Show the org code to the user before redirecting
-  alert('Account created! Your company code is: ' + res.orgCode + '\n\nShare this code with your team so they can join.');
-  window.location.href = '/dashboard';
+  var btn=$('cr-btn'), err=$('cr-err');
+  btn.disabled=true; btn.textContent='Creating...'; err.style.display='none';
+  var res=await post('/api/auth/org/create',{orgName:$('cr-org').value.trim(),name:$('cr-name').value.trim(),email:$('cr-email').value.trim(),password:$('cr-pass').value});
+  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;}
+  $('cr-code-val').textContent=res.orgCode;
+  $('cr-code-display').style.display='block';
+  $('cr-form').style.display='none';
+  $('cr-switch').innerHTML='<a href="/dashboard">Go to Dashboard &rarr;</a>';
 }
 
 async function doJoin() {
-  var btn = document.getElementById('jo-btn'), err = document.getElementById('jo-err');
-  btn.disabled = true; btn.textContent = 'Joining...'; err.style.display = 'none';
-  var res = await post('/api/auth/org/join', {
-    orgCode: document.getElementById('jo-code').value.trim().toUpperCase(),
-    name: document.getElementById('jo-name').value.trim(),
-    email: document.getElementById('jo-email').value.trim(),
-    password: document.getElementById('jo-pass').value
-  });
-  if (res.error) { err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Create Account & Join'; return; }
-  window.location.href = '/dashboard';
+  var btn=$('jo-btn'), err=$('jo-err');
+  btn.disabled=true; btn.textContent='Joining...'; err.style.display='none';
+  var res=await post('/api/auth/org/join',{orgCode:$('jo-code').value.trim(),name:$('jo-name').value.trim(),email:$('jo-email').value.trim(),password:$('jo-pass').value});
+  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Create Account & Join';return;}
+  window.location.href='/dashboard';
 }
 
 async function doLogout() { await post('/api/auth/logout'); window.location.reload(); }
 
 async function init() {
-  var me = await get('/api/auth/me');
-  if (me && me.loggedIn) {
-    document.getElementById('n-name').textContent = me.name + ' (' + me.orgCode + ')';
-    document.getElementById('n-name').style.display = '';
-    document.getElementById('n-dash').style.display = '';
-    document.getElementById('n-out').style.display = '';
-    document.getElementById('n-in').style.display = 'none';
-    document.getElementById('n-up').style.display = 'none';
+  var me=await get('/api/auth/me');
+  if(me&&me.loggedIn){
+    $('n-name').textContent=me.name;$('n-name').style.display='';
+    $('n-dash').style.display='';$('n-out').style.display='';
+    $('n-in').style.display='none';$('n-up').style.display='none';
   }
 }
 init();
