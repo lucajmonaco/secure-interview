@@ -2,282 +2,293 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Session - Secure Interview</title>
+<title>Session — Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;display:inline-block}
-@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
-.upload-bar{font-size:11px;color:var(--text2);padding:4px 0;display:none}
 </style>
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-logo">Secure Interview</div>
+  <div class="topbar-logo">SecureInterview</div>
   <div class="topbar-right">
-    <span id="s-code" style="font-size:12px;color:var(--text2)"></span>
-    <a href="/recordings" class="btn" style="font-size:12px;padding:4px 10px">Recordings</a>
-    <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red)"><span class="rec-dot"></span>REC</span>
-    <button id="rec-btn" class="btn btn-danger" onclick="toggleRec()" style="font-size:12px;padding:4px 10px">Record</button>
-    <span id="s-status" class="badge">Waiting for candidate...</span>
+    <span id="s-code" class="pill"></span>
+    <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red);font-weight:600"><span class="rec-dot"></span>REC</span>
+    <button id="rec-btn" class="btn btn-danger btn-sm" onclick="toggleRec()">&#9679; Record</button>
+    <span id="share-btn-wrap">
+      <button id="share-screen-btn" class="btn btn-purple btn-sm" onclick="toggleScreenShare()">&#128247; Share Screen</button>
+    </span>
+    <div class="topbar-sep"></div>
+    <span id="s-status" class="badge badge-default">Waiting...</span>
   </div>
 </div>
+
 <div class="session-layout">
-  <div class="video-pane">
+  <div class="video-pane" id="video-pane">
     <video id="remote-vid" autoplay playsinline></video>
     <div class="pip"><video id="local-vid" autoplay playsinline muted></video></div>
+    <div class="video-overlay-tl">
+      <span id="timer-chip" class="video-chip" style="display:none">00:00</span>
+    </div>
+    <div id="screenshare-bar" class="screen-share-bar">
+      &#128247; You are sharing your screen — <button onclick="stopScreenShare()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px">Stop Sharing</button>
+    </div>
   </div>
+
   <div class="sidebar">
     <div class="sb-head">
       <div class="sb-title" id="s-title">Loading...</div>
       <div class="sb-meta" id="s-cand"></div>
     </div>
+
     <div class="trust-box">
-      <div class="trust-label">TRUST SCORE</div>
+      <div class="trust-label">Trust Score</div>
       <div class="trust-num trust-hi" id="trust-num">100</div>
       <div class="trust-sub trust-hi" id="trust-sub">Excellent</div>
+      <div class="trust-bar"><div class="trust-bar-fill" id="trust-bar-fill" style="width:100%;background:var(--green)"></div></div>
     </div>
+
     <div class="sb-tabs">
-      <button class="sb-tab active" id="tab-f-btn" onclick="switchTab('flags',this)">Flags</button>
-      <button class="sb-tab" onclick="switchTab('questions',this)">Questions</button>
+      <button class="sb-tab active" id="tab-f-btn" onclick="switchTab('flags',this)">&#9873; Flags <span id="flag-badge"></span></button>
+      <button class="sb-tab" onclick="switchTab('questions',this)">&#10067; Questions</button>
     </div>
-    <div id="sbp-flags" class="sb-panel active"><div class="no-items">No flags yet</div></div>
+
+    <div id="sbp-flags" class="sb-panel active">
+      <div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet — session looks clean.</div>
+    </div>
     <div id="sbp-questions" class="sb-panel"></div>
+
     <div id="q-nav" style="display:none" class="q-nav">
-      <button class="btn" onclick="prevQ()" style="flex:1">Prev</button>
-      <button class="btn btn-primary" onclick="nextQ()" style="flex:1">Next</button>
+      <button class="btn btn-outline btn-sm" onclick="prevQ()" style="flex:1">&#8592; Prev</button>
+      <button class="btn btn-primary btn-sm" onclick="nextQ()" style="flex:1">Next &#8594;</button>
     </div>
+
     <div class="sb-foot">
-      <button class="btn btn-danger" onclick="endSession()" style="flex:1">End session</button>
-      <button class="btn" onclick="copyInvite()">Copy invite</button>
+      <button class="btn btn-danger btn-sm" onclick="endSession()" style="flex:1">&#9726; End Session</button>
+      <button class="btn btn-outline btn-sm" onclick="copyInvite()" title="Copy candidate invite link">&#128279; Invite</button>
+      <a href="/recordings" class="btn btn-outline btn-sm" title="View recordings">&#127902;</a>
     </div>
   </div>
 </div>
+
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
-var sessionId = location.pathname.split('/').pop();
-var socket, pc, localStream, sessionData, qIdx = 0;
-var mediaRecorder = null, recChunks = [], isRec = false, recStartTime = null;
+var sessionId=location.pathname.split('/').pop();
+var socket,pc,localStream,screenStream,sessionData,qIdx=0;
+var mediaRecorder=null,recChunks=[],isRec=false,recStart=null;
+var isScreenSharing=false,timerInterval=null,sessionStartTime=null;
 
-function switchTab(name, btn) {
-  document.querySelectorAll('.sb-tab').forEach(function(t){ t.classList.remove('active'); });
-  document.querySelectorAll('.sb-panel').forEach(function(p){ p.classList.remove('active'); });
+function switchTab(name,btn){
+  document.querySelectorAll('.sb-tab').forEach(function(t){t.classList.remove('active');});
+  document.querySelectorAll('.sb-panel').forEach(function(p){p.classList.remove('active');});
   btn.classList.add('active');
-  document.getElementById('sbp-' + name).classList.add('active');
+  document.getElementById('sbp-'+name).classList.add('active');
 }
 
-function setTrust(v) {
-  var cls = trustClass(v);
-  var n = document.getElementById('trust-num');
-  var s = document.getElementById('trust-sub');
-  n.textContent = v; n.className = 'trust-num ' + cls;
-  s.className = 'trust-sub ' + cls;
-  s.textContent = v >= 80 ? 'Excellent' : v >= 60 ? 'Good' : v >= 40 ? 'Caution' : 'High Risk';
+function setTrust(v){
+  var cls=trustClass(v),lbl=trustLabel(v);
+  var n=$('trust-num'),s=$('trust-sub'),bar=$('trust-bar-fill');
+  n.textContent=v;n.className='trust-num '+cls;s.className='trust-sub '+cls;s.textContent=lbl;
+  var col=v>=80?'var(--green)':v>=60?'var(--amber)':'var(--red)';
+  bar.style.width=v+'%';bar.style.background=col;
 }
 
-function buildFlagCard(f) {
-  var div = document.createElement('div');
-  div.className = 'flag-card ' + f.severity;
-  var title = document.createElement('div');
-  title.className = 'flag-title'; title.textContent = f.text;
-  div.appendChild(title);
-  if (f.detail) { var det = document.createElement('div'); det.className = 'flag-detail'; det.textContent = f.detail; div.appendChild(det); }
-  var time = document.createElement('div');
-  time.className = 'flag-time'; time.textContent = f.severity.toUpperCase() + ' - ' + f.time_offset;
-  div.appendChild(time);
+function buildFlagCard(f,isNew){
+  var div=document.createElement('div');
+  div.className='flag-card'+(isNew?' '+f.severity:' '+f.severity);
+  if(isNew){div.style.animation='toastIn .3s ease';}
+  var title=document.createElement('div');title.className='flag-title';title.textContent=f.text;
+  var det=document.createElement('div');det.className='flag-detail';det.textContent=f.detail||'';
+  var time=document.createElement('div');time.className='flag-time';
+  time.innerHTML='<span class="flag-count">'+f.severity.toUpperCase()+'</span> '+f.time_offset;
+  div.appendChild(title);if(f.detail)div.appendChild(det);div.appendChild(time);
   return div;
 }
 
-function renderFlags(flags) {
-  var el = document.getElementById('sbp-flags');
-  el.innerHTML = '';
-  if (!flags.length) { el.innerHTML = '<div class="no-items">No flags yet</div>'; return; }
-  flags.forEach(function(f){ el.appendChild(buildFlagCard(f)); });
-  el.scrollTop = el.scrollHeight;
+var flagTotal=0;
+function renderFlags(flags){
+  var el=$('sbp-flags');el.innerHTML='';
+  flagTotal=flags.length;
+  var badge=$('flag-badge');
+  badge.textContent=flagTotal>0?' ('+flagTotal+')':'';
+  badge.style.color=flagTotal>0?'var(--red)':'';
+  if(!flags.length){el.innerHTML='<div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet — session looks clean.</div>';return;}
+  flags.forEach(function(f){el.appendChild(buildFlagCard(f,false));});
+  el.scrollTop=el.scrollHeight;
 }
 
-function renderQuestions(qs) {
-  var el = document.getElementById('sbp-questions');
-  el.innerHTML = '';
-  if (!qs || !qs.length) { el.innerHTML = '<div class="no-items">No questions added</div>'; return; }
-  document.getElementById('q-nav').style.display = 'flex';
-  qs.forEach(function(q, i) {
-    var div = document.createElement('div');
-    div.className = 'q-card' + (i === qIdx ? ' active' : '');
-    div.textContent = q;
-    div.onclick = function(){ goQ(i); };
-    el.appendChild(div);
+function renderQuestions(qs){
+  var el=$('sbp-questions');el.innerHTML='';
+  if(!qs||!qs.length){el.innerHTML='<div class="no-items"><div class="no-items-icon">&#10067;</div>No questions added.</div>';return;}
+  $('q-nav').style.display='flex';
+  qs.forEach(function(q,i){
+    var div=document.createElement('div');div.className='q-card'+(i===qIdx?' active':'');
+    var num=document.createElement('div');num.className='q-num';num.textContent='Q'+(i+1);
+    var txt=document.createElement('div');txt.textContent=q;
+    div.appendChild(num);div.appendChild(txt);
+    div.onclick=function(){goQ(i);};el.appendChild(div);
   });
 }
 
-function goQ(i) { qIdx = i; renderQuestions(sessionData && sessionData.questions || []); if (socket) socket.emit('next-question', {sessionId: sessionId, qIdx: qIdx}); }
-function nextQ() { if (sessionData && sessionData.questions && qIdx < sessionData.questions.length - 1) goQ(qIdx + 1); }
-function prevQ() { if (qIdx > 0) goQ(qIdx - 1); }
+function goQ(i){qIdx=i;renderQuestions(sessionData&&sessionData.questions||[]);if(socket)socket.emit('next-question',{sessionId:sessionId,qIdx:qIdx});}
+function nextQ(){if(sessionData&&sessionData.questions&&qIdx<sessionData.questions.length-1)goQ(qIdx+1);}
+function prevQ(){if(qIdx>0)goQ(qIdx-1);}
 
-function toggleRec() { if (isRec) stopRec(); else startRec(); }
+function startTimer(){
+  sessionStartTime=Date.now();
+  $('timer-chip').style.display='flex';
+  timerInterval=setInterval(function(){
+    var s=Math.floor((Date.now()-sessionStartTime)/1000);
+    var m=Math.floor(s/60),sec=s%60;
+    $('timer-chip').textContent=String(m).padStart(2,'0')+':'+String(sec).padStart(2,'0');
+  },1000);
+}
 
-function startRec() {
-  var vid = document.getElementById('remote-vid');
-  if (!vid.srcObject) { toast('No candidate video to record yet', 'red'); return; }
-  var canvas = document.createElement('canvas');
-  canvas.width = 1280; canvas.height = 720;
-  var ctx = canvas.getContext('2d');
-  isRec = true;
-  recStartTime = Date.now();
-  (function draw() {
-    if (!isRec) return;
-    ctx.drawImage(vid, 0, 0, 1280, 720);
-    var lv = document.getElementById('local-vid');
-    if (lv.srcObject) {
-      ctx.drawImage(lv, 1060, 590, 210, 120);
-      ctx.strokeStyle = 'rgba(255,255,255,0.3)'; ctx.lineWidth = 2;
-      ctx.strokeRect(1060, 590, 210, 120);
-    }
-    ctx.fillStyle = 'rgba(248,81,73,0.9)'; ctx.fillRect(10, 10, 55, 24);
-    ctx.fillStyle = '#fff'; ctx.font = 'bold 12px Arial'; ctx.fillText('REC', 20, 27);
+function toggleRec(){if(isRec)stopRec();else startRec();}
+
+function startRec(){
+  var vid=$('remote-vid');
+  if(!vid.srcObject){toast('No candidate video to record yet','red');return;}
+  var canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;
+  var ctx=canvas.getContext('2d');isRec=true;recStart=Date.now();
+  (function draw(){
+    if(!isRec)return;
+    ctx.drawImage(vid,0,0,1280,720);
+    var lv=$('local-vid');
+    if(lv.srcObject){ctx.drawImage(lv,1060,590,210,120);}
+    ctx.fillStyle='rgba(239,68,68,.9)';ctx.fillRect(10,10,58,26);
+    ctx.fillStyle='#fff';ctx.font='bold 13px Arial';ctx.fillText('REC',18,28);
     requestAnimationFrame(draw);
   })();
-  var csStream = canvas.captureStream(30);
-  if (localStream) localStream.getAudioTracks().forEach(function(t){ csStream.addTrack(t); });
-  var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
-  mediaRecorder = new MediaRecorder(csStream, {mimeType: mime});
-  recChunks = [];
-  mediaRecorder.ondataavailable = function(e){ if (e.data.size > 0) recChunks.push(e.data); };
+  var cs=canvas.captureStream(30);
+  if(localStream)localStream.getAudioTracks().forEach(function(t){cs.addTrack(t);});
+  var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9')?'video/webm;codecs=vp9':'video/webm';
+  mediaRecorder=new MediaRecorder(cs,{mimeType:mime});
+  recChunks=[];mediaRecorder.ondataavailable=function(e){if(e.data.size>0)recChunks.push(e.data);};
   mediaRecorder.start(1000);
-  document.getElementById('rec-btn').textContent = 'Stop & Save';
-  document.getElementById('rec-btn').className = 'btn';
-  document.getElementById('rec-ind').style.display = 'flex';
-  toast('Recording started', 'green');
+  $('rec-btn').textContent='■ Stop & Save';$('rec-btn').className='btn btn-outline btn-sm';
+  $('rec-ind').style.display='flex';toast('&#9679; Recording started','green');
 }
 
-function stopRec() {
-  if (!mediaRecorder) return;
-  isRec = false;
-  var duration = Math.floor((Date.now() - recStartTime) / 1000);
+function stopRec(){
+  if(!mediaRecorder)return;isRec=false;
+  var dur=Math.floor((Date.now()-recStart)/1000);
   mediaRecorder.stop();
-  mediaRecorder.onstop = function() {
-    var blob = new Blob(recChunks, {type: 'video/webm'});
-    
-    // 1. Download locally
-    var url = URL.createObjectURL(blob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'interview-' + (sessionData && sessionData.code || 'session') + '-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.webm';
-    a.click();
-    URL.revokeObjectURL(url);
-    
-    // 2. Upload to server recordings library
-    uploadRecording(blob, duration);
+  mediaRecorder.onstop=function(){
+    var blob=new Blob(recChunks,{type:'video/webm'});
+    var url=URL.createObjectURL(blob);
+    var a=document.createElement('a');a.href=url;
+    a.download='interview-'+(sessionData&&sessionData.code||'session')+'-'+new Date().toISOString().slice(0,19).replace(/:/g,'-')+'.webm';
+    a.click();URL.revokeObjectURL(url);
+    uploadRecording(blob,dur);
   };
-  document.getElementById('rec-btn').textContent = 'Record';
-  document.getElementById('rec-btn').className = 'btn btn-danger';
-  document.getElementById('rec-ind').style.display = 'none';
+  $('rec-btn').textContent='&#9679; Record';$('rec-btn').className='btn btn-danger btn-sm';
+  $('rec-ind').style.display='none';
 }
 
-async function uploadRecording(blob, duration) {
-  toast('Saving to recordings library...', 'amber');
-  try {
-    var formData = new FormData();
-    formData.append('recording', blob, 'recording.webm');
-    formData.append('sessionId', sessionId);
-    formData.append('durationSecs', String(duration));
-    var res = await fetch('/api/recordings/upload', {method: 'POST', body: formData});
-    var data = await res.json();
-    if (data.ok) {
-      toast('Saved to recordings library!', 'green');
-    } else {
-      toast('Upload failed: ' + (data.error || 'unknown'), 'red');
-    }
-  } catch(e) {
-    toast('Upload error: ' + e.message, 'red');
+async function uploadRecording(blob,dur){
+  toast('Saving to library...','amber');
+  try{
+    var fd=new FormData();fd.append('recording',blob,'recording.webm');
+    fd.append('sessionId',sessionId);fd.append('durationSecs',String(dur));
+    var res=await fetch('/api/recordings/upload',{method:'POST',body:fd});
+    var data=await res.json();
+    if(data.ok)toast('Saved to Recordings library!','green');
+    else toast('Upload failed: '+(data.error||'unknown'),'red');
+  }catch(e){toast('Upload error: '+e.message,'red');}
+}
+
+// ── SCREEN SHARING ──
+async function toggleScreenShare(){
+  if(isScreenSharing)stopScreenShare();else startScreenShare();
+}
+
+async function startScreenShare(){
+  try{
+    screenStream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:'always'},audio:false});
+    isScreenSharing=true;
+    $('remote-vid').srcObject=screenStream;
+    $('share-screen-btn').textContent='&#128247; Stop Sharing';
+    $('share-screen-btn').className='btn btn-amber btn-sm';
+    $('screenshare-bar').style.display='flex';
+    screenStream.getVideoTracks()[0].onended=function(){stopScreenShare();};
+    toast('Screen sharing started — candidate can see your screen','blue');
+  }catch(e){
+    if(e.name!=='AbortError')toast('Could not start screen share: '+e.message,'red');
   }
 }
 
-async function init() {
-  var me = await requireLogin('/');
-  if (!me) return;
-  var s = await get('/api/sessions/' + sessionId);
-  if (s.error) { toast(s.error, 'red'); return; }
-  sessionData = s;
-  document.getElementById('s-title').textContent = s.title;
-  document.getElementById('s-cand').textContent = s.candidate_name || 'Candidate';
-  document.getElementById('s-code').textContent = 'Code: ' + s.code;
-  setTrust(s.trust_score != null ? s.trust_score : 100);
-  renderFlags(s.flags || []);
-  renderQuestions(s.questions || []);
-  await startMedia();
-  connectSocket();
+function stopScreenShare(){
+  if(screenStream){screenStream.getTracks().forEach(function(t){t.stop();});screenStream=null;}
+  isScreenSharing=false;
+  $('share-screen-btn').textContent='&#128247; Share Screen';
+  $('share-screen-btn').className='btn btn-purple btn-sm';
+  $('screenshare-bar').style.display='none';
+  if(pc&&pc.getReceivers().length>0)$('remote-vid').srcObject=pc.getRemoteStreams?pc.getRemoteStreams()[0]:null;
+  toast('Screen sharing stopped','amber');
 }
 
-async function startMedia() {
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({video: true, audio: true});
-    document.getElementById('local-vid').srcObject = localStream;
-  } catch(e) { toast('Camera/mic: ' + e.message, 'amber'); }
+async function init(){
+  var me=await requireLogin('/');if(!me)return;
+  var s=await get('/api/sessions/'+sessionId);
+  if(s.error){toast(s.error,'red');return;}
+  sessionData=s;
+  $('s-title').textContent=s.title;
+  $('s-cand').textContent='Candidate: '+(s.candidate_name||'TBD');
+  $('s-code').textContent='Code: '+s.code;
+  setTrust(s.trust_score!=null?s.trust_score:100);
+  renderFlags(s.flags||[]);renderQuestions(s.questions||[]);
+  await startMedia();connectSocket();startTimer();
 }
 
-function connectSocket() {
-  socket = io();
-  socket.emit('join-room', {sessionId: sessionId, role: 'interviewer'});
-  socket.on('peer-joined', function(data) {
-    if (data.role === 'candidate') {
-      document.getElementById('s-status').textContent = 'Live';
-      document.getElementById('s-status').className = 'badge badge-green';
-      startWebRTC(true);
-    }
-  });
-  socket.on('peer-already-present', function() {
-    document.getElementById('s-status').textContent = 'Live';
-    document.getElementById('s-status').className = 'badge badge-green';
-    startWebRTC(true);
-  });
-  socket.on('webrtc-offer', async function(data) {
-    if (!pc) await startWebRTC(false);
-    await pc.setRemoteDescription(data.offer);
-    var a = await pc.createAnswer(); await pc.setLocalDescription(a);
-    socket.emit('webrtc-answer', {sessionId: sessionId, answer: a});
-  });
-  socket.on('webrtc-answer', async function(data) { if (pc) await pc.setRemoteDescription(data.answer); });
-  socket.on('webrtc-ice', async function(data) { if (pc) await pc.addIceCandidate(data.candidate); });
-  socket.on('candidate-flag', async function(flag) {
-    toast(flag.text, 'amber');
-    var s = await get('/api/sessions/' + sessionId);
-    setTrust(s.trust_score != null ? s.trust_score : 100);
-    renderFlags(s.flags || []);
-    switchTab('flags', document.getElementById('tab-f-btn'));
-  });
-  socket.on('peer-left', function() {
-    document.getElementById('s-status').textContent = 'Disconnected';
-    document.getElementById('s-status').className = 'badge badge-red';
-    toast('Candidate disconnected', 'amber');
-  });
+async function startMedia(){
+  try{localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});$('local-vid').srcObject=localStream;}
+  catch(e){toast('Camera/mic: '+e.message,'amber');}
 }
 
-async function startWebRTC(isInit) {
-  pc = new RTCPeerConnection({iceServers: [{urls: 'stun:stun.l.google.com:19302'}]});
-  if (localStream) localStream.getTracks().forEach(function(t){ pc.addTrack(t, localStream); });
-  pc.ontrack = function(e){ document.getElementById('remote-vid').srcObject = e.streams[0]; };
-  pc.onicecandidate = function(e){ if (e.candidate) socket.emit('webrtc-ice', {sessionId: sessionId, candidate: e.candidate}); };
-  if (isInit) {
-    var o = await pc.createOffer(); await pc.setLocalDescription(o);
-    socket.emit('webrtc-offer', {sessionId: sessionId, offer: o});
-  }
+function connectSocket(){
+  socket=io();
+  socket.emit('join-room',{sessionId:sessionId,role:'interviewer'});
+  socket.on('peer-joined',function(data){if(data.role==='candidate'){$('s-status').textContent='&#9679; Live';$('s-status').className='badge badge-green';startWebRTC(true);}});
+  socket.on('peer-already-present',function(){$('s-status').textContent='&#9679; Live';$('s-status').className='badge badge-green';startWebRTC(true);});
+  socket.on('webrtc-offer',async function(data){if(!pc)await startWebRTC(false);await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionId,answer:a});});
+  socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
+  socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
+  socket.on('candidate-flag',async function(flag){
+    toast('&#9873; '+flag.text,'amber');
+    var s=await get('/api/sessions/'+sessionId);
+    setTrust(s.trust_score!=null?s.trust_score:100);
+    var flags=s.flags||[];
+    renderFlags(flags);
+    var el=$('sbp-flags');
+    switchTab('flags',$('tab-f-btn'));
+    el.scrollTop=el.scrollHeight;
+  });
+  socket.on('peer-left',function(){$('s-status').textContent='Disconnected';$('s-status').className='badge badge-red';toast('Candidate disconnected','amber');});
 }
 
-async function endSession() {
-  if (isRec) stopRec();
-  if (!confirm('End this session?')) return;
-  // Notify candidate first, then update DB
-  if (socket) socket.emit('session-ended', {sessionId: sessionId});
-  await patch('/api/sessions/' + sessionId, {status: 'ended'});
-  setTimeout(function(){ location.href = '/dashboard'; }, 500);
+async function startWebRTC(isInit){
+  pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  pc.ontrack=function(e){if(!isScreenSharing)$('remote-vid').srcObject=e.streams[0];};
+  pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionId,candidate:e.candidate});};
+  if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionId,offer:o});}
 }
 
-function copyInvite() {
-  var code = sessionData && sessionData.code || '';
-  navigator.clipboard.writeText(location.origin + '/join/' + code).then(function(){ toast('Invite link copied!', 'green'); });
+async function endSession(){
+  if(!confirm('End this session? The candidate will see a goodbye screen.'))return;
+  if(isRec)stopRec();
+  if(timerInterval)clearInterval(timerInterval);
+  if(socket)socket.emit('session-ended',{sessionId:sessionId});
+  await patch('/api/sessions/'+sessionId,{status:'ended'});
+  setTimeout(function(){location.href='/dashboard';},500);
+}
+
+function copyInvite(){
+  var code=sessionData&&sessionData.code||'';
+  navigator.clipboard.writeText(location.origin+'/join/'+code).then(function(){toast('Candidate invite link copied!','green');});
 }
 
 init();
