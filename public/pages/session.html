@@ -9,52 +9,49 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
-/* CANDIDATE LOCKOUT OVERLAY on video pane */
+/* CANDIDATE LOCKOUT OVERLAY */
 #candidate-lockout-overlay{
   display:none;position:absolute;inset:0;z-index:50;
-  background:rgba(0,0,0,0.92);
+  background:rgba(0,0,0,0.95);
   flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:24px;backdrop-filter:blur(6px);
+  text-align:center;padding:24px;
 }
 #candidate-lockout-overlay.active{display:flex;}
-.lockout-ov-icon{font-size:52px;margin-bottom:12px;animation:lockPulse 1s infinite;}
-@keyframes lockPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
-.lockout-ov-title{font-size:22px;font-weight:800;color:#ef4444;margin-bottom:8px;letter-spacing:-.3px;}
-.lockout-ov-sub{font-size:14px;color:#94a3b8;margin-bottom:16px;line-height:1.6;}
-.lockout-ov-timer{
-  font-size:52px;font-weight:900;color:#f97316;font-family:monospace;
-  letter-spacing:4px;margin-bottom:8px;
-}
-.lockout-ov-bar{width:200px;height:6px;background:#1a1a1a;border-radius:3px;overflow:hidden;margin:0 auto;}
+.lockout-ov-icon{font-size:52px;margin-bottom:12px;animation:lockPulse 1.2s infinite;}
+@keyframes lockPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.6;transform:scale(.93)}}
+.lockout-ov-title{font-size:22px;font-weight:800;color:#ef4444;margin-bottom:8px;}
+.lockout-ov-sub{font-size:14px;color:#94a3b8;margin-bottom:16px;line-height:1.7;max-width:300px;}
+.lockout-ov-timer{font-size:56px;font-weight:900;color:#f97316;font-family:monospace;letter-spacing:4px;margin-bottom:8px;}
+.lockout-ov-bar{width:220px;height:6px;background:#1a1a1a;border-radius:3px;overflow:hidden;margin:0 auto 10px;}
 .lockout-ov-bar-fill{height:100%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:3px;transition:width 1s linear;}
-.lockout-ov-violation{font-size:12px;color:#6b7280;margin-top:10px;}
+.lockout-ov-note{font-size:12px;color:#374151;}
+.lockout-ov-audio{font-size:12px;color:#22c55e;margin-top:8px;font-weight:600;}
 
-/* FLAG COUNT CARDS - one per flag type, count updates live */
+/* FLAG COUNT CARDS */
 .flag-count-card{
   background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);
-  padding:10px 12px;font-size:12px;transition:all .2s;position:relative;overflow:hidden;
+  padding:9px 12px;font-size:12px;transition:background .3s;
 }
-.flag-count-card:hover{border-color:var(--border2);}
 .flag-count-card.high{border-left:3px solid var(--red);}
 .flag-count-card.medium{border-left:3px solid var(--amber);}
 .flag-count-card.low{border-left:3px solid var(--blue2);}
-.flag-count-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;}
-.flag-count-title{font-weight:700;font-size:12px;flex:1;}
+.flag-count-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;}
+.flag-count-title{font-weight:600;font-size:12px;color:var(--text);}
 .flag-count-badge{
-  background:var(--red3);color:var(--red);border:1px solid var(--red);
   border-radius:20px;padding:2px 8px;font-size:11px;font-weight:800;
-  min-width:24px;text-align:center;transition:transform .15s;
+  min-width:28px;text-align:center;transition:transform .15s;
 }
-.flag-count-badge.bump{transform:scale(1.3);}
-.flag-count-badge.medium-badge{background:var(--amber3);color:var(--amber);border-color:var(--amber);}
-.flag-count-badge.low-badge{background:var(--blue3);color:var(--blue2);border-color:var(--blue);}
-.flag-count-detail{color:var(--text2);font-size:11px;margin-bottom:4px;line-height:1.4;}
-.flag-count-time{font-size:10px;color:var(--text3);display:flex;align-items:center;gap:5px;}
-.flag-count-last{color:var(--text3);font-size:10px;}
-.flag-count-card.new-hit{animation:flagBump .4s ease;}
-@keyframes flagBump{0%{background:var(--red3)}100%{background:var(--bg2)}}
-.flag-count-card.medium.new-hit{animation:flagBumpAmber .4s ease;}
-@keyframes flagBumpAmber{0%{background:var(--amber3)}100%{background:var(--bg2)}}
+.badge-hi{background:var(--red3);color:var(--red);border:1px solid var(--red);}
+.badge-mid{background:var(--amber3);color:var(--amber);border:1px solid var(--amber);}
+.badge-lo{background:var(--blue3);color:var(--blue2);border:1px solid var(--blue);}
+.badge-zero{background:var(--bg3);color:var(--text3);border:1px solid var(--border);}
+.flag-count-badge.bump{transform:scale(1.35);}
+.flag-count-detail{color:var(--text2);font-size:11px;line-height:1.4;}
+.flag-count-last{font-size:10px;color:var(--text3);margin-top:3px;}
+.flag-count-card.new-hit{animation:cardHit .4s ease;}
+@keyframes cardHit{0%{background:rgba(239,68,68,.18)}100%{background:var(--bg2)}}
+.flag-count-card.medium.new-hit{animation:cardHitAmber .4s ease;}
+@keyframes cardHitAmber{0%{background:rgba(245,158,11,.18)}100%{background:var(--bg2)}}
 </style>
 </head>
 <body>
@@ -65,7 +62,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
     <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red);font-weight:600"><span class="rec-dot"></span>REC</span>
     <button id="rec-btn" class="btn btn-danger btn-sm" onclick="toggleRec()">Record</button>
     <button id="share-screen-btn" class="btn btn-purple btn-sm" onclick="toggleScreenShare()">Share Screen</button>
-    <button class="btn btn-outline btn-sm" onclick="toggleDevicePanel()" title="Camera and microphone settings">Settings</button>
+    <button class="btn btn-outline btn-sm" onclick="toggleDevicePanel()">Settings</button>
     <div class="topbar-sep"></div>
     <span id="s-status" class="badge badge-default">Waiting...</span>
   </div>
@@ -83,7 +80,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
     <div id="device-settings-panel" style="display:none;position:absolute;top:60px;right:12px;background:#0f1319;border:1px solid #1e2a3a;border-radius:10px;padding:18px;width:300px;z-index:200;box-shadow:0 8px 32px rgba(0,0,0,.8)">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
         <div style="font-size:12px;font-weight:700;color:#94a3b8;letter-spacing:1px;text-transform:uppercase">Device Settings</div>
-        <button onclick="toggleDevicePanel()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;line-height:1;padding:2px">X</button>
+        <button onclick="toggleDevicePanel()" style="background:none;border:none;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px">X</button>
       </div>
       <div style="margin-bottom:12px">
         <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">Camera</div>
@@ -97,20 +94,17 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
         <div style="font-size:12px;font-weight:600;color:#64748b;margin-bottom:5px">Speaker</div>
         <select id="int-sel-speaker" style="width:100%;padding:7px 10px;background:#161b22;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="applyInterviewerSpeaker()"></select>
       </div>
-      <div style="font-size:11px;color:#374151;margin-top:12px;text-align:center">Changes apply immediately</div>
     </div>
 
-    <!-- CANDIDATE LOCKOUT OVERLAY: covers video when candidate is locked out -->
+    <!-- CANDIDATE LOCKOUT OVERLAY: covers video feed, audio still flows -->
     <div id="candidate-lockout-overlay">
       <div class="lockout-ov-icon">&#128274;</div>
       <div class="lockout-ov-title">Candidate Locked Out</div>
-      <div class="lockout-ov-sub">
-        Candidate switched to another tab.<br>
-        They are locked out for 30 seconds.
-      </div>
+      <div class="lockout-ov-sub">Candidate switched to another tab and is locked out for 30 seconds.</div>
       <div class="lockout-ov-timer" id="lockout-ov-timer">0:30</div>
       <div class="lockout-ov-bar"><div class="lockout-ov-bar-fill" id="lockout-ov-bar-fill" style="width:100%"></div></div>
-      <div class="lockout-ov-violation" id="lockout-ov-violation"></div>
+      <div class="lockout-ov-note" id="lockout-ov-violation"></div>
+      <div class="lockout-ov-audio">&#128266; Audio still active — you can speak to the candidate</div>
     </div>
 
     <div id="screenshare-bar" class="screen-share-bar" style="display:none">
@@ -130,19 +124,17 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
       <div class="trust-sub trust-hi" id="trust-sub">Excellent</div>
       <div class="trust-bar"><div class="trust-bar-fill" id="trust-bar-fill" style="width:100%;background:var(--green)"></div></div>
     </div>
-    <div class="sb-tabs">
-      <button class="sb-tab active" id="tab-f-btn" onclick="switchTab('flags',this)">Flags <span id="flag-total-badge"></span></button>
-      <button class="sb-tab" onclick="switchTab('questions',this)">Questions</button>
+
+    <!-- FLAGS ONLY - no questions tab -->
+    <div style="padding:10px 12px 6px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:11px;font-weight:700;color:var(--text2);letter-spacing:1.5px;text-transform:uppercase">Integrity Flags</div>
+      <span id="flag-total-badge" style="font-size:11px;font-weight:700;color:var(--text3)">0 events</span>
     </div>
-    <!-- FLAGS PANEL: one card per flag TYPE, count updates live -->
-    <div id="sbp-flags" class="sb-panel active">
-      <div class="no-items" id="no-flags-msg"><div class="no-items-icon">OK</div>No flags yet.</div>
+
+    <!-- PRE-FILLED FLAG COUNTERS: all detection types visible from session start -->
+    <div id="sbp-flags" class="sb-panel active" style="padding:8px;gap:6px">
     </div>
-    <div id="sbp-questions" class="sb-panel"></div>
-    <div id="q-nav" style="display:none" class="q-nav">
-      <button class="btn btn-outline btn-sm" onclick="prevQ()" style="flex:1">Prev</button>
-      <button class="btn btn-primary btn-sm" onclick="nextQ()" style="flex:1">Next</button>
-    </div>
+
     <div class="sb-foot">
       <button class="btn btn-danger btn-sm" onclick="endSession()" style="flex:1">End Session</button>
       <button class="btn btn-outline btn-sm" onclick="copyInvite()">Copy Invite</button>
@@ -156,143 +148,143 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
 var sessionId = location.pathname.split('/').pop();
-var socket, pc, localStream, screenStream, sessionData, qIdx = 0;
+var socket, pc, localStream, screenStream, sessionData;
 var mediaRecorder = null, recChunks = [], isRec = false, recStart = null;
 var isScreenSharing = false, timerInterval = null;
 var remoteStream = null, audioCtxRec = null;
 
-// ââ FLAG COUNT SYSTEM ââ
-// One card per flag TYPE. Count increments live. No spam.
-// flagRegistry: { [flagKey]: { text, detail, severity, count, lastTime, cardEl } }
-var flagRegistry = {};
+// ── PRE-FILLED FLAG REGISTRY ──
+// All detection types shown from session start with count 0
+// When a flag comes in matching a key, the card updates live
+var FLAG_TYPES = [
+  {key:'tab-switch',      text:'Tab Switch',              detail:'Candidate switched to another browser tab',   severity:'high'},
+  {key:'window-switch',   text:'Window Switch',            detail:'Candidate switched to another app or window', severity:'medium'},
+  {key:'extended-absence',text:'Extended Absence',         detail:'Candidate away for 10+ seconds',             severity:'high'},
+  {key:'face-not-visible',text:'Face Not Visible',         detail:'Camera not detecting candidate face',         severity:'high'},
+  {key:'gaze-away',       text:'Suspicious Eye Movement',  detail:'Candidate looking away from screen',          severity:'medium'},
+  {key:'bg-voice',        text:'Background Voice',         detail:'Second voice detected - possible coaching',   severity:'high'},
+  {key:'multi-display',   text:'Multiple Displays',        detail:'Candidate has multiple monitors connected',   severity:'high'},
+  {key:'copy-paste',      text:'Copy / Paste Attempt',     detail:'Candidate tried to copy or paste content',    severity:'medium'},
+  {key:'shortcut',        text:'Keyboard Shortcut',        detail:'Blocked keyboard shortcut detected',          severity:'low'},
+  {key:'devtools',        text:'DevTools Attempt',         detail:'Candidate tried to open browser DevTools',    severity:'high'},
+  {key:'new-tab',         text:'New Tab Attempt',          detail:'Candidate tried to open a new tab',           severity:'high'},
+  {key:'right-click',     text:'Right Click',              detail:'Candidate right-clicked during interview',    severity:'low'},
+  {key:'window-resize',   text:'Window Resize',            detail:'Interview window was significantly resized',  severity:'low'},
+  {key:'screen-change',   text:'Screen Config Changed',    detail:'Display configuration changed mid-session',   severity:'high'},
+];
+
+var flagRegistry = {};  // key → {count, cardEl, lastTime}
 var totalFlagCount = 0;
 
-function getFlagKey(text){
-  // Normalize to a stable key per flag type
-  return text.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/-+/g,'-').replace(/^-|-$/g,'').slice(0,40);
-}
-
-function getSeverityBadgeClass(severity){
-  if(severity==='high') return '';
-  if(severity==='medium') return 'medium-badge';
-  return 'low-badge';
-}
-
-function addOrUpdateFlag(flag){
-  totalFlagCount++;
-  var key = getFlagKey(flag.text);
+function initFlagPanel(){
   var panel = $('sbp-flags');
-  var noMsg = $('no-flags-msg');
+  panel.innerHTML = '';
+  FLAG_TYPES.forEach(function(ft){
+    var card = buildFlagCard(ft.key, ft.text, ft.detail, ft.severity, 0);
+    flagRegistry[ft.key] = {count:0, cardEl:card, lastTime:null, text:ft.text, severity:ft.severity};
+    panel.appendChild(card);
+  });
+}
 
-  if(flagRegistry[key]){
-    // UPDATE existing card
+function buildFlagCard(key, text, detail, severity, count){
+  var card = document.createElement('div');
+  card.className = 'flag-count-card ' + severity;
+  card.id = 'fc-' + key;
+
+  var hdr = document.createElement('div'); hdr.className = 'flag-count-header';
+  var title = document.createElement('div'); title.className = 'flag-count-title'; title.textContent = text;
+  var badge = document.createElement('div');
+  badge.className = 'flag-count-badge ' + (count > 0 ? (severity==='high'?'badge-hi':severity==='medium'?'badge-mid':'badge-lo') : 'badge-zero');
+  badge.id = 'fb-' + key;
+  badge.textContent = count > 0 ? 'x'+count : '0';
+  hdr.appendChild(title); hdr.appendChild(badge); card.appendChild(hdr);
+
+  var det = document.createElement('div'); det.className = 'flag-count-detail'; det.textContent = detail; det.id = 'fd-' + key;
+  card.appendChild(det);
+
+  var last = document.createElement('div'); last.className = 'flag-count-last'; last.id = 'fl-' + key;
+  last.textContent = count > 0 ? '' : 'No events yet';
+  card.appendChild(last);
+  return card;
+}
+
+// Map incoming flag text → registry key
+function resolveKey(flagText){
+  var t = (flagText||'').toLowerCase();
+  if(t.includes('tab switch')||t.includes('tab switch')) return 'tab-switch';
+  if(t.includes('window switch')||t.includes('window blur')) return 'window-switch';
+  if(t.includes('extended absence')) return 'extended-absence';
+  if(t.includes('face not')) return 'face-not-visible';
+  if(t.includes('eye')||t.includes('gaze')) return 'gaze-away';
+  if(t.includes('background voice')||t.includes('audio')) return 'bg-voice';
+  if(t.includes('display')||t.includes('secondary display')||t.includes('screen config')) return t.includes('config')?'screen-change':'multi-display';
+  if(t.includes('copy')||t.includes('paste')||t.includes('cut')) return 'copy-paste';
+  if(t.includes('shortcut')||t.includes('shortcut blocked')) return 'shortcut';
+  if(t.includes('devtools')||t.includes('f12')) return 'devtools';
+  if(t.includes('new tab')||t.includes('new window')) return 'new-tab';
+  if(t.includes('right-click')||t.includes('right click')) return 'right-click';
+  if(t.includes('resize')) return 'window-resize';
+  return null;
+}
+
+function hitFlag(flag){
+  totalFlagCount++;
+  var key = resolveKey(flag.text);
+
+  if(key && flagRegistry[key]){
     var entry = flagRegistry[key];
     entry.count++;
-    entry.lastTime = flag.time_offset || flag.time || '--:--';
-    if(flag.detail && flag.detail.length > (entry.detail||'').length) entry.detail = flag.detail;
+    entry.lastTime = flag.time_offset || flag.time || elapsed();
 
-    var card = entry.cardEl;
-    var badge = card.querySelector('.flag-count-badge');
-    var det = card.querySelector('.flag-count-detail');
-    var lastEl = card.querySelector('.flag-count-last');
+    var badge = document.getElementById('fb-'+key);
+    var last = document.getElementById('fl-'+key);
+    var card = document.getElementById('fc-'+key);
 
+    // Update badge
     badge.textContent = 'x' + entry.count;
-    if(det && entry.detail) det.textContent = entry.detail;
-    if(lastEl) lastEl.textContent = 'Last: ' + entry.lastTime;
+    badge.className = 'flag-count-badge ' + (entry.severity==='high'?'badge-hi':entry.severity==='medium'?'badge-mid':'badge-lo');
 
-    // Visual bump animation
+    // Update last seen
+    if(last) last.textContent = 'Last: ' + entry.lastTime;
+
+    // Bump animation
     badge.classList.remove('bump');
     void badge.offsetWidth;
     badge.classList.add('bump');
     setTimeout(function(){ badge.classList.remove('bump'); }, 300);
 
+    // Flash card
     card.classList.remove('new-hit');
     void card.offsetWidth;
     card.classList.add('new-hit');
     setTimeout(function(){ card.classList.remove('new-hit'); }, 500);
 
-    // Move to top if multiple hits
-    if(entry.count > 1 && panel.firstChild !== card){
-      panel.insertBefore(card, panel.firstChild);
-    }
+    // Move to top of panel
+    var panel = $('sbp-flags');
+    if(panel.firstChild !== card) panel.insertBefore(card, panel.firstChild);
+
   } else {
-    // CREATE new card for this flag type
-    var entry = {
-      text: flag.text,
-      detail: flag.detail || '',
-      severity: flag.severity || 'medium',
-      count: 1,
-      lastTime: flag.time_offset || flag.time || '--:--',
-      cardEl: null
-    };
-    flagRegistry[key] = entry;
-
-    if(noMsg) noMsg.style.display = 'none';
-
-    var card = document.createElement('div');
-    card.className = 'flag-count-card ' + entry.severity + ' new-hit';
-    card.id = 'flag-card-' + key;
-
-    var hdr = document.createElement('div');
-    hdr.className = 'flag-count-header';
-
-    var title = document.createElement('div');
-    title.className = 'flag-count-title';
-    title.textContent = flag.text;
-
-    var badge = document.createElement('div');
-    badge.className = 'flag-count-badge ' + getSeverityBadgeClass(entry.severity);
-    badge.textContent = 'x1';
-
-    hdr.appendChild(title);
-    hdr.appendChild(badge);
-    card.appendChild(hdr);
-
-    if(flag.detail){
-      var det = document.createElement('div');
-      det.className = 'flag-count-detail';
-      det.textContent = flag.detail;
-      card.appendChild(det);
-    }
-
-    var timeRow = document.createElement('div');
-    timeRow.className = 'flag-count-time';
-    var sevSpan = document.createElement('span');
-    sevSpan.className = 'flag-count';
-    sevSpan.textContent = entry.severity.toUpperCase();
-    var lastSpan = document.createElement('span');
-    lastSpan.className = 'flag-count-last';
-    lastSpan.textContent = 'Last: ' + entry.lastTime;
-    timeRow.appendChild(sevSpan);
-    timeRow.appendChild(lastSpan);
-    card.appendChild(timeRow);
-
-    setTimeout(function(){ card.classList.remove('new-hit'); }, 500);
-
-    entry.cardEl = card;
-    // Insert at top
-    if(panel.firstChild && panel.firstChild !== noMsg){
-      panel.insertBefore(card, panel.firstChild);
-    } else {
-      panel.appendChild(card);
-    }
+    // Unknown flag type - append a new card dynamically
+    var panel = $('sbp-flags');
+    var sev = flag.severity || 'medium';
+    var newKey = 'dynamic-'+totalFlagCount;
+    var card = buildFlagCard(newKey, flag.text, flag.detail||'', sev, 1);
+    flagRegistry[newKey] = {count:1, cardEl:card, lastTime:flag.time_offset||'', text:flag.text, severity:sev};
+    var badge = card.querySelector('.flag-count-badge');
+    badge.textContent = 'x1'; badge.className = 'flag-count-badge ' + (sev==='high'?'badge-hi':sev==='medium'?'badge-mid':'badge-lo');
+    var last = card.querySelector('.flag-count-last'); if(last) last.textContent = 'Last: '+(flag.time_offset||'');
+    panel.insertBefore(card, panel.firstChild);
   }
 
-  // Update total badge in tab
-  var totalBadge = $('flag-total-badge');
-  totalBadge.textContent = ' (' + totalFlagCount + ')';
-  totalBadge.style.color = 'var(--red)';
-  totalBadge.style.fontWeight = '700';
-
-  // Scroll to top of flags
-  panel.scrollTop = 0;
+  // Update total
+  var tot = $('flag-total-badge');
+  tot.textContent = totalFlagCount + ' event' + (totalFlagCount!==1?'s':'');
+  tot.style.color = totalFlagCount > 0 ? 'var(--red)' : 'var(--text3)';
 }
 
-function switchTab(name, btn){
-  document.querySelectorAll('.sb-tab').forEach(function(t){t.classList.remove('active');});
-  document.querySelectorAll('.sb-panel').forEach(function(p){p.classList.remove('active');});
-  btn.classList.add('active');
-  document.getElementById('sbp-'+name).classList.add('active');
+function elapsed(){
+  if(!sessionData) return '--:--';
+  return '--:--';
 }
 
 function setTrust(v){
@@ -302,22 +294,6 @@ function setTrust(v){
   bar.style.width=v+'%'; bar.style.background=v>=80?'var(--green)':v>=60?'var(--amber)':'var(--red)';
 }
 
-function renderQuestions(qs){
-  var el=$('sbp-questions'); el.innerHTML='';
-  if(!qs||!qs.length){el.innerHTML='<div class="no-items">No questions added.</div>';return;}
-  $('q-nav').style.display='flex';
-  qs.forEach(function(q,i){
-    var div=document.createElement('div'); div.className='q-card'+(i===qIdx?' active':'');
-    var num=document.createElement('div'); num.className='q-num'; num.textContent='Q'+(i+1);
-    var txt=document.createElement('div'); txt.textContent=q;
-    div.appendChild(num); div.appendChild(txt); div.onclick=function(){goQ(i);}; el.appendChild(div);
-  });
-}
-
-function goQ(i){qIdx=i;renderQuestions(sessionData&&sessionData.questions||[]);if(socket)socket.emit('next-question',{sessionId:sessionId,qIdx:qIdx});}
-function nextQ(){if(sessionData&&sessionData.questions&&qIdx<sessionData.questions.length-1)goQ(qIdx+1);}
-function prevQ(){if(qIdx>0)goQ(qIdx-1);}
-
 function startTimer(){
   var t0=Date.now(); $('timer-chip').style.display='flex';
   timerInterval=setInterval(function(){
@@ -326,43 +302,63 @@ function startTimer(){
   },1000);
 }
 
-function toggleRec(){if(isRec)stopRec();else startRec();}
+function toggleRec(){ if(isRec)stopRec(); else startRec(); }
 
+// DUAL RECORDING: side-by-side canvas of both interviewer + candidate
 function startRec(){
-  var vid=$('remote-vid');
-  if(!vid.srcObject && !remoteStream){toast('No candidate video yet','red');return;}
-  var canvas=document.createElement('canvas'); canvas.width=1280; canvas.height=720;
-  var ctx=canvas.getContext('2d'); isRec=true; recStart=Date.now();
+  var remVid = $('remote-vid');
+  if(!remVid.srcObject && !remoteStream){ toast('No candidate video yet','red'); return; }
+
+  // Canvas: side by side — left=candidate (remote), right=interviewer (local)
+  var W = 1280, H = 360; // 720p split into two 640x360 halves
+  var canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
+  var ctx = canvas.getContext('2d');
+  isRec=true; recStart=Date.now();
+
   (function draw(){
-    if(!isRec)return;
-    ctx.drawImage(vid,0,0,1280,720);
-    var lv=$('local-vid'); if(lv.srcObject) ctx.drawImage(lv,1060,590,210,120);
-    ctx.fillStyle='rgba(239,68,68,.9)'; ctx.fillRect(10,10,58,26);
-    ctx.fillStyle='#fff'; ctx.font='bold 13px Arial'; ctx.fillText('REC',18,28);
+    if(!isRec) return;
+    // Black background
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+    // Left half: candidate (remote)
+    if(remVid.readyState>=2) ctx.drawImage(remVid,0,0,W/2,H);
+    // Right half: interviewer (local)
+    var lv=$('local-vid');
+    if(lv&&lv.srcObject&&lv.readyState>=2) ctx.drawImage(lv,W/2,0,W/2,H);
+    // Labels
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,H-22,W/2,22); ctx.fillRect(W/2,H-22,W/2,22);
+    ctx.fillStyle='#fff'; ctx.font='bold 12px Arial';
+    ctx.fillText('Candidate',8,H-7);
+    ctx.fillText('Interviewer',W/2+8,H-7);
+    // REC indicator
+    ctx.fillStyle='rgba(239,68,68,.9)'; ctx.fillRect(10,10,52,22);
+    ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.fillText('REC',16,26);
     requestAnimationFrame(draw);
   })();
-  var cs=canvas.captureStream(30);
+
+  var cs = canvas.captureStream(30);
+
+  // Audio mix: both interviewer mic + candidate audio
   try{
-    audioCtxRec=new (window.AudioContext||window.webkitAudioContext)();
-    var dest=audioCtxRec.createMediaStreamDestination();
-    if(localStream&&localStream.getAudioTracks().length>0){
+    audioCtxRec = new (window.AudioContext||window.webkitAudioContext)();
+    var dest = audioCtxRec.createMediaStreamDestination();
+    if(localStream&&localStream.getAudioTracks().length>0)
       audioCtxRec.createMediaStreamSource(localStream).connect(dest);
-    }
-    var remSrc = remoteStream&&remoteStream.getAudioTracks().length>0 ? remoteStream :
-                 (vid.srcObject&&vid.srcObject.getAudioTracks&&vid.srcObject.getAudioTracks().length>0?vid.srcObject:null);
-    if(remSrc) audioCtxRec.createMediaStreamSource(remSrc).connect(dest);
-    dest.stream.getAudioTracks().forEach(function(t){cs.addTrack(t);});
+    var remAudio = remoteStream&&remoteStream.getAudioTracks().length>0 ? remoteStream :
+                   (remVid.srcObject&&remVid.srcObject.getAudioTracks&&remVid.srcObject.getAudioTracks().length>0?remVid.srcObject:null);
+    if(remAudio) audioCtxRec.createMediaStreamSource(remAudio).connect(dest);
+    dest.stream.getAudioTracks().forEach(function(t){ cs.addTrack(t); });
   }catch(e){
-    if(localStream) localStream.getAudioTracks().forEach(function(t){cs.addTrack(t);});
+    if(localStream) localStream.getAudioTracks().forEach(function(t){ cs.addTrack(t); });
   }
-  var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':
-           MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')?'video/webm;codecs=vp8,opus':'video/webm';
-  mediaRecorder=new MediaRecorder(cs,{mimeType:mime});
+
+  var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus')?'video/webm;codecs=vp9,opus':
+             MediaRecorder.isTypeSupported('video/webm;codecs=vp8,opus')?'video/webm;codecs=vp8,opus':'video/webm';
+  mediaRecorder = new MediaRecorder(cs,{mimeType:mime});
   recChunks=[]; mediaRecorder.ondataavailable=function(e){if(e.data.size>0)recChunks.push(e.data);};
   mediaRecorder.start(1000);
   $('rec-btn').textContent='Stop & Save'; $('rec-btn').className='btn btn-outline btn-sm';
   $('rec-ind').style.display='flex';
-  toast('Recording started','green');
+  toast('Recording both participants','green');
 }
 
 function stopRec(){
@@ -389,39 +385,32 @@ async function uploadRecording(blob,dur){
     fd.append('sessionId',sessionId); fd.append('durationSecs',String(dur));
     var res=await fetch('/api/recordings/upload',{method:'POST',body:fd});
     var data=await res.json();
-    if(data.ok) toast('Saved to Recordings library!','green');
-    else toast('Upload failed: '+(data.error||'unknown'),'red');
+    if(data.ok)toast('Saved to library!','green'); else toast('Upload failed: '+(data.error||'?'),'red');
   }catch(e){toast('Upload error: '+e.message,'red');}
 }
 
 async function toggleScreenShare(){if(isScreenSharing)stopScreenShare();else startScreenShare();}
-
 async function startScreenShare(){
   try{
     screenStream=await navigator.mediaDevices.getDisplayMedia({video:{cursor:'always'},audio:false});
-    var screenTrack=screenStream.getVideoTracks()[0];
+    var st=screenStream.getVideoTracks()[0];
     if(pc){
       var vs=pc.getSenders().find(function(s){return s.track&&s.track.kind==='video';});
-      if(vs) vs.replaceTrack(screenTrack).then(function(){toast('Screen sharing started','blue',4000);}).catch(function(e){toast('Track replace failed: '+e.message,'red');});
-    } else { toast('Connect to candidate first','red'); screenStream.getTracks().forEach(function(t){t.stop();}); screenStream=null; return; }
+      if(vs) vs.replaceTrack(st).then(function(){toast('Screen sharing - candidate can see your screen','blue',4000);}).catch(function(e){toast('Track error: '+e.message,'red');});
+    }else{toast('Connect to candidate first','red');screenStream.getTracks().forEach(function(t){t.stop();});screenStream=null;return;}
     var prev=document.getElementById('screen-preview');
     if(!prev){prev=document.createElement('video');prev.id='screen-preview';prev.muted=true;prev.autoplay=true;prev.playsInline=true;Object.assign(prev.style,{position:'absolute',bottom:'140px',right:'16px',width:'180px',height:'101px',borderRadius:'6px',border:'2px solid rgba(139,92,246,.8)',objectFit:'cover',zIndex:'10'});document.getElementById('video-pane').appendChild(prev);}
     prev.srcObject=screenStream;
-    screenTrack.onended=function(){stopScreenShare();};
+    st.onended=function(){stopScreenShare();};
     isScreenSharing=true;
     $('share-screen-btn').textContent='Stop Sharing'; $('share-screen-btn').className='btn btn-amber btn-sm';
     $('screenshare-bar').style.display='flex';
-  }catch(e){if(e.name!=='AbortError') toast('Screen share failed: '+e.message,'red');}
+  }catch(e){if(e.name!=='AbortError')toast('Screen share failed: '+e.message,'red');}
 }
-
 function stopScreenShare(){
-  if(screenStream){screenStream.getTracks().forEach(function(t){t.stop();}); screenStream=null;}
-  var prev=document.getElementById('screen-preview'); if(prev){prev.srcObject=null;prev.remove();}
-  if(pc&&localStream){
-    var cam=localStream.getVideoTracks()[0];
-    var vs=pc.getSenders().find(function(s){return s.track&&s.track.kind==='video';});
-    if(vs&&cam) vs.replaceTrack(cam).catch(function(){});
-  }
+  if(screenStream){screenStream.getTracks().forEach(function(t){t.stop();});screenStream=null;}
+  var prev=document.getElementById('screen-preview');if(prev){prev.srcObject=null;prev.remove();}
+  if(pc&&localStream){var cam=localStream.getVideoTracks()[0];var vs=pc.getSenders().find(function(s){return s.track&&s.track.kind==='video';});if(vs&&cam)vs.replaceTrack(cam).catch(function(){});}
   isScreenSharing=false;
   $('share-screen-btn').textContent='Share Screen'; $('share-screen-btn').className='btn btn-purple btn-sm';
   $('screenshare-bar').style.display='none';
@@ -429,37 +418,24 @@ function stopScreenShare(){
 }
 
 var devicePanelOpen=false;
-async function toggleDevicePanel(){
-  devicePanelOpen=!devicePanelOpen;
-  var panel=$('device-settings-panel');
-  if(devicePanelOpen){panel.style.display='block';await populateInterviewerDevices();}
-  else panel.style.display='none';
-}
+async function toggleDevicePanel(){devicePanelOpen=!devicePanelOpen;var p=$('device-settings-panel');if(devicePanelOpen){p.style.display='block';await populateInterviewerDevices();}else p.style.display='none';}
 async function populateInterviewerDevices(){
-  try{
-    var devs=await navigator.mediaDevices.enumerateDevices();
-    function fill(selId,list,label){var sel=document.getElementById(selId);if(!sel)return;var cur=sel.value;sel.innerHTML='';list.forEach(function(d,i){var o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(label+' '+(i+1));if(d.deviceId===cur)o.selected=true;sel.appendChild(o);});if(!list.length){var o=document.createElement('option');o.textContent='No '+label;sel.appendChild(o);}}
+  try{var devs=await navigator.mediaDevices.enumerateDevices();
+    function fill(id,list,lbl){var s=document.getElementById(id);if(!s)return;var cur=s.value;s.innerHTML='';list.forEach(function(d,i){var o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(lbl+' '+(i+1));if(d.deviceId===cur)o.selected=true;s.appendChild(o);});if(!list.length){var o=document.createElement('option');o.textContent='No '+lbl;s.appendChild(o);}}
     fill('int-sel-camera',devs.filter(function(d){return d.kind==='videoinput';}),'Camera');
     fill('int-sel-mic',devs.filter(function(d){return d.kind==='audioinput';}),'Microphone');
     fill('int-sel-speaker',devs.filter(function(d){return d.kind==='audiooutput';}),'Speaker');
   }catch(e){}
 }
 async function applyInterviewerDevices(){
-  var camId=document.getElementById('int-sel-camera').value;
-  var micId=document.getElementById('int-sel-mic').value;
-  try{
-    var newStream=await navigator.mediaDevices.getUserMedia({video:camId?{deviceId:{exact:camId}}:true,audio:micId?{deviceId:{exact:micId}}:true});
-    if(localStream) localStream.getTracks().forEach(function(t){t.stop();});
-    localStream=newStream; $('local-vid').srcObject=localStream;
-    if(pc){var snds=pc.getSenders();newStream.getTracks().forEach(function(t){var s=snds.find(function(x){return x.track&&x.track.kind===t.kind;});if(s)s.replaceTrack(t).catch(function(){});});}
+  var camId=document.getElementById('int-sel-camera').value;var micId=document.getElementById('int-sel-mic').value;
+  try{var ns=await navigator.mediaDevices.getUserMedia({video:camId?{deviceId:{exact:camId}}:true,audio:micId?{deviceId:{exact:micId}}:true});
+    if(localStream)localStream.getTracks().forEach(function(t){t.stop();});localStream=ns;$('local-vid').srcObject=localStream;
+    if(pc){var snds=pc.getSenders();ns.getTracks().forEach(function(t){var s=snds.find(function(x){return x.track&&x.track.kind===t.kind;});if(s)s.replaceTrack(t).catch(function(){});});}
     toast('Device changed','green');
-  }catch(e){toast('Could not switch device: '+e.message,'red');}
+  }catch(e){toast('Device switch failed: '+e.message,'red');}
 }
-function applyInterviewerSpeaker(){
-  var spk=document.getElementById('int-sel-speaker').value; if(!spk)return;
-  var rv=$('remote-vid');
-  if(rv&&typeof rv.setSinkId==='function') rv.setSinkId(spk).then(function(){toast('Speaker changed','green');}).catch(function(e){toast('Speaker: '+e.message,'red');});
-}
+function applyInterviewerSpeaker(){var spk=document.getElementById('int-sel-speaker').value;if(!spk)return;var rv=$('remote-vid');if(rv&&typeof rv.setSinkId==='function')rv.setSinkId(spk).then(function(){toast('Speaker changed','green');}).catch(function(e){toast('Speaker: '+e.message,'red');});}
 
 async function init(){
   var me=await requireLogin('/'); if(!me)return;
@@ -469,14 +445,14 @@ async function init(){
   $('s-title').textContent=s.title;
   $('s-cand').textContent='Candidate: '+(s.candidate_name||'TBD');
   $('s-code').textContent='Code: '+s.code;
-  setTrust(s.trust_score!=null?s.trust_score:100);
-
-  // Load existing flags into count system
+  var score=(s.trust_score!==null&&s.trust_score!==undefined)?s.trust_score:100;
+  setTrust(score);
+  // Init pre-filled flag panel
+  initFlagPanel();
+  // Load any existing flags from DB into the counter
   if(s.flags&&s.flags.length){
-    s.flags.forEach(function(f){ addOrUpdateFlag(f); });
-    switchTab('flags',$('tab-f-btn'));
+    s.flags.forEach(function(f){ hitFlag(f); });
   }
-  renderQuestions(s.questions||[]);
   await startMedia(); connectSocket(); startTimer();
 }
 
@@ -488,62 +464,44 @@ async function startMedia(){
 function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionId,role:'interviewer'});
-  socket.on('peer-joined',function(data){if(data.role==='candidate'){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);}});
+  socket.on('peer-joined',function(d){if(d.role==='candidate'){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);}});
   socket.on('peer-already-present',function(){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);});
-  socket.on('webrtc-offer',async function(data){if(!pc)await startWebRTC(false);await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionId,answer:a});});
-  socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
-  socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
+  socket.on('webrtc-offer',async function(d){if(!pc)await startWebRTC(false);await pc.setRemoteDescription(d.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionId,answer:a});});
+  socket.on('webrtc-answer',async function(d){if(pc)await pc.setRemoteDescription(d.answer);});
+  socket.on('webrtc-ice',async function(d){if(pc)await pc.addIceCandidate(d.candidate);});
   socket.on('candidate-flag',async function(flag){
-    // Update count card - no spam
-    addOrUpdateFlag(flag);
-    // Show a brief toast for HIGH severity only
-    if(flag.severity==='high'){
-      toast('HIGH: '+flag.text,'red',3000);
-    }
-    // Switch to flags tab automatically on first flag
-    if(totalFlagCount===1){
-      switchTab('flags',$('tab-f-btn'));
-    }
+    hitFlag(flag);
+    // Only toast for HIGH severity to avoid distraction
+    if(flag.severity==='high') toast('Flag: '+flag.text,'red',3000);
     // Refresh trust score
     var s=await get('/api/sessions/'+sessionId);
-    setTrust(s.trust_score!=null?s.trust_score:100);
+    var score=(s.trust_score!==null&&s.trust_score!==undefined)?s.trust_score:100;
+    setTrust(score);
   });
-  socket.on('peer-left',function(){$('s-status').textContent='Disconnected';$('s-status').className='badge badge-red';toast('Candidate disconnected','amber');});
-
-  // Show lockout overlay when candidate is locked out
-  socket.on('candidate-lockout', function(data){
-    var ov = $('candidate-lockout-overlay');
-    var timerEl = $('lockout-ov-timer');
-    var barEl = $('lockout-ov-bar-fill');
-    var violEl = $('lockout-ov-violation');
-
-    ov.classList.add('active');
-
-    var secs = data.secondsLeft || 30;
-    var total = 30;
-    var m = Math.floor(secs/60), s = secs % 60;
-    timerEl.textContent = m+':'+(s<10?'0':'')+s;
-    barEl.style.width = Math.round((secs/total)*100)+'%';
-    if(data.violation) violEl.textContent = 'Tab switch violation #'+data.violation;
-
-    // Update status badge
-    $('s-status').textContent = 'Locked Out';
-    $('s-status').className = 'badge badge-red';
+  // LOCKOUT OVERLAY: show/hide on video pane, audio keeps flowing via WebRTC
+  socket.on('candidate-lockout',function(data){
+    var ov=$('candidate-lockout-overlay'); ov.classList.add('active');
+    var secs=data.secondsLeft||30;
+    var m=Math.floor(secs/60),s=secs%60;
+    $('lockout-ov-timer').textContent=m+':'+(s<10?'0':'')+s;
+    $('lockout-ov-bar-fill').style.width=Math.round((secs/30)*100)+'%';
+    if(data.violation) $('lockout-ov-violation').textContent='Tab switch violation #'+data.violation;
+    $('s-status').textContent='Locked Out'; $('s-status').className='badge badge-red';
+    // NOTE: We do NOT pause or stop the remote-vid element.
+    // The overlay sits ON TOP of it (z-index:50, position:absolute).
+    // Audio continues through WebRTC unaffected — the interviewer can speak to candidate.
   });
-
-  // Remove lockout overlay when candidate returns
-  socket.on('candidate-lockout-end', function(){
-    var ov = $('candidate-lockout-overlay');
-    ov.classList.remove('active');
-    $('s-status').textContent = 'Live';
-    $('s-status').className = 'badge badge-green';
+  socket.on('candidate-lockout-end',function(){
+    $('candidate-lockout-overlay').classList.remove('active');
+    $('s-status').textContent='Live'; $('s-status').className='badge badge-green';
     toast('Candidate returned from lockout','amber',3000);
   });
+  socket.on('peer-left',function(){$('s-status').textContent='Disconnected';$('s-status').className='badge badge-red';toast('Candidate disconnected','amber');});
 }
 
 async function startWebRTC(isInit){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
-  if(localStream) localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
   pc.ontrack=function(e){remoteStream=e.streams[0];$('remote-vid').srcObject=remoteStream;};
   pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionId,candidate:e.candidate});};
   if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionId,offer:o});}
@@ -551,11 +509,11 @@ async function startWebRTC(isInit){
 
 async function endSession(){
   if(!confirm('End this session?'))return;
-  if(isRec) stopRec();
-  if(timerInterval) clearInterval(timerInterval);
-  if(socket) socket.emit('session-ended',{sessionId:sessionId});
+  if(isRec)stopRec();
+  if(timerInterval)clearInterval(timerInterval);
+  if(socket)socket.emit('session-ended',{sessionId:sessionId});
   await patch('/api/sessions/'+sessionId,{status:'ended'});
-  try{ await post('/api/recordings/session/'+sessionId+'/sync',{}); }catch(e){}
+  try{await post('/api/recordings/session/'+sessionId+'/sync',{});}catch(e){}
   setTimeout(function(){location.href='/dashboard';},600);
 }
 
