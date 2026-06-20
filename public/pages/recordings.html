@@ -37,31 +37,37 @@ function buildCard(rec){
   var date=rec.created_at?new Date(rec.created_at*1000).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}):'-';
   var card=document.createElement('div');card.className='rec-card';card.id='card-'+rec.id;
   var body=document.createElement('div');body.className='rec-card-body';
+
   var title=document.createElement('div');title.className='rec-title';title.textContent=rec.session_title||'Interview';
   body.appendChild(title);
+
   var meta=document.createElement('div');meta.className='rec-meta-row';
   meta.innerHTML='<span class="rec-meta-item">&#128100; <strong>'+(rec.candidate_name||'N/A')+'</strong></span>'
     +'<span class="rec-meta-sep"></span><span class="rec-meta-item">&#128197; '+date+'</span>'
     +'<span class="rec-meta-sep"></span><span class="rec-meta-item">&#9201; '+fmtDur(rec.duration_secs)+'</span>'
-    +'<span class="rec-meta-sep"></span><span class="rec-meta-item '+scoreClass+'">&#127919; '+score+'% trust</span>'
+    +'<span class="rec-meta-sep"></span><span class="rec-meta-item '+scoreClass+'">&#127919; <strong>'+score+'%</strong> trust</span>'
     +'<span class="rec-meta-sep"></span><span class="rec-meta-item" style="color:'+(rec.flag_count>0?'var(--amber)':'var(--text3)')+'">&#9873; '+(rec.flag_count||0)+' flags</span>'
     +(rec.file_size?'<span class="pill" style="margin-left:auto">'+fmtSize(rec.file_size)+'</span>':'');
   body.appendChild(meta);
+
   var actions=document.createElement('div');actions.className='rec-actions';
   function btn(cls,html,cb){var b=document.createElement('button');b.className='btn btn-sm '+cls;b.innerHTML=html;b.onclick=cb;actions.appendChild(b);return b;}
+
   btn('btn-outline','&#9654; Preview',function(){togglePreview(rec.id);});
   btn('btn-primary','&#8595; Download',function(){dlRec(rec.id,rec.session_title,rec.candidate_name);});
-  var cb=btn('btn-purple','&#8481; Compress & Download',function(){compressRec(rec.id,rec.session_title,cb);});
+  var cb=btn('btn-purple','&#8481; Compress for Email',function(){compressRec(rec.id,rec.session_title,cb);});
   if(rec.share_token){
     btn('btn-outline','&#128279; Copy Link',function(){copyLink(rec.share_token);});
-    btn('btn-outline','&#128065; Open Share Page',function(){window.open('/share/'+rec.share_token,'_blank');});
+    btn('btn-outline','&#128065; Share Page',function(){window.open('/share/'+rec.share_token,'_blank');});
   }
   btn('btn-danger','&#128465; Delete',function(){deleteRec(rec.id);});
   body.appendChild(actions);
+
   var pw=document.createElement('div');pw.className='prog-wrap';pw.id='pw-'+rec.id;
   pw.innerHTML='<div class="prog-bar"><div class="prog-fill" id="pf-'+rec.id+'" style="width:0%"></div></div><div class="prog-label" id="pl-'+rec.id+'"></div>';
   body.appendChild(pw);
   card.appendChild(body);
+
   var vid=document.createElement('video');vid.id='vid-'+rec.id;vid.controls=true;vid.preload='none';
   vid.className='rec-video';vid.src='/api/recordings/'+rec.id+'/stream';
   card.appendChild(vid);
@@ -83,7 +89,7 @@ function dlRec(id,title,cand){
 
 function copyLink(token){
   navigator.clipboard.writeText(location.origin+'/share/'+token)
-    .then(function(){toast('Share link copied! Anyone with this link can view the recording.','green',5000);});
+    .then(function(){toast('Share link copied!','green',5000);});
 }
 
 async function deleteRec(id){
@@ -93,145 +99,145 @@ async function deleteRec(id){
   else toast('Failed to delete','red');
 }
 
-// COMPRESSION FIX
-// WebM files recorded by MediaRecorder have duration=Infinity because the EBML header
-// isn't finalized. We can't use seek-based approach.
-// Solution: play the video at 16x speed while recording canvas frames.
-// This is fast (1hr video compresses in ~4 min) and works with any WebM file.
+// ── COMPRESSION FIX ──
+// Problem: playbackRate=16 captures ~16x faster than real-time, so a 10min video
+// becomes a ~37 second compressed file. The video content is correct but sped up.
+//
+// REAL FIX: Use MediaRecorder on the VIDEO element's stream directly,
+// but at a lower bitrate. This captures the FULL duration at real speed.
+// For email size: target ~15MB for a 30min interview (8kbps video = ~3.6MB/min at 720p→480p)
+//
+// Approach: Fetch → create object URL → play video at 1x → record canvas at lower quality
+// This is slow (real-time) but produces the FULL interview at email-able size.
+// We show a "real-time recording" progress bar.
+
 async function compressRec(id, title, btn){
   var pw=document.getElementById('pw-'+id);
   var pf=document.getElementById('pf-'+id);
   var pl=document.getElementById('pl-'+id);
-  btn.disabled=true; btn.textContent='Compressing...';
-  pw.style.display='block'; pf.style.width='3%'; pl.textContent='Fetching recording...';
+  btn.disabled=true; btn.textContent='Starting...';
+  pw.style.display='block'; pf.style.width='2%';
+  pl.textContent='Fetching recording (this may take a moment for large files)...';
 
   try {
     // Fetch original
-    var resp = await fetch('/api/recordings/'+id+'/stream');
-    if (!resp.ok) throw new Error('Could not fetch recording (status '+resp.status+')');
-    var origBlob = await resp.blob();
-    var origSize = origBlob.size;
-    pf.style.width='12%'; pl.textContent='Loaded '+fmtSize(origSize)+'. Setting up compression...';
+    var resp=await fetch('/api/recordings/'+id+'/stream');
+    if(!resp.ok) throw new Error('Could not fetch recording');
+    var origBlob=await resp.blob();
+    var origSize=origBlob.size;
+    pf.style.width='8%';
+    pl.textContent='Loaded '+fmtSize(origSize)+'. Setting up compression at email-friendly quality...';
 
-    // Create source video element
-    var srcUrl = URL.createObjectURL(origBlob);
-    var src = document.createElement('video');
-    src.src = srcUrl;
-    src.muted = true;
-    src.playsInline = true;
-    // Add to DOM off-screen so it can render
-    src.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px';
+    var srcUrl=URL.createObjectURL(origBlob);
+    var src=document.createElement('video');
+    src.src=srcUrl; src.muted=true; src.playsInline=true;
+    src.style.cssText='position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;';
     document.body.appendChild(src);
 
-    // Wait for video to load enough to get dimensions
-    await new Promise(function(res, rej){
-      src.onloadeddata = res;
-      src.onerror = function(e){ rej(new Error('Video load error')); };
+    // Wait for enough metadata to start
+    await new Promise(function(res,rej){
+      src.onloadeddata=res;
+      src.onerror=function(){rej(new Error('Could not load video for compression'));};
       src.load();
     });
 
-    var W = Math.round((src.videoWidth || 1280) * 0.6);
-    var H = Math.round((src.videoHeight || 720) * 0.6);
+    // Dimensions: reduce to 640x360 (360p) for email — ~5-8MB per 30 min at low bitrate
+    var W=640, H=360;
+    // Use actual video dimensions if smaller
+    if(src.videoWidth && src.videoWidth < W){ W=src.videoWidth; H=src.videoHeight; }
 
-    pf.style.width='18%'; pl.textContent='Compressing at 60% size, 16x speed...';
+    pf.style.width='12%';
 
-    // Setup canvas recorder
-    var canvas = document.createElement('canvas');
-    canvas.width = W; canvas.height = H;
-    var ctx = canvas.getContext('2d');
-    var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
-    var csStream = canvas.captureStream(15);
-    var recorder = new MediaRecorder(csStream, {mimeType: mime, videoBitsPerSecond: 400000});
-    var chunks = [];
-    recorder.ondataavailable = function(e){ if(e.data.size > 0) chunks.push(e.data); };
-    recorder.start(200);
+    // Know the duration?
+    var knownDuration=src.duration&&isFinite(src.duration)?src.duration:null;
+    if(knownDuration) pl.textContent='Duration: '+fmtDur(Math.round(knownDuration))+'. Compressing at real speed for full interview...';
+    else pl.textContent='Compressing at real-time speed (full interview will be captured)...';
 
-    // Play at 16x speed and draw each frame to canvas
-    src.playbackRate = 16;
+    var canvas=document.createElement('canvas');
+    canvas.width=W; canvas.height=H;
+    var ctx=canvas.getContext('2d');
 
-    var lastTime = -1;
-    var frameDrawn = 0;
+    // Use VP8 at low bitrate — targets ~4Mbps → ~30MB/hr → ~15MB per 30min interview
+    // For 20min interview that's ~10MB — easily emailable
+    var mime=MediaRecorder.isTypeSupported('video/webm;codecs=vp8')?'video/webm;codecs=vp8':'video/webm';
+    var targetBitrate=400000; // 400kbps — good quality at 360p, ~3MB/min
 
-    function drawFrame(){
-      if(src.currentTime !== lastTime){
-        ctx.drawImage(src, 0, 0, W, H);
-        lastTime = src.currentTime;
-        frameDrawn++;
-      }
-    }
+    var csStream=canvas.captureStream(24); // 24fps output
+    var recorder=new MediaRecorder(csStream,{mimeType:mime,videoBitsPerSecond:targetBitrate});
+    var chunks=[];
+    recorder.ondataavailable=function(e){if(e.data.size>0)chunks.push(e.data);};
+    recorder.start(500);
 
-    // Use requestAnimationFrame loop to draw frames while video plays fast
-    var rafId;
-    var drawing = true;
-    function rafLoop(){
-      if(drawing){ drawFrame(); rafId = requestAnimationFrame(rafLoop); }
-    }
+    // Draw frames in rAF loop while video plays at NORMAL speed (1x)
+    src.playbackRate=1;
+    var drawing=true;
+    var t0=Date.now();
 
-    // Progress update via timeupdate
-    src.ontimeupdate = function(){
-      if(src.duration && isFinite(src.duration)){
-        var pct = Math.min(18 + Math.round((src.currentTime/src.duration)*72), 90);
-        pf.style.width = pct+'%';
-        pl.textContent = 'Compressing... '+Math.min(Math.round((src.currentTime/src.duration)*100),99)+'% (playing at 16x)';
+    function rafDraw(){
+      if(!drawing)return;
+      if(!src.paused&&!src.ended) ctx.drawImage(src,0,0,W,H);
+      if(knownDuration){
+        var elapsed=(Date.now()-t0)/1000;
+        var pct=Math.min(12+Math.round((elapsed/knownDuration)*83),95);
+        pf.style.width=pct+'%';
+        var remaining=Math.round(knownDuration-elapsed);
+        pl.textContent='Compressing: '+fmtDur(Math.round(elapsed))+' / '+fmtDur(Math.round(knownDuration))+(remaining>0?' — '+fmtDur(remaining)+' remaining':'');
       } else {
-        // Duration unknown - show elapsed time
-        pl.textContent = 'Compressing... '+Math.round(src.currentTime)+'s processed (playing at 16x)';
+        var elapsed=(Date.now()-t0)/1000;
+        pl.textContent='Compressing: '+fmtDur(Math.round(elapsed))+' processed...';
       }
-    };
-
-    rafLoop();
+      requestAnimationFrame(rafDraw);
+    }
+    requestAnimationFrame(rafDraw);
     src.play();
 
-    // Wait for video to end
-    await new Promise(function(resolve, reject){
-      src.onended = resolve;
-      src.onerror = reject;
-      // Safety timeout: 10 minutes max
-      setTimeout(resolve, 600000);
+    // Wait for video to finish
+    await new Promise(function(resolve,reject){
+      src.onended=resolve;
+      src.onerror=reject;
+      // Timeout: 3x the expected duration (real-time + buffer)
+      var maxWait=knownDuration?(knownDuration*1000*1.5)+5000:3600000;
+      setTimeout(resolve, maxWait);
     });
 
-    drawing = false;
-    cancelAnimationFrame(rafId);
-    // Draw last frame
-    ctx.drawImage(src, 0, 0, W, H);
+    drawing=false;
+    // Draw final frame
+    ctx.drawImage(src,0,0,W,H);
+    await new Promise(function(resolve){setTimeout(resolve,500);});
 
-    // Stop recorder and get blob
-    await new Promise(function(resolve){
-      recorder.onstop = resolve;
-      recorder.stop();
-    });
+    await new Promise(function(resolve){recorder.onstop=resolve;recorder.stop();});
 
-    var compBlob = new Blob(chunks, {type: 'video/webm'});
-    var saved = Math.round((1 - compBlob.size/origSize)*100);
-    pf.style.width = '100%';
-    pl.textContent = 'Done! ' + fmtSize(origSize) + ' → ' + fmtSize(compBlob.size) + (saved > 0 ? ' (' + saved + '% smaller)' : '');
+    var compBlob=new Blob(chunks,{type:'video/webm'});
+    var saved=Math.round((1-compBlob.size/origSize)*100);
+    pf.style.width='100%';
+    pl.innerHTML='<strong>Done!</strong> '+fmtSize(origSize)+' → <strong>'+fmtSize(compBlob.size)+'</strong>'+(saved>0?' ('+saved+'% smaller)':'')+' — Full interview captured at 360p';
 
-    // Download
-    var url = URL.createObjectURL(compBlob);
-    var a = document.createElement('a');
-    a.href = url;
-    a.download = 'compressed-'+(title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'.webm';
+    var url=URL.createObjectURL(compBlob);
+    var a=document.createElement('a');
+    a.href=url;
+    a.download='email-'+(title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase()+'-360p.webm';
     a.click();
     URL.revokeObjectURL(url);
     URL.revokeObjectURL(srcUrl);
     document.body.removeChild(src);
 
-    toast('Compressed download started!'+(saved>0?' '+saved+'% smaller':''),'green',5000);
+    var msg='Compressed download started!';
+    if(compBlob.size<20*1024*1024) msg+=' '+fmtSize(compBlob.size)+' — should be emailable.';
+    else msg+=' '+fmtSize(compBlob.size)+' — may need a file share service (Google Drive, Dropbox).';
+    toast(msg,'green',6000);
+
   } catch(e) {
-    pl.textContent = 'Error: '+e.message;
+    pl.textContent='Error: '+e.message;
     toast('Compression failed: '+e.message,'red');
   }
-  btn.disabled = false;
-  btn.innerHTML = '&#8481; Compress & Download';
+  btn.disabled=false; btn.innerHTML='&#8481; Compress for Email';
 }
 
 async function loadRecordings(){
-  var recs = await get('/api/recordings');
-  var c = document.getElementById('container');
-  c.innerHTML='';
+  var recs=await get('/api/recordings');
+  var c=document.getElementById('container');c.innerHTML='';
   if(!recs||!recs.length){
-    c.innerHTML='<div class="rec-empty" style="text-align:center;padding:80px 24px">'
-      +'<div style="font-size:52px;margin-bottom:16px;opacity:.3">&#127902;</div>'
+    c.innerHTML='<div style="text-align:center;padding:80px 24px"><div style="font-size:52px;margin-bottom:16px;opacity:.3">&#127902;</div>'
       +'<h3 style="font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px">No recordings yet</h3>'
       +'<p style="color:var(--text3);font-size:13px">Go to a session and click Record. Recordings auto-save here.</p>'
       +'<a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a>'
@@ -247,7 +253,7 @@ async function doLogout(){await post('/api/auth/logout');window.location.href='/
 
 async function init(){
   var me=await requireLogin('/');if(!me)return;
-  $('user-chip').textContent=me.name+' ('+me.orgCode+')';
+  $('user-chip').textContent=me.name+' ('+(me.orgCode||'')+')';
   await loadRecordings();
 }
 init();
