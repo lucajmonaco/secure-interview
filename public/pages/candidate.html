@@ -4,38 +4,35 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Interview — Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
-<style>
-/* PAUSE OVERLAY — shown when candidate switches windows */
-#pause-overlay{
-  display:none;
-  position:fixed;inset:0;z-index:8888;
-  background:rgba(0,0,0,0.93);
-  flex-direction:column;align-items:center;justify-content:center;
-  text-align:center;padding:48px;
-  backdrop-filter:blur(8px);
-}
-#pause-overlay.active{display:flex;}
-.pause-icon{font-size:72px;margin-bottom:24px;animation:pausePulse 1.5s infinite}
-@keyframes pausePulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
-.pause-title{font-size:28px;font-weight:800;color:#ef4444;margin-bottom:12px;letter-spacing:-.5px}
-.pause-sub{font-size:16px;color:#94a3b8;max-width:460px;line-height:1.7;margin-bottom:28px}
-.pause-return-btn{padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit}
-.pause-return-btn:hover{background:#60a5fa}
-.pause-count{font-size:13px;color:#475569;margin-top:16px}
-</style>
+<!-- MediaPipe Face Mesh for eye/gaze tracking -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1632090044/camera_utils.js" crossorigin="anonymous"></script>
 </head>
 <body class="cand-body" style="background:#050709">
 
 <div id="warn-banner" class="warn-banner"></div>
 
-<!-- PAUSE OVERLAY — shown when candidate leaves window -->
+<!-- TAB ENFORCEMENT OVERLAY — must close all other tabs first -->
+<div id="tab-block-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
+  <div style="font-size:64px;margin-bottom:20px">&#128683;</div>
+  <h2 style="font-size:26px;font-weight:800;color:#ef4444;margin-bottom:12px">Other Tabs Detected</h2>
+  <p style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:28px">
+    You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other browser tab(s) open.<br>
+    All other tabs must be closed before you can join this interview.<br>
+    <strong style="color:#ef4444">The session cannot start until all other tabs are closed.</strong>
+  </p>
+  <div style="font-size:13px;color:#475569;margin-bottom:24px" id="tab-list-hint"></div>
+  <button onclick="recheckTabs()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I've Closed All Tabs — Check Again</button>
+</div>
+
+<!-- PAUSE OVERLAY — shown when candidate switches windows/tabs -->
 <div id="pause-overlay">
   <div class="pause-icon">&#9208;&#65039;</div>
   <div class="pause-title">Session Paused</div>
   <div class="pause-sub">
     You have switched away from the interview window.<br>
     The session is paused and your interviewer has been notified.<br>
-    <strong style="color:#f59e0b">Please close all other windows and return to this tab.</strong>
+    <strong style="color:#f59e0b">Please return to this tab and close all other windows.</strong>
   </div>
   <button class="pause-return-btn" onclick="returnToInterview()">I'm Back — Resume Interview</button>
   <div class="pause-count" id="pause-count"></div>
@@ -43,13 +40,13 @@
 
 <!-- JOIN SCREEN -->
 <div id="join-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:22px;text-align:center;padding:40px;min-height:100vh">
-  <div style="font-size:64px;animation:goodbyeIn .6s ease">&#127908;</div>
+  <div style="font-size:64px">&#127908;</div>
   <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
-  <p style="color:#64748b;max-width:440px;line-height:1.8;font-size:15px">
+  <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">
     Your camera and microphone will be activated. You will see yourself and your interviewer side by side.<br>
-    <strong style="color:#ef4444;font-size:13px">&#9888; All activity is monitored. Switching windows will pause and flag your session.</strong>
+    <strong style="color:#ef4444;font-size:13px">&#9888; All activity is monitored. All other browser tabs must be closed before joining.</strong>
   </p>
-  <button class="btn btn-primary btn-lg" id="join-btn" onclick="doJoin()" style="min-width:200px">Join Interview</button>
+  <button class="btn btn-primary btn-lg" id="join-btn" onclick="attemptJoin()" style="min-width:200px">Join Interview</button>
   <div id="join-info" style="font-size:13px;color:#374151;margin-top:4px"></div>
 </div>
 
@@ -57,10 +54,11 @@
 <div id="interview-screen" style="display:none;flex-direction:column;flex:1;min-height:0;height:100vh">
   <div class="cand-topbar">
     <div class="cand-logo">SecureInterview</div>
-    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
       <span id="session-paused-chip" class="badge badge-red" style="display:none">&#9208; Paused</span>
+      <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">&#128065; Gaze Off</span>
     </div>
   </div>
   <div class="video-grid" id="video-grid">
@@ -70,6 +68,7 @@
     </div>
     <div class="video-box">
       <video id="local-vid" autoplay playsinline muted></video>
+      <canvas id="gaze-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none"></canvas>
       <div class="video-name">You</div>
     </div>
   </div>
@@ -95,295 +94,337 @@
 var code = location.pathname.split('/').pop().toUpperCase();
 var socket, pc, localStream, sessionData, startTime = Date.now();
 
-// ── FLAG SPAM PREVENTION ──
-// Each key maps to whether it has already been flagged EVER this session (for one-time flags)
-// or the last timestamp it was flagged (for cooldown-based flags)
-var flaggedOnce = {};      // flags that should only fire ONCE per session
-var flagCooldowns = {};    // last timestamp a flag was sent (for per-event flags with cooldown)
+// ── FLAG SYSTEM (no spam) ──
+var flaggedOnce = {};
+var flagCooldowns = {};
+function elapsed(){ var s=Math.floor((Date.now()-startTime)/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function warn(msg){ var b=$('warn-banner'); b.textContent=msg; b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(function(){ b.style.display='none'; },5000); }
+function sendFlagOnce(key,text,detail,severity){ if(flaggedOnce[key])return; flaggedOnce[key]=true; doSendFlag(text,detail,severity); }
+function sendFlagCooldown(key,text,detail,severity,cd){ var now=Date.now(); if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return; flagCooldowns[key]=now; doSendFlag(text,detail,severity); }
+function doSendFlag(text,detail,severity){ var flag={text:text,detail:detail,severity:severity,time:elapsed()}; if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag}); fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){}); }
 
-function elapsed(){
-  var s = Math.floor((Date.now()-startTime)/1000);
-  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+// ── PAUSE SYSTEM ──
+var isPaused=false, pauseCount=0, blurTimer=null;
+function pauseSession(){ if(isPaused)return; isPaused=true; pauseCount++; $('pause-overlay').classList.add('active'); $('session-paused-chip').style.display=''; $('pause-count').textContent='Session paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=false;}); }
+function resumeSession(){ if(!isPaused)return; isPaused=false; $('pause-overlay').classList.remove('active'); $('session-paused-chip').style.display='none'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=true;}); }
+function returnToInterview(){ resumeSession(); window.focus(); }
+
+// ── TAB ENFORCEMENT ──
+// Uses BroadcastChannel to detect other tabs of the same origin
+var bc = null;
+var otherTabsDetected = false;
+var tabId = Math.random().toString(36).slice(2);
+
+function initTabEnforcement(){
+  try {
+    bc = new BroadcastChannel('secure_interview_tabs');
+    // Announce our presence
+    bc.postMessage({type:'TAB_ANNOUNCE', id:tabId});
+    // Listen for other tabs
+    bc.onmessage = function(e){
+      if(e.data.type === 'TAB_ANNOUNCE' && e.data.id !== tabId){
+        // Another tab of this origin opened — flag and pause
+        if(!flaggedOnce['tab-opened-during-interview'] && isPaused===false){
+          sendFlagOnce('tab-opened-during-interview','New Tab Opened During Interview','Candidate opened a new browser tab during the interview','high');
+          warn('&#9888; A new tab was detected! Your session is being reviewed.');
+        }
+      }
+      if(e.data.type === 'TAB_OPEN_CHECK'){
+        // Someone is checking if other tabs exist — respond
+        bc.postMessage({type:'TAB_RESPONSE', id:tabId});
+      }
+    };
+  } catch(e) { console.warn('BroadcastChannel not supported:', e.message); }
 }
 
-function warn(msg){
-  var b = $('warn-banner');
-  b.textContent = msg; b.style.display = 'block';
-  clearTimeout(b._t); b._t = setTimeout(function(){ b.style.display = 'none'; }, 5000);
+function checkOtherTabsOpen(){
+  return new Promise(function(resolve){
+    if(!window.BroadcastChannel){ resolve(0); return; }
+    var responses = 0;
+    var checkBc = new BroadcastChannel('secure_interview_tabs');
+    var timeout = setTimeout(function(){
+      checkBc.close();
+      resolve(responses);
+    }, 500);
+    checkBc.onmessage = function(e){
+      if(e.data.type==='TAB_RESPONSE' && e.data.id!==tabId) responses++;
+    };
+    checkBc.postMessage({type:'TAB_OPEN_CHECK', id:tabId});
+  });
 }
 
-// Send a flag that fires ONCE per session (e.g. multiple displays detected)
-function sendFlagOnce(key, text, detail, severity){
-  if(flaggedOnce[key]) return; // already fired, skip
-  flaggedOnce[key] = true;
-  doSendFlag(text, detail, severity);
+async function recheckTabs(){
+  var count = await checkOtherTabsOpen();
+  if(count > 0){
+    $('other-tab-count').textContent = count;
+    $('tab-list-hint').textContent = 'Still detecting '+count+' other tab(s). Please close them and try again.';
+  } else {
+    $('tab-block-overlay').style.display='none';
+    // Continue with join
+    doJoin();
+  }
 }
 
-// Send a flag with a cooldown (e.g. window blur — one flag per blur event, no spamming)
-function sendFlagCooldown(key, text, detail, severity, cooldownMs){
-  var now = Date.now();
-  var cd = cooldownMs || 2000; // default 2s cooldown between same flag type
-  if(flagCooldowns[key] && (now - flagCooldowns[key]) < cd) return;
-  flagCooldowns[key] = now;
-  doSendFlag(text, detail, severity);
+async function attemptJoin(){
+  var btn = $('join-btn');
+  btn.disabled=true; btn.textContent='Checking tabs...';
+  var otherTabs = await checkOtherTabsOpen();
+  if(otherTabs > 0){
+    $('other-tab-count').textContent = otherTabs;
+    $('tab-block-overlay').style.display='flex';
+    btn.disabled=false; btn.textContent='Join Interview';
+  } else {
+    doJoin();
+  }
 }
 
-function doSendFlag(text, detail, severity){
-  var flag = {text:text, detail:detail, severity:severity, time:elapsed()};
-  if(socket) socket.emit('candidate-flag', {sessionId:sessionData&&sessionData.id, flag:flag});
-  fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags', {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({text:text, detail:detail, severity:severity, timeOffset:elapsed()})
-  }).catch(function(){});
+// ── AUDIO MISMATCH DETECTION ──
+// Detects multiple simultaneous speakers using Web Audio API
+var audioCtx = null, analyserNode = null, audioCheckInterval = null;
+var silenceStreak = 0, voiceActive = false;
+
+function initAudioMonitoring(stream){
+  try {
+    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+    var source = audioCtx.createMediaStreamSource(stream);
+    analyserNode = audioCtx.createAnalyser();
+    analyserNode.fftSize = 2048;
+    analyserNode.smoothingTimeConstant = 0.8;
+    source.connect(analyserNode);
+    var dataArray = new Uint8Array(analyserNode.frequencyBinCount);
+    var voiceDetectedAt = null;
+    var bgVoiceBuffer = [];
+
+    audioCheckInterval = setInterval(function(){
+      analyserNode.getByteFrequencyData(dataArray);
+      // Measure energy in voice frequency range (300Hz-3400Hz)
+      // FFT bins for 300-3400Hz at 48kHz sample rate, 2048 bins: bins ~12-140
+      var binStart = Math.floor(300/(audioCtx.sampleRate/2)*analyserNode.frequencyBinCount);
+      var binEnd = Math.floor(3400/(audioCtx.sampleRate/2)*analyserNode.frequencyBinCount);
+      var voiceEnergy = 0;
+      for(var i=binStart;i<binEnd;i++) voiceEnergy+=dataArray[i];
+      var avgEnergy = voiceEnergy/(binEnd-binStart);
+
+      // Check for simultaneous multiple voices (background voice energy)
+      // If candidate mic picks up TWO distinct voice frequency peaks, flag it
+      var peakCount = 0;
+      var lastVal = 0, rising = false;
+      for(var j=binStart;j<binEnd;j++){
+        if(dataArray[j]>lastVal&&!rising){ rising=true; }
+        else if(dataArray[j]<lastVal&&rising&&lastVal>60){ peakCount++; rising=false; }
+        lastVal=dataArray[j];
+      }
+
+      bgVoiceBuffer.push(peakCount);
+      if(bgVoiceBuffer.length>10) bgVoiceBuffer.shift();
+      var avgPeaks = bgVoiceBuffer.reduce(function(a,b){return a+b;},0)/bgVoiceBuffer.length;
+
+      // If consistently detecting 2+ voice peaks simultaneously, flag background voice
+      if(avgPeaks >= 2.5 && avgEnergy > 20){
+        sendFlagCooldown('bg-voice','Background Voice Detected','Audio analysis detected a second voice speaking simultaneously — possible coaching','high',20000);
+        warn('&#127908; Background voice detected — coaching not permitted');
+      }
+    }, 500);
+  } catch(e){ console.warn('Audio monitoring failed:', e.message); }
 }
 
-// ── SESSION PAUSE SYSTEM ──
-var isPaused = false;
-var pauseCount = 0;
-var blurTime = null;
-var blurTimer = null;
+// ── GAZE / EYE TRACKING ──
+// Uses MediaPipe Face Mesh to detect when candidate's eyes are looking away from screen
+var faceMesh = null, gazeCamera = null;
+var gazeOffStart = null, gazeOffFlagged = false;
+var gazeCheckReady = false;
+var GAZE_THRESHOLD_SEC = 5; // flag after looking away for 5+ seconds
 
-function pauseSession(reason){
-  if(isPaused) return; // already paused, don't stack
-  isPaused = true;
-  pauseCount++;
+function initGazeTracking(videoEl){
+  try {
+    if(typeof FaceMesh === 'undefined'){ console.warn('FaceMesh not loaded'); return; }
 
-  // Show pause overlay
-  $('pause-overlay').classList.add('active');
-  $('session-paused-chip').style.display = '';
+    faceMesh = new FaceMesh({locateFile:function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/'+f; }});
+    faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
 
-  // Update pause count display
-  $('pause-count').textContent = 'This session has been paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.';
+    faceMesh.onResults(function(results){
+      if(!results.multiFaceLandmarks||results.multiFaceLandmarks.length===0){
+        // No face detected
+        if(!gazeOffStart) gazeOffStart=Date.now();
+        var awayMs=Date.now()-gazeOffStart;
+        if(awayMs>3000) $('gaze-chip').style.display='';
+        if(awayMs>GAZE_THRESHOLD_SEC*1000){
+          sendFlagCooldown('face-not-visible','Face Not Visible','Candidate's face was not visible for '+Math.round(awayMs/1000)+'s','high',10000);
+          warn('&#128064; Please keep your face visible on camera');
+        }
+        return;
+      }
+      var landmarks = results.multiFaceLandmarks[0];
+      // Eye landmarks: left iris center ~468, right iris center ~473
+      // Left eye corners: 33 (inner), 133 (outer) | Right eye: 362 (inner), 263 (outer)
+      // Calculate iris position relative to eye width to determine gaze direction
+      var leftIris = landmarks[468];
+      var leftInner = landmarks[133];
+      var leftOuter = landmarks[33];
+      var rightIris = landmarks[473];
+      var rightInner = landmarks[362];
+      var rightOuter = landmarks[263];
 
-  // Mute local video (candidate shouldn't be heard off-screen)
-  if(localStream) localStream.getAudioTracks().forEach(function(t){ t.enabled = false; });
-}
+      if(!leftIris||!rightIris){ gazeOffStart=null; $('gaze-chip').style.display='none'; return; }
 
-function resumeSession(){
-  if(!isPaused) return;
-  isPaused = false;
-  $('pause-overlay').classList.remove('active');
-  $('session-paused-chip').style.display = 'none';
+      // Horizontal gaze ratio: 0=looking left, 1=looking right, ~0.4-0.6=center
+      var leftGaze=(leftIris.x-leftOuter.x)/(leftInner.x-leftOuter.x);
+      var rightGaze=(rightIris.x-rightInner.x)/(rightOuter.x-rightInner.x);
+      var avgGaze=(leftGaze+rightGaze)/2;
 
-  // Restore audio
-  if(localStream) localStream.getAudioTracks().forEach(function(t){ t.enabled = true; });
-}
+      // Vertical gaze
+      var leftEyeTop=landmarks[159];var leftEyeBot=landmarks[145];
+      var leftIrisVert=(leftIris.y-leftEyeTop.y)/(leftEyeBot.y-leftEyeTop.y);
+      var lookingAway=avgGaze<0.25||avgGaze>0.75||leftIrisVert<0.2||leftIrisVert>0.8;
 
-function returnToInterview(){
-  resumeSession();
-  window.focus();
+      if(lookingAway){
+        if(!gazeOffStart) gazeOffStart=Date.now();
+        var awayMs=Date.now()-gazeOffStart;
+        $('gaze-chip').style.display='';
+        if(awayMs>GAZE_THRESHOLD_SEC*1000){
+          sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate appeared to look away from screen for '+Math.round(awayMs/1000)+'s (gaze ratio: '+avgGaze.toFixed(2)+')','medium',12000);
+          warn('&#128065; Please keep your eyes on the screen');
+        }
+      } else {
+        gazeOffStart=null;
+        $('gaze-chip').style.display='none';
+      }
+    });
+
+    // Use Camera utility to feed frames
+    gazeCamera = new Camera(videoEl, {
+      onFrame: async function(){
+        if(faceMesh) await faceMesh.send({image:videoEl});
+      },
+      width:320, height:240
+    });
+    gazeCamera.start();
+    gazeCheckReady = true;
+  } catch(e){ console.warn('Gaze tracking failed:', e.message); }
 }
 
 // ── DISPLAY DETECTION ──
-// Only fires ONCE per session — no spam
+var displayCheckInterval=null;
 function checkDisplays(){
-  if(flaggedOnce['multi-display']) return; // already flagged, don't recheck
-  if(typeof window.screen.isExtended !== 'undefined' && window.screen.isExtended){
-    sendFlagOnce('multi-display', 'Multiple Displays Detected', 'Candidate has extended/multiple displays connected', 'high');
-    warn('&#9888; Multiple displays detected — this has been flagged');
-    return;
-  }
-  // Check window position for secondary monitor
-  var x = window.screenX || window.screenLeft || 0;
-  var y = window.screenY || window.screenTop || 0;
-  if(x < -100 || y < -100 || x > window.screen.width + 100 || y > window.screen.height + 100){
-    sendFlagOnce('multi-display', 'Window on Secondary Display', 'Candidate window appears positioned on a secondary monitor', 'high');
-    warn('&#9888; Secondary display detected — this has been flagged');
-  }
+  if(flaggedOnce['multi-display'])return;
+  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){ sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays connected','high'); warn('&#9888; Multiple displays detected — this has been flagged'); return; }
+  var x=window.screenX||0,y=window.screenY||0;
+  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){ sendFlagOnce('multi-display','Window on Secondary Display','Candidate window on secondary monitor','high'); warn('&#9888; Secondary display detected'); }
 }
 
+// ── ALL PROTECTION ──
 function setupProtection(){
-  // ── Tab Visibility Switch ── (one flag per switch event, 3s cooldown to prevent double-fire)
-  document.addEventListener('visibilitychange', function(){
-    if(document.hidden){
-      warn('&#9888; You left the interview tab! Return immediately.');
-      sendFlagCooldown('tab-switch', 'Tab Switch', 'Candidate switched to another tab', 'medium', 3000);
-      pauseSession('tab-switch');
-    } else {
-      // Tab came back into view
-      resumeSession();
+  // Tab switching
+  document.addEventListener('visibilitychange',function(){ if(document.hidden){ warn('&#9888; You left the interview tab!'); sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab','medium',3000); pauseSession(); } else { resumeSession(); } });
+
+  // Window blur
+  window.addEventListener('blur',function(){ warn('&#9888; You left the interview window!'); sendFlagCooldown('window-blur','Window Switch','Candidate switched away from interview','medium',3000); pauseSession(); blurTimer=setTimeout(function(){ if(isPaused) sendFlagCooldown('extended-absence','Extended Absence','Candidate away for 10+ seconds','high',15000); },10000); });
+  window.addEventListener('focus',function(){ clearTimeout(blurTimer); if(isPaused&&!document.hidden) resumeSession(); });
+
+  // Copy/paste/cut
+  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy','medium',2000);});
+  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
+  document.addEventListener('cut',function(e){e.preventDefault();sendFlagCooldown('cut','Cut Detected','Candidate attempted to cut','low',2000);});
+
+  // Right click
+  document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Candidate right-clicked','low',2000);});
+
+  // Keyboard
+  document.addEventListener('keydown',function(e){
+    if(e.key==='F12'){e.preventDefault();warn('DevTools not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
+    if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();sendFlagCooldown('refresh','Refresh Attempt','Candidate tried to refresh','medium',3000);}
+    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j','t','w','n'].includes(e.key.toLowerCase())){
+      e.preventDefault();warn('Shortcut blocked: Ctrl+'+e.key.toUpperCase());
+      // Ctrl+T (new tab), Ctrl+N (new window), Ctrl+W (close tab) — extra flag
+      if(['t','n'].includes(e.key.toLowerCase())) sendFlagCooldown('new-tab-shortcut','New Tab/Window Shortcut','Candidate tried to open a new tab (Ctrl+'+e.key.toUpperCase()+')','high',3000);
+      else sendFlagCooldown('shortcut-'+e.key.toLowerCase(),'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
     }
   });
 
-  // ── Window Blur (switching apps/windows) ── one flag per blur, pause session
-  window.addEventListener('blur', function(){
-    blurTime = Date.now();
-    warn('&#9888; You left the interview window! The session is now paused.');
-    // Flag: one per blur event with 3s cooldown so visibilitychange+blur don't double-flag
-    sendFlagCooldown('window-blur', 'Window Switch', 'Candidate switched away from interview window', 'medium', 3000);
-    pauseSession('window-blur');
-
-    // Additional HIGH severity flag if away for >10s (only fires once per extended absence)
-    blurTimer = setTimeout(function(){
-      if(isPaused){ // still away
-        sendFlagCooldown('extended-absence', 'Extended Absence', 'Candidate was away for more than 10 seconds', 'high', 15000);
-      }
-    }, 10000);
-  });
-
-  window.addEventListener('focus', function(){
-    clearTimeout(blurTimer);
-    if(isPaused && !document.hidden){
-      // Only auto-resume if it was a blur (not a tab switch — tab switch needs manual return)
-      resumeSession();
-    }
-  });
-
-  // ── Copy / Paste / Cut ── (cooldown prevents spam from keyboard shortcuts)
-  document.addEventListener('copy', function(e){
-    e.preventDefault();
-    warn('Copying is not allowed during the interview!');
-    sendFlagCooldown('copy', 'Copy Detected', 'Candidate attempted to copy content', 'medium', 2000);
-  });
-  document.addEventListener('paste', function(e){
-    e.preventDefault();
-    warn('Pasting is not allowed!');
-    sendFlagCooldown('paste', 'Paste Detected', 'Candidate attempted to paste content', 'medium', 2000);
-  });
-  document.addEventListener('cut', function(e){
-    e.preventDefault();
-    warn('Cutting is not allowed!');
-    sendFlagCooldown('cut', 'Cut Detected', 'Candidate attempted to cut content', 'low', 2000);
-  });
-
-  // ── Right Click ── (one flag per right-click with 2s cooldown)
-  document.addEventListener('contextmenu', function(e){
-    e.preventDefault();
-    sendFlagCooldown('rightclick', 'Right-Click', 'Candidate right-clicked during interview', 'low', 2000);
-  });
-
-  // ── Keyboard Shortcuts ── (one flag per unique shortcut with 2s cooldown each)
-  document.addEventListener('keydown', function(e){
-    if(e.key === 'F12'){
-      e.preventDefault();
-      warn('DevTools are not allowed!');
-      sendFlagCooldown('f12', 'DevTools Attempt', 'Candidate pressed F12', 'high', 3000);
-    }
-    if(e.key === 'F5' || ((e.ctrlKey||e.metaKey) && e.key === 'r')){
-      e.preventDefault();
-      sendFlagCooldown('refresh', 'Page Refresh Attempt', 'Candidate tried to refresh the page', 'medium', 3000);
-    }
-    if((e.ctrlKey||e.metaKey) && ['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){
-      e.preventDefault();
-      warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
-      sendFlagCooldown('shortcut-'+e.key.toLowerCase(), 'Shortcut Blocked', 'Ctrl+'+e.key.toUpperCase(), 'low', 2000);
-    }
-  });
-
-  // ── Multi-Display Detection ── (one-time check + recheck every 30s)
+  // Multi-display
   checkDisplays();
-  setInterval(function(){
-    if(!flaggedOnce['multi-display']) checkDisplays();
-  }, 30000);
+  displayCheckInterval=setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},30000);
+  if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){ sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display configuration','high'); setTimeout(function(){flaggedOnce['multi-display']=false;checkDisplays();},1000); });
 
-  // Screen config change (one-time flag)
-  if(window.screen && window.screen.addEventListener){
-    window.screen.addEventListener('change', function(){
-      sendFlagOnce('screen-change', 'Screen Configuration Changed', 'Candidate changed screen/display configuration during interview', 'high');
-      warn('&#9888; Display change detected!');
-      // Re-check for multi-display after config change
-      setTimeout(function(){ flaggedOnce['multi-display'] = false; checkDisplays(); }, 1000);
-    });
-  }
+  // Window resize (split screen)
+  var origW=window.innerWidth,origH=window.innerHeight;
+  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Possible split-screen (window resized significantly)','low',10000);origW=nW;origH=nH;}});
 
-  // Window resize (may indicate split screen) - cooldown 10s to avoid spam
-  var origW = window.innerWidth, origH = window.innerHeight;
-  window.addEventListener('resize', function(){
-    var nW = window.innerWidth, nH = window.innerHeight;
-    if(Math.abs(nW-origW) > 150 || Math.abs(nH-origH) > 150){
-      sendFlagCooldown('resize', 'Window Resized', 'Candidate significantly resized interview window (possible split-screen)', 'low', 10000);
-      origW = nW; origH = nH;
-    }
-  });
+  // Tab enforcement during interview — flag if new tab detected via BroadcastChannel
+  initTabEnforcement();
 }
 
 function stopAllMedia(){
-  if(localStream){ localStream.getTracks().forEach(function(t){ t.stop(); }); }
-  if(pc){ pc.close(); }
-  var lv=$('local-vid'); if(lv) lv.srcObject=null;
-  var rv=$('remote-vid'); if(rv) rv.srcObject=null;
+  if(localStream){localStream.getTracks().forEach(function(t){t.stop();});}
+  if(pc){pc.close();}
+  if(gazeCamera){try{gazeCamera.stop();}catch(e){}}
+  if(audioCheckInterval){clearInterval(audioCheckInterval);}
+  if(displayCheckInterval){clearInterval(displayCheckInterval);}
+  var lv=$('local-vid');if(lv)lv.srcObject=null;
+  var rv=$('remote-vid');if(rv)rv.srcObject=null;
 }
 
 function showGoodbye(){
   stopAllMedia();
   $('interview-screen').style.display='none';
   $('pause-overlay').classList.remove('active');
-  var gs=$('goodbye-screen'); gs.style.display='flex';
+  $('goodbye-screen').style.display='flex';
 }
 
 async function init(){
-  var s = await get('/api/join/'+code);
-  if(s.error === 'SESSION_ENDED'){ $('join-screen').style.display='none'; showGoodbye(); return; }
-  if(s.error){ $('join-info').textContent='Error: '+s.error; $('join-btn').disabled=true; $('join-btn').textContent='Session Unavailable'; return; }
-  sessionData = s;
-  $('join-info').textContent = 'Session: '+s.title;
+  var s=await get('/api/join/'+code);
+  if(s.error==='SESSION_ENDED'){$('join-screen').style.display='none';showGoodbye();return;}
+  if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;$('join-btn').textContent='Session Unavailable';return;}
+  sessionData=s;
+  $('join-info').textContent='Session: '+s.title;
 }
 
 async function doJoin(){
-  var btn = $('join-btn');
-  btn.disabled = true; btn.textContent = 'Starting camera...';
+  var btn=$('join-btn');
+  btn.disabled=true;btn.textContent='Starting camera...';
   try{
-    localStream = await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:true});
-    $('local-vid').srcObject = localStream;
+    localStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:true});
+    $('local-vid').srcObject=localStream;
   }catch(e){
-    $('join-info').textContent = 'Camera/mic access required: '+e.message;
-    btn.disabled = false; btn.textContent = 'Join Interview'; return;
+    $('join-info').textContent='Camera/mic access required: '+e.message;
+    btn.disabled=false;btn.textContent='Join Interview';return;
   }
   $('join-screen').style.display='none';
-  var is = $('interview-screen'); is.style.display='flex'; is.style.flexDirection='column';
-  $('i-title').textContent = sessionData&&sessionData.title||'Interview';
-  startTime = Date.now();
+  var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
+  $('i-title').textContent=sessionData&&sessionData.title||'Interview';
+  startTime=Date.now();
+
+  // Start monitoring systems
   setupProtection();
+  initAudioMonitoring(localStream);
+  // Slight delay for gaze tracking to let camera warm up
+  setTimeout(function(){ initGazeTracking($('local-vid')); },3000);
   connectSocket();
 }
 
 function connectSocket(){
-  socket = io();
-  socket.emit('join-room', {sessionId:sessionData&&sessionData.id, role:'candidate'});
-  socket.on('peer-joined', function(data){
-    if(data.role==='interviewer'){
-      $('i-status').textContent='&#9679; Connected'; $('i-status').className='badge badge-green';
-      startWebRTC(false);
-    }
-  });
-  socket.on('peer-already-present', function(){
-    $('i-status').textContent='&#9679; Connected'; $('i-status').className='badge badge-green';
-    startWebRTC(false);
-  });
-  socket.on('webrtc-offer', async function(data){
-    if(!pc) await createPC();
-    await pc.setRemoteDescription(data.offer);
-    var a = await pc.createAnswer(); await pc.setLocalDescription(a);
-    socket.emit('webrtc-answer', {sessionId:sessionData&&sessionData.id, answer:a});
-  });
-  socket.on('webrtc-answer', async function(data){ if(pc) await pc.setRemoteDescription(data.answer); });
-  socket.on('webrtc-ice', async function(data){ if(pc) await pc.addIceCandidate(data.candidate); });
-  socket.on('next-question', function(data){
-    var qs = sessionData&&sessionData.questions||[];
-    if(qs[data.qIdx]){
-      var tk = $('q-ticker'); tk.style.display='flex';
-      $('q-text').textContent = 'Q'+(data.qIdx+1)+': '+qs[data.qIdx];
-    }
-  });
-  socket.on('session-ended', function(){ showGoodbye(); });
-  socket.on('peer-left', function(){
-    $('i-status').textContent='Interviewer disconnected'; $('i-status').className='badge badge-red';
-  });
+  socket=io();
+  socket.emit('join-room',{sessionId:sessionData&&sessionData.id,role:'candidate'});
+  socket.on('peer-joined',function(data){if(data.role==='interviewer'){$('i-status').textContent='&#9679; Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
+  socket.on('peer-already-present',function(){$('i-status').textContent='&#9679; Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
+  socket.on('webrtc-offer',async function(data){if(!pc)await createPC();await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
+  socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
+  socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
+  socket.on('next-question',function(data){var qs=sessionData&&sessionData.questions||[];if(qs[data.qIdx]){var tk=$('q-ticker');tk.style.display='flex';$('q-text').textContent='Q'+(data.qIdx+1)+': '+qs[data.qIdx];}});
+  socket.on('session-ended',function(){showGoodbye();});
+  socket.on('peer-left',function(){$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
 }
 
 async function createPC(){
-  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
-  if(localStream) localStream.getTracks().forEach(function(t){ pc.addTrack(t, localStream); });
-  pc.ontrack = function(e){ $('remote-vid').srcObject = e.streams[0]; };
-  pc.onicecandidate = function(e){ if(e.candidate) socket.emit('webrtc-ice', {sessionId:sessionData&&sessionData.id, candidate:e.candidate}); };
+  pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
+  pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
 
 async function startWebRTC(isInit){
   await createPC();
-  if(isInit){
-    var o = await pc.createOffer(); await pc.setLocalDescription(o);
-    socket.emit('webrtc-offer', {sessionId:sessionData&&sessionData.id, offer:o});
-  }
+  if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData&&sessionData.id,offer:o});}
 }
 
 init();
