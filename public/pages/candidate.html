@@ -1,21 +1,9 @@
-
-<style>
-.device-panel{margin-top:16px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 20px;width:100%;max-width:480px;text-align:left}
-.device-panel-title{font-size:11px;font-weight:700;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:6px}
-.device-row{margin-bottom:10px}
-.device-row:last-child{margin-bottom:0}
-.device-label{font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px;display:flex;align-items:center;gap:5px}
-.device-select{width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit}
-.device-select:focus{border-color:#3b82f6}
-.device-loading{font-size:12px;color:#475569;margin-top:4px}
-</style>
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Interview ÃÂ¢ÃÂÃÂ Secure Interview</title>
+<title>Interview - Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
-<!-- MediaPipe Face Mesh for eye/gaze tracking -->
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/face_mesh.js" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1632090044/camera_utils.js" crossorigin="anonymous"></script>
 </head>
@@ -23,29 +11,28 @@
 
 <div id="warn-banner" class="warn-banner"></div>
 
-<!-- TAB ENFORCEMENT OVERLAY ÃÂ¢ÃÂÃÂ must close all other tabs first -->
+<!-- TAB BLOCK OVERLAY -->
 <div id="tab-block-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
-  <div style="font-size:64px;margin-bottom:20px">&#128683;</div>
+  <div style="font-size:60px;margin-bottom:20px">X</div>
   <h2 style="font-size:26px;font-weight:800;color:#ef4444;margin-bottom:12px">Other Tabs Detected</h2>
   <p style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:28px">
     You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other browser tab(s) open.<br>
     All other tabs must be closed before you can join this interview.<br>
     <strong style="color:#ef4444">The session cannot start until all other tabs are closed.</strong>
   </p>
-  <div style="font-size:13px;color:#475569;margin-bottom:24px" id="tab-list-hint"></div>
-  <button onclick="recheckTabs()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I've Closed All Tabs ÃÂ¢ÃÂÃÂ Check Again</button>
+  <button onclick="recheckTabs()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I Have Closed All Tabs - Check Again</button>
 </div>
 
-<!-- PAUSE OVERLAY ÃÂ¢ÃÂÃÂ shown when candidate switches windows/tabs -->
+<!-- PAUSE OVERLAY -->
 <div id="pause-overlay">
-  <div class="pause-icon">&#9208;&#65039;</div>
+  <div class="pause-icon">||</div>
   <div class="pause-title">Session Paused</div>
   <div class="pause-sub">
     You have switched away from the interview window.<br>
     The session is paused and your interviewer has been notified.<br>
-    <strong style="color:#f59e0b">Please return to this tab and close all other windows.</strong>
+    <strong style="color:#f59e0b">Return to this tab and close all other windows to resume.</strong>
   </div>
-  <button class="pause-return-btn" onclick="returnToInterview()">I'm Back ÃÂ¢ÃÂÃÂ Resume Interview</button>
+  <button class="pause-return-btn" onclick="returnToInterview()">I am Back - Resume Interview</button>
   <div class="pause-count" id="pause-count"></div>
 </div>
 
@@ -55,34 +42,32 @@
   <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
   <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">
     Your camera and microphone will be activated. You will see yourself and your interviewer side by side.<br>
-    <strong style="color:#ef4444;font-size:13px">&#9888; All activity is monitored. All other browser tabs must be closed before joining.</strong>
+    <strong style="color:#ef4444;font-size:13px">All activity is monitored. All other browser tabs must be closed before joining.</strong>
   </p>
 
-  <!-- Device selector â populated after first permission grant -->
-  <div class="device-panel" id="device-panel" style="display:none">
-    <div class="device-panel-title">&#9881;&#65039; Device Settings</div>
-    <div class="device-row">
-      <div class="device-label">&#127909; Camera</div>
-      <select class="device-select" id="sel-camera" onchange="switchDevice()"></select>
+  <!-- Device selector panel -->
+  <div id="device-panel" style="display:none;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 20px;width:100%;max-width:480px;text-align:left">
+    <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Device Settings</div>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Camera</div>
+      <select id="sel-camera" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select>
     </div>
-    <div class="device-row">
-      <div class="device-label">&#127908; Microphone</div>
-      <select class="device-select" id="sel-mic" onchange="switchDevice()"></select>
+    <div style="margin-bottom:10px">
+      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Microphone</div>
+      <select id="sel-mic" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select>
     </div>
-    <div class="device-row">
-      <div class="device-label">&#128266; Speaker / Output</div>
-      <select class="device-select" id="sel-speaker" onchange="switchSpeaker()"></select>
-      <div class="device-loading" id="speaker-note" style="display:none">&#8505;&#65039; Speaker switching requires Chrome 71+</div>
+    <div style="margin-bottom:12px">
+      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Speaker</div>
+      <select id="sel-speaker" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="applySpeaker()"></select>
     </div>
-    <!-- Preview of selected camera -->
-    <div style="margin-top:12px;border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:160px">
+    <div style="border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:150px">
       <video id="preview-vid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
     </div>
   </div>
 
-  <div style="display:flex;gap:10px;align-items:center;margin-top:4px">
+  <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
     <button class="btn btn-primary btn-lg" id="join-btn" onclick="attemptJoin()" style="min-width:200px">Join Interview</button>
-    <button class="btn btn-outline" id="check-devices-btn" onclick="loadDevices()" title="Check/change camera and microphone" style="padding:10px 14px;font-size:18px">&#9881;&#65039;</button>
+    <button class="btn btn-outline" onclick="loadDevices()" title="Device settings" style="padding:10px 14px;font-size:16px">Settings</button>
   </div>
   <div id="join-info" style="font-size:13px;color:#374151;margin-top:4px"></div>
 </div>
@@ -94,8 +79,8 @@
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
-      <span id="session-paused-chip" class="badge badge-red" style="display:none">&#9208; Paused</span>
-      <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">&#128065; Gaze Off</span>
+      <span id="session-paused-chip" class="badge badge-red" style="display:none">Paused</span>
+      <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">Gaze Away</span>
     </div>
   </div>
   <div class="video-grid" id="video-grid">
@@ -105,7 +90,6 @@
     </div>
     <div class="video-box">
       <video id="local-vid" autoplay playsinline muted></video>
-      <canvas id="gaze-canvas" style="position:absolute;top:0;left:0;width:100%;height:100%;opacity:0;pointer-events:none"></canvas>
       <div class="video-name">You</div>
     </div>
   </div>
@@ -120,7 +104,7 @@
   <div class="goodbye-icon">&#10004;&#65039;</div>
   <div class="goodbye-title">Thank You!</div>
   <div class="goodbye-sub">The interview has concluded. Thank you for your time. The team will be in touch with next steps soon.</div>
-  <div class="goodbye-pill">&#127881; Interview Complete</div>
+  <div class="goodbye-pill">Interview Complete</div>
   <div class="goodbye-note">You may now safely close this window.</div>
 </div>
 
@@ -129,274 +113,278 @@
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
 var code = location.pathname.split('/').pop().toUpperCase();
-var socket, pc, localStream, sessionData, startTime = Date.now();
+var socket, pc, localStream, previewStream, sessionData, startTime = Date.now();
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ FLAG SYSTEM (no spam) ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ── FLAG SYSTEM ──
 var flaggedOnce = {};
 var flagCooldowns = {};
 function elapsed(){ var s=Math.floor((Date.now()-startTime)/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+// FIX B1: No HTML entities in JS strings - use plain text
 function warn(msg){ var b=$('warn-banner'); b.textContent=msg; b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(function(){ b.style.display='none'; },5000); }
 function sendFlagOnce(key,text,detail,severity){ if(flaggedOnce[key])return; flaggedOnce[key]=true; doSendFlag(text,detail,severity); }
 function sendFlagCooldown(key,text,detail,severity,cd){ var now=Date.now(); if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return; flagCooldowns[key]=now; doSendFlag(text,detail,severity); }
 function doSendFlag(text,detail,severity){ var flag={text:text,detail:detail,severity:severity,time:elapsed()}; if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag}); fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){}); }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ PAUSE SYSTEM ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ── PAUSE SYSTEM ──
 var isPaused=false, pauseCount=0, blurTimer=null;
 function pauseSession(){ if(isPaused)return; isPaused=true; pauseCount++; $('pause-overlay').classList.add('active'); $('session-paused-chip').style.display=''; $('pause-count').textContent='Session paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=false;}); }
 function resumeSession(){ if(!isPaused)return; isPaused=false; $('pause-overlay').classList.remove('active'); $('session-paused-chip').style.display='none'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=true;}); }
 function returnToInterview(){ resumeSession(); window.focus(); }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ TAB ENFORCEMENT ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
-// Uses BroadcastChannel to detect other tabs of the same origin
-var bc = null;
-var otherTabsDetected = false;
-var tabId = Math.random().toString(36).slice(2);
-
+// ── TAB ENFORCEMENT ──
+var bc=null, tabId=Math.random().toString(36).slice(2);
 function initTabEnforcement(){
-  try {
-    bc = new BroadcastChannel('secure_interview_tabs');
-    // Announce our presence
-    bc.postMessage({type:'TAB_ANNOUNCE', id:tabId});
-    // Listen for other tabs
-    bc.onmessage = function(e){
-      if(e.data.type === 'TAB_ANNOUNCE' && e.data.id !== tabId){
-        // Another tab of this origin opened ÃÂ¢ÃÂÃÂ flag and pause
-        if(!flaggedOnce['tab-opened-during-interview'] && isPaused===false){
-          sendFlagOnce('tab-opened-during-interview','New Tab Opened During Interview','Candidate opened a new browser tab during the interview','high');
-          warn('⚠ A new tab was detected! Your session is being reviewed.');
-        }
+  try{
+    bc=new BroadcastChannel('secure_interview_tabs');
+    bc.postMessage({type:'TAB_ANNOUNCE',id:tabId});
+    bc.onmessage=function(e){
+      if(e.data.type==='TAB_ANNOUNCE'&&e.data.id!==tabId){
+        sendFlagOnce('tab-opened-during','New Tab Opened During Interview','Candidate opened a new browser tab during the interview','high');
+        warn('A new tab was detected! Your session is being reviewed.');
       }
-      if(e.data.type === 'TAB_OPEN_CHECK'){
-        // Someone is checking if other tabs exist ÃÂ¢ÃÂÃÂ respond
-        bc.postMessage({type:'TAB_RESPONSE', id:tabId});
-      }
+      if(e.data.type==='TAB_OPEN_CHECK') bc.postMessage({type:'TAB_RESPONSE',id:tabId});
     };
-  } catch(e) { console.warn('BroadcastChannel not supported:', e.message); }
+  }catch(e){console.warn('BroadcastChannel not supported');}
 }
-
 function checkOtherTabsOpen(){
   return new Promise(function(resolve){
-    if(!window.BroadcastChannel){ resolve(0); return; }
-    var responses = 0;
-    var checkBc = new BroadcastChannel('secure_interview_tabs');
-    var timeout = setTimeout(function(){
-      checkBc.close();
-      resolve(responses);
-    }, 500);
-    checkBc.onmessage = function(e){
-      if(e.data.type==='TAB_RESPONSE' && e.data.id!==tabId) responses++;
-    };
-    checkBc.postMessage({type:'TAB_OPEN_CHECK', id:tabId});
+    if(!window.BroadcastChannel){resolve(0);return;}
+    var responses=0;
+    var checkBc=new BroadcastChannel('secure_interview_tabs');
+    var timeout=setTimeout(function(){checkBc.close();resolve(responses);},600);
+    checkBc.onmessage=function(e){if(e.data.type==='TAB_RESPONSE'&&e.data.id!==tabId)responses++;};
+    checkBc.postMessage({type:'TAB_OPEN_CHECK',id:tabId});
   });
 }
-
 async function recheckTabs(){
-  var count = await checkOtherTabsOpen();
-  if(count > 0){
-    $('other-tab-count').textContent = count;
-    $('tab-list-hint').textContent = 'Still detecting '+count+' other tab(s). Please close them and try again.';
-  } else {
-    $('tab-block-overlay').style.display='none';
-    // Continue with join
-    doJoin();
-  }
+  var count=await checkOtherTabsOpen();
+  if(count>0){ $('other-tab-count').textContent=count; }
+  else{ $('tab-block-overlay').style.display='none'; doJoin(); }
 }
-
 async function attemptJoin(){
-  var btn = $('join-btn');
-  btn.disabled=true; btn.textContent='Checking tabs...';
-  var otherTabs = await checkOtherTabsOpen();
-  if(otherTabs > 0){
-    $('other-tab-count').textContent = otherTabs;
-    $('tab-block-overlay').style.display='flex';
-    btn.disabled=false; btn.textContent='Join Interview';
-  } else {
-    doJoin();
-  }
+  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Checking tabs...';
+  var otherTabs=await checkOtherTabsOpen();
+  if(otherTabs>0){ $('other-tab-count').textContent=otherTabs; $('tab-block-overlay').style.display='flex'; btn.disabled=false; btn.textContent='Join Interview'; }
+  else doJoin();
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ AUDIO MISMATCH DETECTION ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
-// Detects multiple simultaneous speakers using Web Audio API
-var audioCtx = null, analyserNode = null, audioCheckInterval = null;
-var silenceStreak = 0, voiceActive = false;
+// ── DEVICE SELECTOR ──
+var previewStream=null;
+async function loadDevices(){
+  var btn=document.querySelector('#join-screen .btn.btn-outline');
+  if(btn){btn.disabled=true; btn.textContent='Loading...';}
+  try{
+    // Request permission to get labels
+    var tmp=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
+    tmp.getTracks().forEach(function(t){t.stop();});
+    var devices=await navigator.mediaDevices.enumerateDevices();
+    function fill(selId,devs,label){
+      var sel=document.getElementById(selId); if(!sel)return; sel.innerHTML='';
+      devs.forEach(function(d,i){var opt=document.createElement('option');opt.value=d.deviceId;opt.textContent=d.label||(label+' '+(i+1));sel.appendChild(opt);});
+      if(!devs.length){var opt=document.createElement('option');opt.textContent='No '+label+' found';sel.appendChild(opt);}
+    }
+    fill('sel-camera',devices.filter(function(d){return d.kind==='videoinput';}),'Camera');
+    fill('sel-mic',devices.filter(function(d){return d.kind==='audioinput';}),'Microphone');
+    var spks=devices.filter(function(d){return d.kind==='audiooutput';});
+    fill('sel-speaker',spks,'Speaker');
+    if(!spks.length){ var s=document.getElementById('sel-speaker'); if(s) s.innerHTML='<option value="">Default</option>'; }
+    document.getElementById('device-panel').style.display='block';
+    await startPreview();
+  }catch(e){ $('join-info').textContent='Could not access devices: '+e.message; }
+  if(btn){btn.disabled=false;btn.textContent='Settings';}
+}
+async function startPreview(){
+  if(previewStream){previewStream.getTracks().forEach(function(t){t.stop();});}
+  var camId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
+  var micId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
+  try{
+    var c={video:camId?{deviceId:{exact:camId}}:{facingMode:'user'},audio:micId?{deviceId:{exact:micId}}:true};
+    previewStream=await navigator.mediaDevices.getUserMedia(c);
+    document.getElementById('preview-vid').srcObject=previewStream;
+    localStream=previewStream;
+  }catch(e){console.warn('Preview failed:',e.message);}
+}
+function applySpeaker(){
+  var spk=document.getElementById('sel-speaker')&&document.getElementById('sel-speaker').value;
+  if(!spk)return;
+  document.querySelectorAll('video').forEach(function(v){if(typeof v.setSinkId==='function') v.setSinkId(spk).catch(function(){});});
+}
 
+// ── AUDIO MISMATCH DETECTION ──
+var audioCheckInterval=null;
 function initAudioMonitoring(stream){
-  try {
-    audioCtx = new (window.AudioContext||window.webkitAudioContext)();
-    var source = audioCtx.createMediaStreamSource(stream);
-    analyserNode = audioCtx.createAnalyser();
-    analyserNode.fftSize = 2048;
-    analyserNode.smoothingTimeConstant = 0.8;
-    source.connect(analyserNode);
-    var dataArray = new Uint8Array(analyserNode.frequencyBinCount);
-    var voiceDetectedAt = null;
-    var bgVoiceBuffer = [];
-
-    audioCheckInterval = setInterval(function(){
-      analyserNode.getByteFrequencyData(dataArray);
-      // Measure energy in voice frequency range (300Hz-3400Hz)
-      // FFT bins for 300-3400Hz at 48kHz sample rate, 2048 bins: bins ~12-140
-      var binStart = Math.floor(300/(audioCtx.sampleRate/2)*analyserNode.frequencyBinCount);
-      var binEnd = Math.floor(3400/(audioCtx.sampleRate/2)*analyserNode.frequencyBinCount);
-      var voiceEnergy = 0;
-      for(var i=binStart;i<binEnd;i++) voiceEnergy+=dataArray[i];
-      var avgEnergy = voiceEnergy/(binEnd-binStart);
-
-      // Check for simultaneous multiple voices (background voice energy)
-      // If candidate mic picks up TWO distinct voice frequency peaks, flag it
-      var peakCount = 0;
-      var lastVal = 0, rising = false;
+  try{
+    var actx=new (window.AudioContext||window.webkitAudioContext)();
+    var src=actx.createMediaStreamSource(stream);
+    var analyser=actx.createAnalyser();
+    analyser.fftSize=2048; analyser.smoothingTimeConstant=0.8;
+    src.connect(analyser);
+    var data=new Uint8Array(analyser.frequencyBinCount);
+    var bgVoiceBuf=[];
+    audioCheckInterval=setInterval(function(){
+      analyser.getByteFrequencyData(data);
+      var binStart=Math.floor(300/(actx.sampleRate/2)*analyser.frequencyBinCount);
+      var binEnd=Math.floor(3400/(actx.sampleRate/2)*analyser.frequencyBinCount);
+      var peakCount=0, lastVal=0, rising=false;
       for(var j=binStart;j<binEnd;j++){
-        if(dataArray[j]>lastVal&&!rising){ rising=true; }
-        else if(dataArray[j]<lastVal&&rising&&lastVal>60){ peakCount++; rising=false; }
-        lastVal=dataArray[j];
+        if(data[j]>lastVal&&!rising){rising=true;}
+        else if(data[j]<lastVal&&rising&&lastVal>60){peakCount++;rising=false;}
+        lastVal=data[j];
       }
-
-      bgVoiceBuffer.push(peakCount);
-      if(bgVoiceBuffer.length>10) bgVoiceBuffer.shift();
-      var avgPeaks = bgVoiceBuffer.reduce(function(a,b){return a+b;},0)/bgVoiceBuffer.length;
-
-      // If consistently detecting 2+ voice peaks simultaneously, flag background voice
-      if(avgPeaks >= 2.5 && avgEnergy > 20){
+      bgVoiceBuf.push(peakCount); if(bgVoiceBuf.length>10) bgVoiceBuf.shift();
+      var avgPeaks=bgVoiceBuf.reduce(function(a,b){return a+b;},0)/bgVoiceBuf.length;
+      var energy=0; for(var k=binStart;k<binEnd;k++) energy+=data[k];
+      if(avgPeaks>=2.5&&(energy/(binEnd-binStart))>20){
         sendFlagCooldown('bg-voice','Background Voice Detected','Audio analysis: second voice detected - possible coaching','high',20000);
-        warn('🎤 Background voice detected ÃÂ¢ÃÂÃÂ coaching not permitted');
+        warn('Background voice detected - coaching is not permitted');
       }
-    }, 500);
-  } catch(e){ console.warn('Audio monitoring failed:', e.message); }
+    },500);
+  }catch(e){console.warn('Audio monitoring failed:',e.message);}
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ GAZE / EYE TRACKING ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
-// Uses MediaPipe Face Mesh to detect when candidate's eyes are looking away from screen
-var faceMesh = null, gazeCamera = null;
-var gazeOffStart = null, gazeOffFlagged = false;
-var gazeCheckReady = false;
-var GAZE_THRESHOLD_SEC = 5; // flag after looking away for 5+ seconds
+// ── GAZE / EYE TRACKING ──
+// FIX B5: Use polling approach instead of Camera utility to avoid interference
+var gazeOffStart=null, displayCheckInterval=null;
+var GAZE_THRESHOLD_SEC=5;
+var faceMeshReady=false;
+var gazeCheckTimer=null;
 
 function initGazeTracking(videoEl){
-  try {
-    if(typeof FaceMesh === 'undefined'){ console.warn('FaceMesh not loaded'); return; }
-
-    faceMesh = new FaceMesh({locateFile:function(f){ return 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/'+f; }});
-    faceMesh.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
-
-    faceMesh.onResults(function(results){
-      if(!results.multiFaceLandmarks||results.multiFaceLandmarks.length===0){
-        // No face detected
+  try{
+    if(typeof FaceMesh==='undefined'){console.warn('FaceMesh CDN not loaded');return;}
+    var fm=new FaceMesh({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/'+f;}});
+    fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
+    fm.onResults(function(results){
+      if(!results.multiFaceLandmarks||!results.multiFaceLandmarks.length){
         if(!gazeOffStart) gazeOffStart=Date.now();
-        var awayMs=Date.now()-gazeOffStart;
-        if(awayMs>3000) $('gaze-chip').style.display='';
-        if(awayMs>GAZE_THRESHOLD_SEC*1000){
-          sendFlagCooldown('face-not-visible','Face Not Visible','Candidate face was not visible for '+Math.round(awayMs/1000)+'s','high',10000);
-          warn('👀 Please keep your face visible on camera');
+        var away=(Date.now()-gazeOffStart)/1000;
+        if(away>2) $('gaze-chip').style.display='';
+        if(away>GAZE_THRESHOLD_SEC){
+          sendFlagCooldown('face-not-visible','Face Not Visible','Candidate face was not visible for '+Math.round(away)+'s','high',10000);
+          warn('Please keep your face visible on camera');
         }
         return;
       }
-      var landmarks = results.multiFaceLandmarks[0];
-      // Eye landmarks: left iris center ~468, right iris center ~473
-      // Left eye corners: 33 (inner), 133 (outer) | Right eye: 362 (inner), 263 (outer)
-      // Calculate iris position relative to eye width to determine gaze direction
-      var leftIris = landmarks[468];
-      var leftInner = landmarks[133];
-      var leftOuter = landmarks[33];
-      var rightIris = landmarks[473];
-      var rightInner = landmarks[362];
-      var rightOuter = landmarks[263];
-
-      if(!leftIris||!rightIris){ gazeOffStart=null; $('gaze-chip').style.display='none'; return; }
-
-      // Horizontal gaze ratio: 0=looking left, 1=looking right, ~0.4-0.6=center
-      var leftGaze=(leftIris.x-leftOuter.x)/(leftInner.x-leftOuter.x);
-      var rightGaze=(rightIris.x-rightInner.x)/(rightOuter.x-rightInner.x);
+      var lm=results.multiFaceLandmarks[0];
+      // Iris landmarks (refineLandmarks required): 468=left iris, 473=right iris
+      var li=lm[468], ri=lm[473];
+      if(!li||!ri){gazeOffStart=null;$('gaze-chip').style.display='none';return;}
+      // Eye corners: left eye 33(outer), 133(inner) | right eye 362(inner), 263(outer)
+      var lo=lm[33],lin=lm[133],ri2=lm[362],ro=lm[263];
+      var leftGaze=(li.x-lo.x)/(lin.x-lo.x);
+      var rightGaze=(ri.x-ri2.x)/(ro.x-ri2.x);
       var avgGaze=(leftGaze+rightGaze)/2;
-
-      // Vertical gaze
-      var leftEyeTop=landmarks[159];var leftEyeBot=landmarks[145];
-      var leftIrisVert=(leftIris.y-leftEyeTop.y)/(leftEyeBot.y-leftEyeTop.y);
-      var lookingAway=avgGaze<0.25||avgGaze>0.75||leftIrisVert<0.2||leftIrisVert>0.8;
-
+      // Vertical: top lid=159, bottom lid=145 for left eye
+      var lt=lm[159],lb=lm[145];
+      var vertGaze=lt&&lb?(li.y-lt.y)/(lb.y-lt.y):0.5;
+      var lookingAway=avgGaze<0.2||avgGaze>0.8||vertGaze<0.15||vertGaze>0.85;
       if(lookingAway){
         if(!gazeOffStart) gazeOffStart=Date.now();
-        var awayMs=Date.now()-gazeOffStart;
+        var away=(Date.now()-gazeOffStart)/1000;
         $('gaze-chip').style.display='';
-        if(awayMs>GAZE_THRESHOLD_SEC*1000){
-          sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate appeared to look away from screen for '+Math.round(awayMs/1000)+'s (gaze ratio: '+avgGaze.toFixed(2)+')','medium',12000);
-          warn('👁 Please keep your eyes on the screen');
+        if(away>GAZE_THRESHOLD_SEC){
+          sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate looked away from screen for '+Math.round(away)+'s','medium',12000);
+          warn('Please keep your eyes on the screen');
         }
       } else {
-        gazeOffStart=null;
-        $('gaze-chip').style.display='none';
+        gazeOffStart=null; $('gaze-chip').style.display='none';
       }
     });
-
-    // Use Camera utility to feed frames
-    gazeCamera = new Camera(videoEl, {
-      onFrame: async function(){
-        if(faceMesh) await faceMesh.send({image:videoEl});
-      },
-      width:320, height:240
-    });
-    gazeCamera.start();
-    gazeCheckReady = true;
-  } catch(e){ console.warn('Gaze tracking failed:', e.message); }
+    faceMeshReady=true;
+    // FIX B5: Poll every 500ms using offscreen canvas instead of Camera utility
+    gazeCheckTimer=setInterval(async function(){
+      if(!videoEl.readyState||videoEl.readyState<2) return;
+      try{await fm.send({image:videoEl});}catch(e){}
+    },500);
+  }catch(e){console.warn('Gaze tracking init failed:',e.message);}
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ DISPLAY DETECTION ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
-var displayCheckInterval=null;
+// ── DISPLAY DETECTION ──
 function checkDisplays(){
   if(flaggedOnce['multi-display'])return;
-  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){ sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays connected','high'); warn('⚠ Multiple displays detected ÃÂ¢ÃÂÃÂ this has been flagged'); return; }
+  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays connected','high');warn('Multiple displays detected - this has been flagged');return;}
   var x=window.screenX||0,y=window.screenY||0;
-  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){ sendFlagOnce('multi-display','Window on Secondary Display','Candidate window on secondary monitor','high'); warn('⚠ Secondary display detected'); }
+  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Window on Secondary Display','Candidate window appears on secondary monitor','high');warn('Secondary display detected');}
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ ALL PROTECTION ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ── PROTECTION ──
 function setupProtection(){
-  // Tab switching
-  document.addEventListener('visibilitychange',function(){ if(document.hidden){ warn('⚠ You left the interview tab!'); sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab','medium',3000); pauseSession(); } else { resumeSession(); } });
+  // FIX B4: Comprehensive tab switch detection
+  // Method 1: visibilitychange - fires when tab loses focus within same window
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){
+      warn('You left the interview tab! Return immediately.');
+      sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab or minimized browser','medium',3000);
+      pauseSession();
+    } else {
+      // Only auto-resume if pause was from tab switch (not window blur which needs manual resume)
+      if(isPaused) resumeSession();
+    }
+  });
 
-  // Window blur
-  window.addEventListener('blur',function(){ warn('⚠ You left the interview window!'); sendFlagCooldown('window-blur','Window Switch','Candidate switched away from interview','medium',3000); pauseSession(); blurTimer=setTimeout(function(){ if(isPaused) sendFlagCooldown('extended-absence','Extended Absence','Candidate away for 10+ seconds','high',15000); },10000); });
-  window.addEventListener('focus',function(){ clearTimeout(blurTimer); if(isPaused&&!document.hidden) resumeSession(); });
+  // Method 2: window blur - fires when window loses focus (switching apps, clicking desktop)
+  window.addEventListener('blur',function(){
+    warn('You left the interview window!');
+    sendFlagCooldown('window-blur','Window Switch','Candidate switched away from interview window','medium',3000);
+    pauseSession();
+    blurTimer=setTimeout(function(){ if(isPaused) sendFlagCooldown('extended-absence','Extended Absence','Candidate away for 10+ seconds','high',15000); },10000);
+  });
+  window.addEventListener('focus',function(){
+    clearTimeout(blurTimer);
+    // Auto-resume on focus only if document is also visible
+    if(isPaused&&!document.hidden) resumeSession();
+  });
+
+  // FIX B4: Additional - page visibility API polyfill for older browsers
+  if(typeof document.hidden!=='undefined'){
+    // Already handled above
+  } else if(typeof document.webkitHidden!=='undefined'){
+    document.addEventListener('webkitvisibilitychange',function(){
+      if(document.webkitHidden){warn('Tab switch detected!');sendFlagCooldown('tab-switch','Tab Switch','Candidate switched tabs','medium',3000);pauseSession();}
+      else{if(isPaused)resumeSession();}
+    });
+  }
 
   // Copy/paste/cut
-  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy','medium',2000);});
-  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
-  document.addEventListener('cut',function(e){e.preventDefault();sendFlagCooldown('cut','Cut Detected','Candidate attempted to cut','low',2000);});
+  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying is not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy content','medium',2000);});
+  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting is not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
+  document.addEventListener('cut',function(e){e.preventDefault();warn('Cutting is not allowed!');sendFlagCooldown('cut','Cut Detected','Candidate attempted to cut','low',2000);});
+  document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Candidate right-clicked during interview','low',2000);});
 
-  // Right click
-  document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Candidate right-clicked','low',2000);});
-
-  // Keyboard
+  // Keyboard shortcuts
   document.addEventListener('keydown',function(e){
-    if(e.key==='F12'){e.preventDefault();warn('DevTools not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
+    if(e.key==='F12'){e.preventDefault();warn('DevTools are not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
     if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();sendFlagCooldown('refresh','Refresh Attempt','Candidate tried to refresh','medium',3000);}
-    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j','t','w','n'].includes(e.key.toLowerCase())){
-      e.preventDefault();warn('Shortcut blocked: Ctrl+'+e.key.toUpperCase());
-      // Ctrl+T (new tab), Ctrl+N (new window), Ctrl+W (close tab) ÃÂ¢ÃÂÃÂ extra flag
-      if(['t','n'].includes(e.key.toLowerCase())) sendFlagCooldown('new-tab-shortcut','New Tab/Window Shortcut','Candidate tried to open a new tab (Ctrl+'+e.key.toUpperCase()+')','high',3000);
-      else sendFlagCooldown('shortcut-'+e.key.toLowerCase(),'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
+    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){
+      e.preventDefault();warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
+      sendFlagCooldown('shortcut-'+e.key,'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
+    }
+    // Block new tab/window attempts
+    if((e.ctrlKey||e.metaKey)&&(e.key==='t'||e.key==='n')){
+      e.preventDefault();warn('Opening new tabs is not allowed!');
+      sendFlagCooldown('new-tab','New Tab Attempt','Candidate tried to open a new tab/window','high',3000);
     }
   });
 
   // Multi-display
   checkDisplays();
   displayCheckInterval=setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},30000);
-  if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){ sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display configuration','high'); setTimeout(function(){flaggedOnce['multi-display']=false;checkDisplays();},1000); });
+  if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display configuration','high');setTimeout(function(){flaggedOnce['multi-display']=false;checkDisplays();},1000);});
 
-  // Window resize (split screen)
+  // Window resize (split screen indicator)
   var origW=window.innerWidth,origH=window.innerHeight;
-  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Possible split-screen (window resized significantly)','low',10000);origW=nW;origH=nH;}});
+  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Candidate significantly resized interview window','low',10000);origW=nW;origH=nH;}});
 
-  // Tab enforcement during interview ÃÂ¢ÃÂÃÂ flag if new tab detected via BroadcastChannel
   initTabEnforcement();
 }
 
 function stopAllMedia(){
   if(localStream){localStream.getTracks().forEach(function(t){t.stop();});}
+  if(previewStream){previewStream.getTracks().forEach(function(t){t.stop();});}
   if(pc){pc.close();}
-  if(gazeCamera){try{gazeCamera.stop();}catch(e){}}
   if(audioCheckInterval){clearInterval(audioCheckInterval);}
   if(displayCheckInterval){clearInterval(displayCheckInterval);}
+  if(gazeCheckTimer){clearInterval(gazeCheckTimer);}
   var lv=$('local-vid');if(lv)lv.srcObject=null;
   var rv=$('remote-vid');if(rv)rv.srcObject=null;
 }
@@ -412,38 +400,46 @@ async function init(){
   var s=await get('/api/join/'+code);
   if(s.error==='SESSION_ENDED'){$('join-screen').style.display='none';showGoodbye();return;}
   if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;$('join-btn').textContent='Session Unavailable';return;}
-  sessionData=s;
-  $('join-info').textContent='Session: '+s.title;
+  sessionData=s; $('join-info').textContent='Session: '+s.title;
 }
 
 async function doJoin(){
-  var btn=$('join-btn');
-  btn.disabled=true;btn.textContent='Starting camera...';
+  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Starting camera...';
   try{
-    localStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720},facingMode:'user'},audio:true});
+    if(!localStream||localStream.getTracks().some(function(t){return t.readyState==='ended';})){
+      var camId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
+      var micId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
+      localStream=await navigator.mediaDevices.getUserMedia({
+        video:camId?{deviceId:{exact:camId},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},
+        audio:micId?{deviceId:{exact:micId}}:true
+      });
+    }
     $('local-vid').srcObject=localStream;
+    // Stop preview
+    var pv=document.getElementById('preview-vid'); if(pv) pv.srcObject=null;
+    if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();}); previewStream=null;}
   }catch(e){
     $('join-info').textContent='Camera/mic access required: '+e.message;
-    btn.disabled=false;btn.textContent='Join Interview';return;
+    btn.disabled=false; btn.textContent='Join Interview'; return;
   }
   $('join-screen').style.display='none';
-  var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
+  var is=$('interview-screen'); is.style.display='flex'; is.style.flexDirection='column';
   $('i-title').textContent=sessionData&&sessionData.title||'Interview';
   startTime=Date.now();
-
-  // Start monitoring systems
+  var spk=document.getElementById('sel-speaker')&&document.getElementById('sel-speaker').value;
+  if(spk){var rv=$('remote-vid');if(rv&&typeof rv.setSinkId==='function')rv.setSinkId(spk).catch(function(){});}
   setupProtection();
   initAudioMonitoring(localStream);
-  // Slight delay for gaze tracking to let camera warm up
-  setTimeout(function(){ initGazeTracking($('local-vid')); },3000);
+  // FIX B5: Start gaze tracking 3s after join to let camera stabilize
+  setTimeout(function(){initGazeTracking($('local-vid'));},3000);
   connectSocket();
 }
 
 function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionData&&sessionData.id,role:'candidate'});
-  socket.on('peer-joined',function(data){if(data.role==='interviewer'){$('i-status').textContent='● Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
-  socket.on('peer-already-present',function(){$('i-status').textContent='● Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
+  socket.on('peer-joined',function(data){if(data.role==='interviewer'){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
+  socket.on('peer-already-present',function(){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
   socket.on('webrtc-offer',async function(data){if(!pc)await createPC();await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
   socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
   socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
@@ -454,159 +450,13 @@ function connectSocket(){
 
 async function createPC(){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
-  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  if(localStream) localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
   pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
   pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
-
 async function startWebRTC(isInit){
   await createPC();
   if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData&&sessionData.id,offer:o});}
-}
-
-
-// ââ DEVICE SELECTOR ââ
-var previewStream = null;
-
-async function loadDevices(){
-  var btn = document.getElementById('check-devices-btn');
-  if(btn){ btn.textContent = '...'; btn.disabled = true; }
-
-  try {
-    // Request permission first â this is required to get device labels
-    var tempStream = await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    // Don't keep this stream â we'll create a proper one with the selected device
-    tempStream.getTracks().forEach(function(t){t.stop();});
-
-    var devices = await navigator.mediaDevices.enumerateDevices();
-
-    var cameras = devices.filter(function(d){return d.kind==='videoinput';});
-    var mics = devices.filter(function(d){return d.kind==='audioinput';});
-    var speakers = devices.filter(function(d){return d.kind==='audiooutput';});
-
-    function populate(selectId, devs, defaultLabel){
-      var sel = document.getElementById(selectId);
-      sel.innerHTML = '';
-      if(!devs.length){
-        var opt = document.createElement('option');
-        opt.textContent = 'No '+defaultLabel+' found';
-        sel.appendChild(opt);
-        return;
-      }
-      devs.forEach(function(d,i){
-        var opt = document.createElement('option');
-        opt.value = d.deviceId;
-        opt.textContent = d.label || (defaultLabel+' '+(i+1));
-        sel.appendChild(opt);
-      });
-    }
-
-    populate('sel-camera', cameras, 'Camera');
-    populate('sel-mic', mics, 'Microphone');
-
-    if(speakers.length > 0){
-      populate('sel-speaker', speakers, 'Speaker');
-    } else {
-      var spkSel = document.getElementById('sel-speaker');
-      spkSel.innerHTML = '<option value="">Default Output</option>';
-      document.getElementById('speaker-note').style.display = 'block';
-    }
-
-    document.getElementById('device-panel').style.display = 'block';
-
-    // Start camera preview with selected device
-    await startPreview();
-
-  } catch(e){
-    if(btn){ btn.textContent = '⚙️'; btn.disabled = false; }
-    var info = document.getElementById('join-info');
-    info.textContent = 'Could not access devices: '+e.message;
-    return;
-  }
-
-  if(btn){ btn.innerHTML = '⚙️'; btn.disabled = false; }
-}
-
-async function startPreview(){
-  // Stop any existing preview
-  if(previewStream){ previewStream.getTracks().forEach(function(t){t.stop();}); previewStream=null; }
-
-  var camId = document.getElementById('sel-camera').value;
-  var micId = document.getElementById('sel-mic').value;
-
-  try {
-    var constraints = {
-      video: camId ? {deviceId:{exact:camId},width:{ideal:1280},height:{ideal:720},facingMode:'user'} : {width:{ideal:1280},height:{ideal:720}},
-      audio: micId ? {deviceId:{exact:micId}} : true
-    };
-    previewStream = await navigator.mediaDevices.getUserMedia(constraints);
-    document.getElementById('preview-vid').srcObject = previewStream;
-    // Keep this stream â use it directly when joining
-    localStream = previewStream;
-  } catch(e){
-    console.warn('Preview failed:', e.message);
-  }
-}
-
-async function switchDevice(){
-  // User changed camera or mic â restart preview with new selection
-  if(document.getElementById('device-panel').style.display !== 'none'){
-    await startPreview();
-  }
-}
-
-async function switchSpeaker(){
-  var spk = document.getElementById('sel-speaker').value;
-  if(!spk) return;
-  // Apply speaker to all video elements that support setSinkId
-  var videos = document.querySelectorAll('video');
-  videos.forEach(function(v){
-    if(typeof v.setSinkId === 'function'){
-      v.setSinkId(spk).catch(function(e){ console.warn('setSinkId failed:', e.message); });
-    }
-  });
-}
-
-// Override doJoin to use selected devices
-async function doJoin(){
-  var btn = document.getElementById('join-btn');
-  btn.disabled=true; btn.textContent='Starting...';
-
-  try {
-    // If we already have a stream from device preview, use it directly
-    if(!localStream || localStream.getTracks().some(function(t){return t.readyState==='ended';})){
-      // No preview stream â request with selected devices (or defaults)
-      var camId = document.getElementById('sel-camera') ? document.getElementById('sel-camera').value : null;
-      var micId = document.getElementById('sel-mic') ? document.getElementById('sel-mic').value : null;
-      var constraints = {
-        video: camId ? {deviceId:{exact:camId},width:{ideal:1280},height:{ideal:720},facingMode:'user'} : {width:{ideal:1280},height:{ideal:720}},
-        audio: micId ? {deviceId:{exact:micId}} : true
-      };
-      localStream = await navigator.mediaDevices.getUserMedia(constraints);
-    }
-    document.getElementById('local-vid').srcObject = localStream;
-    // Stop preview vid (different element)
-    var pv = document.getElementById('preview-vid');
-    if(pv) pv.srcObject = null;
-  } catch(e){
-    document.getElementById('join-info').textContent = 'Camera/mic access required: '+e.message;
-    btn.disabled=false; btn.textContent='Join Interview'; return;
-  }
-
-  document.getElementById('join-screen').style.display='none';
-  var is = document.getElementById('interview-screen');
-  is.style.display='flex'; is.style.flexDirection='column';
-  document.getElementById('i-title').textContent = sessionData&&sessionData.title||'Interview';
-  startTime=Date.now();
-
-  // Apply speaker preference to remote video
-  var spk = document.getElementById('sel-speaker');
-  if(spk&&spk.value){ switchSpeaker(); }
-
-  setupProtection();
-  initAudioMonitoring(localStream);
-  setTimeout(function(){ initGazeTracking(document.getElementById('local-vid')); },3000);
-  connectSocket();
 }
 
 init();
