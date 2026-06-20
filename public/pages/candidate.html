@@ -5,40 +5,36 @@
 <title>Interview - Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.join-screen{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;gap:16px;text-align:center;padding:24px}
-.join-screen h2{font-size:22px;font-weight:700}
-.join-screen p{color:var(--text2);max-width:380px;line-height:1.6}
-.interview-screen{display:none;flex-direction:column;height:100vh}
-.video-area{flex:1;background:#000;position:relative}
-video{width:100%;height:100%;object-fit:cover}
-.self-video{position:absolute;bottom:12px;right:12px;width:160px;height:90px;border-radius:8px;overflow:hidden;border:2px solid #333}
-.question-bar{position:absolute;bottom:12px;left:12px;right:190px;background:rgba(0,0,0,0.8);border-radius:8px;padding:10px 14px;font-size:14px;display:none}
-.warning-banner{position:fixed;top:0;left:0;right:0;background:var(--red);color:#fff;padding:10px;text-align:center;font-size:13px;font-weight:600;z-index:999;display:none}
+body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 </style>
 </head>
 <body>
-<div class="warning-banner" id="warning-banner"></div>
+<div id="warn-bar" class="warn-bar"></div>
 
-<div class="join-screen" id="join-screen">
-  <div style="font-size:48px">&#127908;</div>
+<!-- Join screen -->
+<div id="join-screen" class="join-wrap">
+  <div style="font-size:52px">&#127908;</div>
   <h2>Ready to join your interview?</h2>
-  <p>You'll be connected with your interviewer via secure video. Make sure your camera and microphone are working.</p>
-  <button class="btn btn-primary btn-lg" onclick="startInterview()" id="join-btn">Join Interview</button>
-  <div style="font-size:12px;color:var(--text3)" id="join-status"></div>
+  <p>Your camera and microphone will be used. All activity is monitored for interview integrity.</p>
+  <button class="btn btn-primary btn-lg" id="join-btn" onclick="doJoin()">Join Interview</button>
+  <div id="join-info" style="font-size:12px;color:var(--text2)"></div>
 </div>
 
-<div class="interview-screen" id="interview-screen">
+<!-- Interview screen -->
+<div id="interview-screen" style="display:none;flex-direction:column;flex:1">
   <div class="topbar">
     <div class="topbar-logo">Secure Interview</div>
     <div class="topbar-right">
-      <span id="session-label" style="font-size:12px;color:var(--text2)"></span>
-      <span class="badge badge-green" id="conn-badge">Connected</span>
+      <span id="i-title" style="font-size:12px;color:var(--text2)"></span>
+      <span id="i-status" class="badge badge-green">Connected</span>
     </div>
   </div>
-  <div class="video-area">
-    <video id="remote-video" autoplay playsinline></video>
-    <div class="self-video"><video id="local-video" autoplay playsinline muted></video></div>
-    <div class="question-bar" id="question-bar"></div>
+  <div class="cand-layout" style="flex:1">
+    <div class="cand-video">
+      <video id="remote-vid" autoplay playsinline></video>
+      <div class="cand-pip"><video id="local-vid" autoplay playsinline muted></video></div>
+      <div id="q-overlay" class="q-overlay"></div>
+    </div>
   </div>
 </div>
 
@@ -47,141 +43,123 @@ video{width:100%;height:100%;object-fit:cover}
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
 const code=location.pathname.split('/').pop().toUpperCase();
-let socket,pc,localStream,sessionData,startTime;
+let socket,pc,localStream,sessionData,startTime=Date.now(),flagCount={};
+
+function elapsed(){
+  const s=Math.floor((Date.now()-startTime)/1000);
+  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+}
+
+function warn(msg){
+  const b=$('warn-bar');
+  b.textContent=msg;b.style.display='block';
+  clearTimeout(b._t);b._t=setTimeout(()=>b.style.display='none',4000);
+}
+
+function flag(text,detail,severity){
+  const key=text;
+  flagCount[key]=(flagCount[key]||0)+1;
+  const sev=flagCount[key]>=3?'high':severity;
+  const f={text,detail,severity:sev,time:elapsed()};
+  socket?.emit('candidate-flag',{sessionId:sessionData?.id,flag:f});
+  fetch('/api/sessions/'+sessionData?.id+'/flags',{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({text,detail,severity:sev,timeOffset:elapsed()})
+  }).catch(()=>{});
+}
+
+function setupProtection(){
+  // Tab / window switch
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){warn('Warning: You left the interview tab!');flag('Tab Switch','Candidate switched to another tab','medium');}
+  });
+  window.addEventListener('blur',()=>{
+    warn('Warning: You left the interview window!');
+    flag('Window Blur','Candidate switched away from interview window','medium');
+  });
+
+  // Copy / paste / cut
+  document.addEventListener('copy',e=>{e.preventDefault();warn('Copying is not allowed!');flag('Copy Detected','Candidate attempted to copy content','medium');});
+  document.addEventListener('paste',e=>{e.preventDefault();warn('Pasting is not allowed!');flag('Paste Detected','Candidate attempted to paste content','medium');});
+  document.addEventListener('cut',e=>{e.preventDefault();warn('Cutting is not allowed!');flag('Cut Detected','Candidate attempted to cut content','low');});
+
+  // Right click
+  document.addEventListener('contextmenu',e=>{e.preventDefault();warn('Right-click disabled during interview');flag('Right-Click','Candidate right-clicked during interview','low');});
+
+  // Keyboard shortcuts
+  document.addEventListener('keydown',e=>{
+    if(e.key==='F12'){e.preventDefault();flag('DevTools Attempt','Candidate tried to open DevTools','high');warn('DevTools are not allowed!');}
+    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s'].includes(e.key.toLowerCase())){
+      e.preventDefault();warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
+      flag('Shortcut Blocked','Candidate used Ctrl+'+e.key.toUpperCase(),'low');
+    }
+  });
+
+  // Screen share / multiple displays detection via focus events
+  let focusLossTime=null;
+  window.addEventListener('blur',()=>{focusLossTime=Date.now();});
+  window.addEventListener('focus',()=>{
+    if(focusLossTime){
+      const away=Date.now()-focusLossTime;
+      if(away>10000){flag('Extended Absence','Candidate was away for '+Math.round(away/1000)+'s','high');}
+      focusLossTime=null;
+    }
+  });
+}
 
 async function init(){
   const s=await get('/api/join/'+code);
-  if(s.error){$('join-status').textContent=s.error;$('join-btn').disabled=true;return;}
+  if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;return;}
   sessionData=s;
-  $('join-status').textContent='Session: '+s.title;
+  $('join-info').textContent='Session: '+s.title;
 }
 
-async function startInterview(){
-  $('join-btn').disabled=true; $('join-btn').textContent='Starting...';
+async function doJoin(){
+  $('join-btn').disabled=true;$('join-btn').textContent='Starting...';
   try{
     localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    $('local-video').srcObject=localStream;
+    $('local-vid').srcObject=localStream;
   }catch(e){
-    $('join-status').textContent='Camera/mic access required to join';
-    $('join-btn').disabled=false; $('join-btn').textContent='Join Interview';
+    $('join-info').textContent='Camera/mic access required to join. '+e.message;
+    $('join-btn').disabled=false;$('join-btn').textContent='Join Interview';
     return;
   }
   $('join-screen').style.display='none';
   $('interview-screen').style.display='flex';
-  $('session-label').textContent=sessionData?.title||'Interview';
+  $('i-title').textContent=sessionData?.title||'Interview';
   startTime=Date.now();
   setupProtection();
   connectSocket();
 }
 
-function getElapsed(){
-  const s=Math.floor((Date.now()-startTime)/1000);
-  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
-}
-
-function showWarning(msg){
-  const b=$('warning-banner');
-  b.textContent=msg; b.style.display='block';
-  setTimeout(()=>b.style.display='none',4000);
-}
-
-function sendFlag(text,detail,severity){
-  const flag={text,detail,severity,time:getElapsed()};
-  socket?.emit('candidate-flag',{sessionId:sessionData?.id,flag});
-  // Also persist via API
-  fetch('/api/sessions/'+sessionData?.id+'/flags',{
-    method:'POST',headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({text,detail,severity,timeOffset:getElapsed()})
-  });
-}
-
-function setupProtection(){
-  // Tab switch / window blur detection
-  let blurCount=0;
-  window.addEventListener('blur',()=>{
-    blurCount++;
-    showWarning('Warning: You switched away from the interview window');
-    sendFlag('Tab/Window Switch','Candidate switched away from interview window',blurCount>=3?'high':'medium');
-  });
-
-  // Visibility change (tab switch)
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){
-      showWarning('Warning: You left the interview tab');
-      sendFlag('Tab Hidden','Candidate switched to another tab',blurCount>=3?'high':'medium');
-    }
-  });
-
-  // Copy/paste detection
-  document.addEventListener('copy',()=>{
-    showWarning('Warning: Copying is not allowed during the interview');
-    sendFlag('Copy Detected','Candidate attempted to copy content','medium');
-  });
-  document.addEventListener('paste',()=>{
-    showWarning('Warning: Pasting is not allowed during the interview');
-    sendFlag('Paste Detected','Candidate attempted to paste content','medium');
-  });
-  document.addEventListener('cut',()=>{
-    showWarning('Warning: Cutting is not allowed during the interview');
-    sendFlag('Cut Detected','Candidate attempted to cut content','low');
-  });
-
-  // Right-click
-  document.addEventListener('contextmenu',e=>{
-    e.preventDefault();
-    showWarning('Warning: Right-click is disabled during the interview');
-    sendFlag('Right-Click Detected','Candidate right-clicked during interview','low');
-  });
-
-  // Keyboard shortcuts (Ctrl+C, Ctrl+V, etc.)
-  document.addEventListener('keydown',e=>{
-    if(e.ctrlKey||e.metaKey){
-      if(['c','v','x','a','u','p'].includes(e.key.toLowerCase())){
-        e.preventDefault();
-        showWarning('Warning: Keyboard shortcut blocked');
-        sendFlag('Shortcut Blocked','Candidate used Ctrl+'+e.key.toUpperCase(),'low');
-      }
-    }
-    // F12 / DevTools
-    if(e.key==='F12'){
-      e.preventDefault();
-      sendFlag('DevTools Attempt','Candidate tried to open DevTools','high');
-    }
-  });
-}
-
 function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionData?.id,role:'candidate'});
-
   socket.on('peer-joined',async({role})=>{if(role==='interviewer')await startWebRTC(false);});
   socket.on('peer-already-present',async()=>{await startWebRTC(false);});
   socket.on('webrtc-offer',async({offer})=>{
     if(!pc)await createPC();
     await pc.setRemoteDescription(offer);
-    const a=await pc.createAnswer();
-    await pc.setLocalDescription(a);
+    const a=await pc.createAnswer();await pc.setLocalDescription(a);
     socket.emit('webrtc-answer',{sessionId:sessionData?.id,answer:a});
   });
   socket.on('webrtc-answer',async({answer})=>{await pc?.setRemoteDescription(answer);});
   socket.on('webrtc-ice',async({candidate})=>{await pc?.addIceCandidate(candidate);});
   socket.on('next-question',({qIdx})=>{
     const qs=sessionData?.questions||[];
-    if(qs[qIdx]){
-      const bar=$('question-bar');
-      bar.textContent='Q'+(qIdx+1)+': '+qs[qIdx];
-      bar.style.display='block';
-    }
+    if(qs[qIdx]){const o=$('q-overlay');o.textContent='Q'+(qIdx+1)+': '+qs[qIdx];o.style.display='block';}
   });
-  socket.on('peer-left',()=>{$('conn-badge').textContent='Interviewer disconnected';$('conn-badge').className='badge badge-red';});
+  socket.on('peer-left',()=>{$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
 }
 
 async function createPC(){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
   localStream?.getTracks().forEach(t=>pc.addTrack(t,localStream));
-  pc.ontrack=e=>{$('remote-video').srcObject=e.streams[0];};
+  pc.ontrack=e=>{$('remote-vid').srcObject=e.streams[0];};
   pc.onicecandidate=e=>{if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData?.id,candidate:e.candidate});};
 }
+
 async function startWebRTC(isInit){
   await createPC();
   if(isInit){const o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData?.id,offer:o});}
