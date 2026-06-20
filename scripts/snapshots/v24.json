@@ -1,0 +1,50 @@
+{
+  "_meta": {
+    "date": "2026-06-20",
+    "note": "v24: Polish UI, screen share fix (replaceTrack), compression fix (16x playback), flag spam prevention, pause overlay, multi-display once-only, goodbye screen, company org auth"
+  },
+  "public/js/utils.js": {
+    "sha": "2f4d7c17135bc8649e528d7ea43581400c02a5f6",
+    "size": 2719
+  },
+  "public/css/main.css": {
+    "sha": "25854f80066738d2c052f8f6d54a064dabbe28e4",
+    "size": 20049
+  },
+  "public/pages/index.html": {
+    "sha": "67dabb18d5f3aad485d00998f4d9c2015044590e",
+    "size": 9173
+  },
+  "public/pages/dashboard.html": {
+    "sha": "d137394e33c625ab6440a63511c4a8ef8be8a337",
+    "size": 11192
+  },
+  "public/pages/session.html": {
+    "sha": "48a15bfb5dac62a12f43be8c3b7e3635aa0b0913",
+    "size": 14964
+  },
+  "public/pages/candidate.html": {
+    "sha": "ec519d61cf6750ea049e1e80f30262276d800333",
+    "size": 16878
+  },
+  "public/pages/recordings.html": {
+    "sha": "0ef27e6f858a09a61430611106f57b037d37fe20",
+    "size": 11072
+  },
+  "public/pages/share.html": {
+    "sha": "db90f542499fdc25939630e0939dba6ea4ae95e1",
+    "size": 3186
+  },
+  "server.js": {
+    "sha": "22cbab2477ca146d74dcadbe88163460dc53da1a",
+    "size": 18271
+  },
+  "Dockerfile": {
+    "sha": "d36e4b7320a58e1690f1c3381a23a4dd3959a5de",
+    "size": 489
+  },
+  "package.json": {
+    "sha": "f8fab78be93c8581047d8e4cba9e0315b91dbfc1",
+    "size": 521
+  }
+}
