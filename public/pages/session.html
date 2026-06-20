@@ -9,6 +9,26 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .rec-dot{width:8px;height:8px;border-radius:50%;background:var(--red);display:inline-block;animation:pulse 1s infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 
+/* CANDIDATE LOCKOUT OVERLAY on video pane */
+#candidate-lockout-overlay{
+  display:none;position:absolute;inset:0;z-index:50;
+  background:rgba(0,0,0,0.92);
+  flex-direction:column;align-items:center;justify-content:center;
+  text-align:center;padding:24px;backdrop-filter:blur(6px);
+}
+#candidate-lockout-overlay.active{display:flex;}
+.lockout-ov-icon{font-size:52px;margin-bottom:12px;animation:lockPulse 1s infinite;}
+@keyframes lockPulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.7;transform:scale(.95)}}
+.lockout-ov-title{font-size:22px;font-weight:800;color:#ef4444;margin-bottom:8px;letter-spacing:-.3px;}
+.lockout-ov-sub{font-size:14px;color:#94a3b8;margin-bottom:16px;line-height:1.6;}
+.lockout-ov-timer{
+  font-size:52px;font-weight:900;color:#f97316;font-family:monospace;
+  letter-spacing:4px;margin-bottom:8px;
+}
+.lockout-ov-bar{width:200px;height:6px;background:#1a1a1a;border-radius:3px;overflow:hidden;margin:0 auto;}
+.lockout-ov-bar-fill{height:100%;background:linear-gradient(90deg,#ef4444,#f97316);border-radius:3px;transition:width 1s linear;}
+.lockout-ov-violation{font-size:12px;color:#6b7280;margin-top:10px;}
+
 /* FLAG COUNT CARDS - one per flag type, count updates live */
 .flag-count-card{
   background:var(--bg2);border:1px solid var(--border);border-radius:var(--rs);
@@ -80,6 +100,19 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
       <div style="font-size:11px;color:#374151;margin-top:12px;text-align:center">Changes apply immediately</div>
     </div>
 
+    <!-- CANDIDATE LOCKOUT OVERLAY: covers video when candidate is locked out -->
+    <div id="candidate-lockout-overlay">
+      <div class="lockout-ov-icon">&#128274;</div>
+      <div class="lockout-ov-title">Candidate Locked Out</div>
+      <div class="lockout-ov-sub">
+        Candidate switched to another tab.<br>
+        They are locked out for 30 seconds.
+      </div>
+      <div class="lockout-ov-timer" id="lockout-ov-timer">0:30</div>
+      <div class="lockout-ov-bar"><div class="lockout-ov-bar-fill" id="lockout-ov-bar-fill" style="width:100%"></div></div>
+      <div class="lockout-ov-violation" id="lockout-ov-violation"></div>
+    </div>
+
     <div id="screenshare-bar" class="screen-share-bar" style="display:none">
       Sharing your screen - candidate can see it
       <button onclick="stopScreenShare()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px;margin-left:8px">Stop</button>
@@ -128,7 +161,7 @@ var mediaRecorder = null, recChunks = [], isRec = false, recStart = null;
 var isScreenSharing = false, timerInterval = null;
 var remoteStream = null, audioCtxRec = null;
 
-// ── FLAG COUNT SYSTEM ──
+// ââ FLAG COUNT SYSTEM ââ
 // One card per flag TYPE. Count increments live. No spam.
 // flagRegistry: { [flagKey]: { text, detail, severity, count, lastTime, cardEl } }
 var flagRegistry = {};
@@ -476,6 +509,36 @@ function connectSocket(){
     setTrust(s.trust_score!=null?s.trust_score:100);
   });
   socket.on('peer-left',function(){$('s-status').textContent='Disconnected';$('s-status').className='badge badge-red';toast('Candidate disconnected','amber');});
+
+  // Show lockout overlay when candidate is locked out
+  socket.on('candidate-lockout', function(data){
+    var ov = $('candidate-lockout-overlay');
+    var timerEl = $('lockout-ov-timer');
+    var barEl = $('lockout-ov-bar-fill');
+    var violEl = $('lockout-ov-violation');
+
+    ov.classList.add('active');
+
+    var secs = data.secondsLeft || 30;
+    var total = 30;
+    var m = Math.floor(secs/60), s = secs % 60;
+    timerEl.textContent = m+':'+(s<10?'0':'')+s;
+    barEl.style.width = Math.round((secs/total)*100)+'%';
+    if(data.violation) violEl.textContent = 'Tab switch violation #'+data.violation;
+
+    // Update status badge
+    $('s-status').textContent = 'Locked Out';
+    $('s-status').className = 'badge badge-red';
+  });
+
+  // Remove lockout overlay when candidate returns
+  socket.on('candidate-lockout-end', function(){
+    var ov = $('candidate-lockout-overlay');
+    ov.classList.remove('active');
+    $('s-status').textContent = 'Live';
+    $('s-status').className = 'badge badge-green';
+    toast('Candidate returned from lockout','amber',3000);
+  });
 }
 
 async function startWebRTC(isInit){
