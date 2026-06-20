@@ -8,6 +8,7 @@
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 .rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite;display:inline-block}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.upload-bar{font-size:11px;color:var(--text2);padding:4px 0;display:none}
 </style>
 </head>
 <body>
@@ -15,6 +16,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   <div class="topbar-logo">Secure Interview</div>
   <div class="topbar-right">
     <span id="s-code" style="font-size:12px;color:var(--text2)"></span>
+    <a href="/recordings" class="btn" style="font-size:12px;padding:4px 10px">Recordings</a>
     <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red)"><span class="rec-dot"></span>REC</span>
     <button id="rec-btn" class="btn btn-danger" onclick="toggleRec()" style="font-size:12px;padding:4px 10px">Record</button>
     <span id="s-status" class="badge">Waiting for candidate...</span>
@@ -57,7 +59,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <script>
 var sessionId = location.pathname.split('/').pop();
 var socket, pc, localStream, sessionData, qIdx = 0;
-var mediaRecorder = null, recChunks = [], isRec = false;
+var mediaRecorder = null, recChunks = [], isRec = false, recStartTime = null;
 
 function switchTab(name, btn) {
   document.querySelectorAll('.sb-tab').forEach(function(t){ t.classList.remove('active'); });
@@ -81,11 +83,7 @@ function buildFlagCard(f) {
   var title = document.createElement('div');
   title.className = 'flag-title'; title.textContent = f.text;
   div.appendChild(title);
-  if (f.detail) {
-    var det = document.createElement('div');
-    det.className = 'flag-detail'; det.textContent = f.detail;
-    div.appendChild(det);
-  }
+  if (f.detail) { var det = document.createElement('div'); det.className = 'flag-detail'; det.textContent = f.detail; div.appendChild(det); }
   var time = document.createElement('div');
   time.className = 'flag-time'; time.textContent = f.severity.toUpperCase() + ' - ' + f.time_offset;
   div.appendChild(time);
@@ -114,11 +112,7 @@ function renderQuestions(qs) {
   });
 }
 
-function goQ(i) {
-  qIdx = i;
-  renderQuestions(sessionData && sessionData.questions || []);
-  if (socket) socket.emit('next-question', {sessionId: sessionId, qIdx: qIdx});
-}
+function goQ(i) { qIdx = i; renderQuestions(sessionData && sessionData.questions || []); if (socket) socket.emit('next-question', {sessionId: sessionId, qIdx: qIdx}); }
 function nextQ() { if (sessionData && sessionData.questions && qIdx < sessionData.questions.length - 1) goQ(qIdx + 1); }
 function prevQ() { if (qIdx > 0) goQ(qIdx - 1); }
 
@@ -131,6 +125,7 @@ function startRec() {
   canvas.width = 1280; canvas.height = 720;
   var ctx = canvas.getContext('2d');
   isRec = true;
+  recStartTime = Date.now();
   (function draw() {
     if (!isRec) return;
     ctx.drawImage(vid, 0, 0, 1280, 720);
@@ -160,20 +155,44 @@ function startRec() {
 function stopRec() {
   if (!mediaRecorder) return;
   isRec = false;
+  var duration = Math.floor((Date.now() - recStartTime) / 1000);
   mediaRecorder.stop();
   mediaRecorder.onstop = function() {
     var blob = new Blob(recChunks, {type: 'video/webm'});
+    
+    // 1. Download locally
     var url = URL.createObjectURL(blob);
     var a = document.createElement('a');
     a.href = url;
     a.download = 'interview-' + (sessionData && sessionData.code || 'session') + '-' + new Date().toISOString().slice(0,19).replace(/:/g,'-') + '.webm';
     a.click();
     URL.revokeObjectURL(url);
-    toast('Recording saved!', 'green');
+    
+    // 2. Upload to server recordings library
+    uploadRecording(blob, duration);
   };
   document.getElementById('rec-btn').textContent = 'Record';
   document.getElementById('rec-btn').className = 'btn btn-danger';
   document.getElementById('rec-ind').style.display = 'none';
+}
+
+async function uploadRecording(blob, duration) {
+  toast('Saving to recordings library...', 'amber');
+  try {
+    var formData = new FormData();
+    formData.append('recording', blob, 'recording.webm');
+    formData.append('sessionId', sessionId);
+    formData.append('durationSecs', String(duration));
+    var res = await fetch('/api/recordings/upload', {method: 'POST', body: formData});
+    var data = await res.json();
+    if (data.ok) {
+      toast('Saved to recordings library!', 'green');
+    } else {
+      toast('Upload failed: ' + (data.error || 'unknown'), 'red');
+    }
+  } catch(e) {
+    toast('Upload error: ' + e.message, 'red');
+  }
 }
 
 async function init() {
