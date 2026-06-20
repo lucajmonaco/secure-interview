@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Session — Secure Interview</title>
+<title>Session â Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>body{display:flex;flex-direction:column;height:100vh;overflow:hidden}</style>
 </head>
@@ -26,7 +26,7 @@
       <span id="timer-chip" class="video-chip" style="display:none">00:00</span>
     </div>
     <div id="screenshare-bar" class="screen-share-bar" style="display:none">
-      &#128247; Sharing your screen — candidate can see it &nbsp;
+      &#128247; Sharing your screen â candidate can see it &nbsp;
       <button onclick="stopScreenShare()" style="background:rgba(255,255,255,.2);border:1px solid rgba(255,255,255,.4);color:#fff;padding:2px 10px;border-radius:4px;cursor:pointer;font-size:12px">Stop</button>
     </div>
   </div>
@@ -46,7 +46,7 @@
       <button class="sb-tab" onclick="switchTab('questions',this)">&#10067; Questions</button>
     </div>
     <div id="sbp-flags" class="sb-panel active">
-      <div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet — session looks clean.</div>
+      <div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet â session looks clean.</div>
     </div>
     <div id="sbp-questions" class="sb-panel"></div>
     <div id="q-nav" style="display:none" class="q-nav">
@@ -95,7 +95,7 @@ function buildFlagCard(f){
 function renderFlags(flags){
   var el=$('sbp-flags');el.innerHTML='';
   var badge=$('flag-badge');badge.textContent=flags.length>0?' ('+flags.length+')':'';badge.style.color=flags.length>0?'var(--red)':'';
-  if(!flags.length){el.innerHTML='<div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet — session looks clean.</div>';return;}
+  if(!flags.length){el.innerHTML='<div class="no-items"><div class="no-items-icon">&#9989;</div>No flags yet â session looks clean.</div>';return;}
   flags.forEach(function(f){el.appendChild(buildFlagCard(f));});
   el.scrollTop=el.scrollHeight;
 }
@@ -128,7 +128,7 @@ function toggleRec(){if(isRec)stopRec();else startRec();}
 
 function startRec(){
   var vid=$('remote-vid');
-  if(!vid.srcObject){toast('No candidate video yet — wait for them to join','red');return;}
+  if(!vid.srcObject){toast('No candidate video yet â wait for them to join','red');return;}
   var canvas=document.createElement('canvas');canvas.width=1280;canvas.height=720;
   var ctx=canvas.getContext('2d');isRec=true;recStart=Date.now();
   (function draw(){
@@ -177,7 +177,7 @@ async function uploadRecording(blob,dur){
   }catch(e){toast('Upload error: '+e.message,'red');}
 }
 
-// ── SCREEN SHARING ──
+// ââ SCREEN SHARING ââ
 // KEY: We use pc.getSenders() + replaceTrack() to swap the video track
 // sent to the candidate. This is the ONLY way to send screen share over WebRTC.
 async function toggleScreenShare(){if(isScreenSharing)stopScreenShare();else startScreenShare();}
@@ -198,13 +198,13 @@ async function startScreenShare(){
       var vs=senders.find(function(s){return s.track&&s.track.kind==='video';});
       if(vs){
         vs.replaceTrack(screenTrack).then(function(){
-          toast('&#128247; Screen sharing — candidate can now see your screen','blue',4000);
+          toast('&#128247; Screen sharing â candidate can now see your screen','blue',4000);
         }).catch(function(e){toast('Track replace failed: '+e.message,'red');});
       }else{
-        toast('No video sender found — make sure candidate is connected first','red');
+        toast('No video sender found â make sure candidate is connected first','red');
       }
     }else{
-      toast('Not connected yet — connect to candidate first, then share screen','red');
+      toast('Not connected yet â connect to candidate first, then share screen','red');
       screenStream.getTracks().forEach(function(t){t.stop();});screenStream=null;return;
     }
 
@@ -298,7 +298,9 @@ async function endSession(){
   if(timerInterval)clearInterval(timerInterval);
   if(socket)socket.emit('session-ended',{sessionId:sessionId});
   await patch('/api/sessions/'+sessionId,{status:'ended'});
-  setTimeout(function(){location.href='/dashboard';},500);
+  // Sync final trust score + flag count to the recording
+  try{ await patch('/api/recordings/session/'+sessionId+'/sync',{}); }catch(e){}
+  setTimeout(function(){location.href='/dashboard';},600);
 }
 
 function copyInvite(){
