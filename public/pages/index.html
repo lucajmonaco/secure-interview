@@ -6,104 +6,103 @@
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
-<nav class="navbar">
-  <div class="nav-brand">SecureInterview</div>
-  <div class="nav-links">
-    <a href="/dashboard" class="btn btn-primary" id="nav-dashboard" style="display:none">Dashboard</a>
-    <button class="btn btn-outline" id="nav-login">Sign In</button>
-    <button class="btn btn-primary" id="nav-signup">Get Started</button>
-    <button class="btn btn-outline" id="nav-logout" style="display:none">Sign Out</button>
+<nav class="nav">
+  <div class="nav-logo">Secure Interview</div>
+  <div class="nav-right">
+    <span id="n-name" style="font-size:12px;color:var(--text2);display:none"></span>
+    <a href="/dashboard" class="btn btn-outline" id="n-dash" style="display:none">Dashboard</a>
+    <button class="btn btn-outline" id="n-in" onclick="openSignIn()">Sign In</button>
+    <button class="btn btn-primary" id="n-up" onclick="openSignUp()">Get Started</button>
+    <button class="btn btn-outline" id="n-out" style="display:none" onclick="doLogout()">Sign Out</button>
   </div>
 </nav>
 <main>
-<section class="hero">
-  <div class="hero-content">
-    <h1>AI-Powered Interview Integrity</h1>
-    <p class="hero-sub">Detect cheating in real-time. Protect your hiring process with WebRTC proctoring, trust scoring, and instant flag alerts.</p>
-    <div class="hero-actions">
-      <button class="btn btn-primary btn-lg" id="hero-start">Start Free Trial</button>
-      <button class="btn btn-outline btn-lg" id="hero-demo">See Demo</button>
-    </div>
+<div class="hero">
+  <h1>AI-Powered Interview Integrity</h1>
+  <p class="hero-sub">Real-time proctoring with WebRTC video, trust scoring, and instant cheat detection alerts.</p>
+  <div class="hero-btns">
+    <button class="btn btn-primary btn-lg" onclick="openSignUp()">Start Free Trial</button>
+    <button class="btn btn-outline btn-lg" onclick="openSignIn()">See Demo</button>
   </div>
-</section>
-<section class="features">
+</div>
+<div class="features">
   <div class="features-grid">
-    <div class="feature-card"><h3>Live Video Proctoring</h3><p>WebRTC-powered video monitoring with zero plugins required.</p></div>
-    <div class="feature-card"><h3>Trust Score</h3><p>Real-time AI scoring that flags suspicious behavior instantly.</p></div>
-    <div class="feature-card"><h3>Instant Alerts</h3><p>Get notified the moment something looks off during the interview.</p></div>
-    <div class="feature-card"><h3>Full Reports</h3><p>Detailed session reports with timestamps and flag summaries.</p></div>
+    <div class="fcard"><h3>Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
+    <div class="fcard"><h3>Trust Score</h3><p>Real-time scoring that flags suspicious behavior instantly.</p></div>
+    <div class="fcard"><h3>Instant Alerts</h3><p>Get notified the moment something looks off.</p></div>
+    <div class="fcard"><h3>Full Reports</h3><p>Detailed session reports with timestamps and flag summaries.</p></div>
   </div>
-</section>
+</div>
 </main>
 
-<div id="auth-modal" class="modal hidden">
-  <div class="modal-backdrop"></div>
-  <div class="modal-content">
-    <button class="modal-close" id="modal-close">X</button>
-    <div id="login-form">
-      <h2>Sign In</h2>
-      <input type="email" id="login-email" placeholder="Email" class="input">
-      <input type="password" id="login-password" placeholder="Password" class="input">
-      <div id="login-error" class="error hidden"></div>
-      <button class="btn btn-primary btn-block" id="login-submit">Sign In</button>
-      <p class="auth-switch">No account? <a href="#" id="switch-to-signup">Sign up free</a></p>
-    </div>
-    <div id="signup-form" class="hidden">
-      <h2>Get Started Free</h2>
-      <input type="text" id="signup-name" placeholder="Full Name" class="input">
-      <input type="email" id="signup-email" placeholder="Work Email" class="input">
-      <input type="text" id="signup-org" placeholder="Company / Organization" class="input">
-      <input type="password" id="signup-password" placeholder="Password (min 6 chars)" class="input">
-      <div id="signup-error" class="error hidden"></div>
-      <button class="btn btn-primary btn-block" id="signup-submit">Create Account</button>
-      <p class="auth-switch">Already have an account? <a href="#" id="switch-to-login">Sign in</a></p>
-    </div>
+<!-- Sign In overlay -->
+<div id="ov-signin" class="overlay" onclick="if(event.target===this)hideModal('ov-signin')">
+  <div class="modal-box">
+    <button class="modal-close-btn" onclick="hideModal('ov-signin')">x</button>
+    <h2>Sign In</h2>
+    <label class="label">Email</label>
+    <input type="email" id="si-email" class="input" placeholder="you@company.com">
+    <label class="label">Password</label>
+    <input type="password" id="si-pass" class="input" placeholder="Password">
+    <div id="si-err" class="err" style="display:none"></div>
+    <button class="btn btn-primary btn-block" onclick="doSignIn()">Sign In</button>
+    <p class="auth-switch">No account? <a href="#" onclick="openSignUp();return false">Sign up free</a></p>
   </div>
 </div>
 
+<!-- Sign Up overlay -->
+<div id="ov-signup" class="overlay" onclick="if(event.target===this)hideModal('ov-signup')">
+  <div class="modal-box">
+    <button class="modal-close-btn" onclick="hideModal('ov-signup')">x</button>
+    <h2>Get Started Free</h2>
+    <label class="label">Full Name</label>
+    <input type="text" id="su-name" class="input" placeholder="Your Name">
+    <label class="label">Work Email</label>
+    <input type="email" id="su-email" class="input" placeholder="you@company.com">
+    <label class="label">Company / Organization</label>
+    <input type="text" id="su-org" class="input" placeholder="Company Name">
+    <label class="label">Password</label>
+    <input type="password" id="su-pass" class="input" placeholder="Min 6 characters">
+    <div id="su-err" class="err" style="display:none"></div>
+    <button class="btn btn-primary btn-block" onclick="doSignUp()">Create Account</button>
+    <p class="auth-switch">Already have an account? <a href="#" onclick="openSignIn();return false">Sign in</a></p>
+  </div>
+</div>
+
+<div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-async function checkAuth() {
-  const me = await get('/api/auth/me');
-  if (me && me.loggedIn) {
-    $('nav-dashboard').style.display = '';
-    $('nav-logout').style.display = '';
-    $('nav-login').style.display = 'none';
-    $('nav-signup').style.display = 'none';
+function openSignIn(){hideModal('ov-signup');showModal('ov-signin');}
+function openSignUp(){hideModal('ov-signin');showModal('ov-signup');}
+
+async function doSignIn(){
+  const email=$('si-email').value,pass=$('si-pass').value;
+  const err=$('si-err');err.style.display='none';
+  const res=await post('/api/auth/login',{email,password:pass});
+  if(res.error){err.textContent=res.error;err.style.display='block';return;}
+  window.location.href='/dashboard';
+}
+
+async function doSignUp(){
+  const name=$('su-name').value,email=$('su-email').value,org=$('su-org').value,pass=$('su-pass').value;
+  const err=$('su-err');err.style.display='none';
+  if(!name||!email||!org||!pass){err.textContent='All fields required';err.style.display='block';return;}
+  const res=await post('/api/auth/signup',{name,email,org,password:pass});
+  if(res.error){err.textContent=res.error;err.style.display='block';return;}
+  window.location.href='/dashboard';
+}
+
+async function doLogout(){await post('/api/auth/logout');window.location.reload();}
+
+async function init(){
+  const me=await get('/api/auth/me');
+  if(me&&me.loggedIn){
+    $('n-name').textContent=me.name;$('n-name').style.display='';
+    $('n-dash').style.display='';$('n-out').style.display='';
+    $('n-in').style.display='none';$('n-up').style.display='none';
   }
 }
-
-function showModal(form) {
-  $('auth-modal').classList.remove('hidden');
-  $('login-form').classList.toggle('hidden', form !== 'login');
-  $('signup-form').classList.toggle('hidden', form !== 'signup');
-}
-
-$('nav-login').onclick = () => showModal('login');
-$('nav-signup').onclick = () => showModal('signup');
-$('hero-start').onclick = () => showModal('signup');
-$('hero-demo').onclick = () => showModal('login');
-$('modal-close').onclick = () => $('auth-modal').classList.add('hidden');
-$('auth-modal').querySelector('.modal-backdrop').onclick = () => $('auth-modal').classList.add('hidden');
-$('switch-to-signup').onclick = e => { e.preventDefault(); showModal('signup'); };
-$('switch-to-login').onclick = e => { e.preventDefault(); showModal('login'); };
-
-$('login-submit').onclick = async () => {
-  const res = await post('/api/auth/login', { email: $('login-email').value, password: $('login-password').value });
-  if (res.error) { $('login-error').textContent = res.error; $('login-error').classList.remove('hidden'); }
-  else { location.href = '/dashboard'; }
-};
-
-$('signup-submit').onclick = async () => {
-  const res = await post('/api/auth/signup', { name: $('signup-name').value, email: $('signup-email').value, org: $('signup-org').value, password: $('signup-password').value });
-  if (res.error) { $('signup-error').textContent = res.error; $('signup-error').classList.remove('hidden'); }
-  else { location.href = '/dashboard'; }
-};
-
-$('nav-logout').onclick = async () => { await post('/api/auth/logout'); location.reload(); };
-$('nav-dashboard').onclick = () => { location.href = '/dashboard'; };
-
-checkAuth();
+init();
 </script>
 </body>
 </html>
