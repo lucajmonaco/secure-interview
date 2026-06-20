@@ -6,6 +6,8 @@
 <link rel="stylesheet" href="/css/main.css">
 <style>
 body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+.rec-dot{width:10px;height:10px;border-radius:50%;background:var(--red);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 </style>
 </head>
 <body>
@@ -13,6 +15,10 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   <div class="topbar-logo">Secure Interview</div>
   <div class="topbar-right">
     <span id="s-code" style="font-size:12px;color:var(--text2)"></span>
+    <span id="rec-indicator" style="display:none;align-items:center;gap:6px;font-size:12px;color:var(--red)">
+      <span class="rec-dot"></span>REC
+    </span>
+    <button id="rec-btn" class="btn btn-danger" onclick="toggleRecording()" style="font-size:12px;padding:4px 10px">Start Recording</button>
     <span id="s-status" class="badge">Waiting for candidate...</span>
   </div>
 </div>
@@ -36,7 +42,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
     </div>
 
     <div class="sb-tabs">
-      <button class="sb-tab active" onclick="switchSbTab('flags',this)">Flags</button>
+      <button class="sb-tab active" id="tab-flags-btn" onclick="switchSbTab('flags',this)">Flags</button>
       <button class="sb-tab" onclick="switchSbTab('questions',this)">Questions</button>
     </div>
 
@@ -61,90 +67,192 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <script src="/js/utils.js"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
-const sessionId=location.pathname.split('/').pop();
-let socket,pc,localStream,sessionData,qIdx=0;
+const sessionId = location.pathname.split('/').pop();
+let socket, pc, localStream, sessionData, qIdx = 0;
+let mediaRecorder = null, recordedChunks = [], isRecording = false;
 
-function switchSbTab(name,btn){
-  document.querySelectorAll('.sb-tab').forEach(t=>t.classList.remove('active'));
-  document.querySelectorAll('.sb-panel').forEach(p=>p.classList.remove('active'));
+function switchSbTab(name, btn) {
+  document.querySelectorAll('.sb-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.sb-panel').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  $('sbp-'+name).classList.add('active');
+  $('sbp-' + name).classList.add('active');
 }
 
-function setTrust(v){
-  const cls=trustClass(v);
-  $('trust-num').textContent=v;
-  $('trust-num').className='trust-num '+cls;
-  $('trust-sub').className='trust-sub '+cls;
-  $('trust-sub').textContent=v>=80?'Excellent':v>=60?'Good':v>=40?'Caution':'High Risk';
+function setTrust(v) {
+  const cls = trustClass(v);
+  $('trust-num').textContent = v;
+  $('trust-num').className = 'trust-num ' + cls;
+  $('trust-sub').className = 'trust-sub ' + cls;
+  $('trust-sub').textContent = v >= 80 ? 'Excellent' : v >= 60 ? 'Good' : v >= 40 ? 'Caution' : 'High Risk';
 }
 
-function renderFlags(flags){
-  const el=$('sbp-flags');
-  if(!flags.length){el.innerHTML='<div class="no-items">No flags yet</div>';return;}
-  el.innerHTML=flags.map(f=>'<div class="flag-card '+f.severity+'"><div class="flag-title">'+f.text+'</div>'+(f.detail?'<div class="flag-detail">'+f.detail+'</div>':'')+'<div class="flag-time">'+f.severity.toUpperCase()+' - '+f.time_offset+'</div></div>').join('');
+function renderFlags(flags) {
+  const el = $('sbp-flags');
+  if (!flags.length) { el.innerHTML = '<div class="no-items">No flags yet</div>'; return; }
+  el.innerHTML = flags.map(f =>
+    '<div class="flag-card ' + f.severity + '"><div class="flag-title">' + f.text + '</div>' +
+    (f.detail ? '<div class="flag-detail">' + f.detail + '</div>' : '') +
+    '<div class="flag-time">' + f.severity.toUpperCase() + ' - ' + f.time_offset + '</div></div>'
+  ).join('');
+  el.scrollTop = el.scrollHeight;
 }
 
-function renderQuestions(qs){
-  if(!qs||!qs.length){$('sbp-questions').innerHTML='<div class="no-items">No questions set</div>';return;}
-  $('q-nav').style.display='flex';
-  $('sbp-questions').innerHTML=qs.map((q,i)=>'<div class="q-card'+(i===qIdx?' active':'')+'" onclick="goQ('+i+')">'+q+'</div>').join('');
+function renderQuestions(qs) {
+  if (!qs || !qs.length) { $('sbp-questions').innerHTML = '<div class="no-items">No questions set</div>'; return; }
+  $('q-nav').style.display = 'flex';
+  $('sbp-questions').innerHTML = qs.map((q, i) =>
+    '<div class="q-card' + (i === qIdx ? ' active' : '') + '" onclick="goQ(' + i + ')">' + q + '</div>'
+  ).join('');
 }
 
-function goQ(i){qIdx=i;renderQuestions(sessionData?.questions||[]);socket?.emit('next-question',{sessionId,qIdx});}
-function nextQ(){if(sessionData?.questions&&qIdx<sessionData.questions.length-1)goQ(qIdx+1);}
-function prevQ(){if(qIdx>0)goQ(qIdx-1);}
+function goQ(i) { qIdx = i; renderQuestions(sessionData?.questions || []); socket?.emit('next-question', { sessionId, qIdx }); }
+function nextQ() { if (sessionData?.questions && qIdx < sessionData.questions.length - 1) goQ(qIdx + 1); }
+function prevQ() { if (qIdx > 0) goQ(qIdx - 1); }
 
-async function init(){
-  const me=await requireLogin('/');if(!me)return;
-  const s=await get('/api/sessions/'+sessionId);
-  if(s.error){toast(s.error,'red');return;}
-  sessionData=s;
-  $('s-title').textContent=s.title;
-  $('s-cand').textContent=s.candidate_name||'Candidate';
-  $('s-code').textContent='Code: '+s.code;
-  setTrust(s.trust_score??100);
-  renderFlags(s.flags||[]);
-  renderQuestions(s.questions||[]);
+// RECORDING
+function toggleRecording() {
+  if (!isRecording) startRecording();
+  else stopRecording();
+}
+
+function startRecording() {
+  const video = $('remote-vid');
+  if (!video.srcObject) { toast('No candidate video to record', 'red'); return; }
+  
+  // Combine remote video + local audio for recording
+  const canvas = document.createElement('canvas');
+  canvas.width = 1280; canvas.height = 720;
+  const ctx = canvas.getContext('2d');
+  
+  // Draw remote video to canvas continuously
+  function draw() {
+    if (!isRecording) return;
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+    
+    // Draw local PIP
+    const localVid = $('local-vid');
+    if (localVid.srcObject) {
+      ctx.drawImage(localVid, canvas.width - 220, canvas.height - 130, 210, 120);
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(canvas.width - 220, canvas.height - 130, 210, 120);
+    }
+    
+    // Draw REC indicator
+    ctx.fillStyle = 'rgba(248,81,73,0.9)';
+    ctx.fillRect(10, 10, 60, 24);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 13px Arial';
+    ctx.fillText('● REC', 15, 27);
+    
+    requestAnimationFrame(draw);
+  }
+
+  // Get audio tracks
+  const audioTracks = [];
+  if (localStream) localStream.getAudioTracks().forEach(t => audioTracks.push(t));
+  
+  const canvasStream = canvas.captureStream(30);
+  audioTracks.forEach(t => canvasStream.addTrack(t));
+  
+  recordedChunks = [];
+  const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm';
+  mediaRecorder = new MediaRecorder(canvasStream, { mimeType });
+  mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+  mediaRecorder.start(1000);
+  
+  isRecording = true;
+  draw();
+  $('rec-btn').textContent = 'Stop & Download';
+  $('rec-btn').className = 'btn btn-outline';
+  $('rec-indicator').style.display = 'flex';
+  toast('Recording started', 'green');
+}
+
+function stopRecording() {
+  if (!mediaRecorder) return;
+  mediaRecorder.stop();
+  mediaRecorder.onstop = () => {
+    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    const now = new Date();
+    const ts = now.toISOString().replace(/[:.]/g, '-').slice(0, 19);
+    a.href = url;
+    a.download = 'interview-' + (sessionData?.code || 'session') + '-' + ts + '.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    toast('Recording saved!', 'green');
+  };
+  isRecording = false;
+  $('rec-btn').textContent = 'Start Recording';
+  $('rec-btn').className = 'btn btn-danger';
+  $('rec-indicator').style.display = 'none';
+}
+
+async function init() {
+  const me = await requireLogin('/'); if (!me) return;
+  const s = await get('/api/sessions/' + sessionId);
+  if (s.error) { toast(s.error, 'red'); return; }
+  sessionData = s;
+  $('s-title').textContent = s.title;
+  $('s-cand').textContent = s.candidate_name || 'Candidate';
+  $('s-code').textContent = 'Code: ' + s.code;
+  setTrust(s.trust_score ?? 100);
+  renderFlags(s.flags || []);
+  renderQuestions(s.questions || []);
   await startMedia();
   connectSocket();
 }
 
-async function startMedia(){
-  try{localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});$('local-vid').srcObject=localStream;}
-  catch(e){toast('Camera/mic error: '+e.message,'amber');}
+async function startMedia() {
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    $('local-vid').srcObject = localStream;
+  } catch (e) { toast('Camera/mic: ' + e.message, 'amber'); }
 }
 
-function connectSocket(){
-  socket=io();
-  socket.emit('join-room',{sessionId,role:'interviewer'});
-  socket.on('peer-joined',async({role})=>{
-    if(role==='candidate'){$('s-status').textContent='Live';$('s-status').className='badge badge-green';await startWebRTC(true);}
+function connectSocket() {
+  socket = io();
+  socket.emit('join-room', { sessionId, role: 'interviewer' });
+  socket.on('peer-joined', async ({ role }) => {
+    if (role === 'candidate') { $('s-status').textContent = 'Live'; $('s-status').className = 'badge badge-green'; await startWebRTC(true); }
   });
-  socket.on('peer-already-present',async()=>{$('s-status').textContent='Live';$('s-status').className='badge badge-green';await startWebRTC(true);});
-  socket.on('webrtc-offer',async({offer})=>{if(!pc)await startWebRTC(false);await pc.setRemoteDescription(offer);const a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId,answer:a});});
-  socket.on('webrtc-answer',async({answer})=>{await pc?.setRemoteDescription(answer);});
-  socket.on('webrtc-ice',async({candidate})=>{await pc?.addIceCandidate(candidate);});
-  socket.on('candidate-flag',async(flag)=>{
-    toast(flag.text,'amber');
-    const s=await get('/api/sessions/'+sessionId);
-    setTrust(s.trust_score??100);
-    renderFlags(s.flags||[]);
-    switchSbTab('flags',document.querySelector('.sb-tab'));
+  socket.on('peer-already-present', async () => { $('s-status').textContent = 'Live'; $('s-status').className = 'badge badge-green'; await startWebRTC(true); });
+  socket.on('webrtc-offer', async ({ offer }) => {
+    if (!pc) await startWebRTC(false);
+    await pc.setRemoteDescription(offer);
+    const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+    socket.emit('webrtc-answer', { sessionId, answer: a });
   });
-  socket.on('peer-left',()=>{$('s-status').textContent='Disconnected';$('s-status').className='badge badge-red';toast('Candidate disconnected','amber');});
+  socket.on('webrtc-answer', async ({ answer }) => { await pc?.setRemoteDescription(answer); });
+  socket.on('webrtc-ice', async ({ candidate }) => { await pc?.addIceCandidate(candidate); });
+  socket.on('candidate-flag', async (flag) => {
+    toast(flag.text, 'amber');
+    const s = await get('/api/sessions/' + sessionId);
+    setTrust(s.trust_score ?? 100);
+    renderFlags(s.flags || []);
+    switchSbTab('flags', $('tab-flags-btn'));
+  });
+  socket.on('peer-left', () => { $('s-status').textContent = 'Disconnected'; $('s-status').className = 'badge badge-red'; toast('Candidate disconnected', 'amber'); });
 }
 
-async function startWebRTC(isInit){
-  pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  localStream?.getTracks().forEach(t=>pc.addTrack(t,localStream));
-  pc.ontrack=e=>{$('remote-vid').srcObject=e.streams[0];};
-  pc.onicecandidate=e=>{if(e.candidate)socket.emit('webrtc-ice',{sessionId,candidate:e.candidate});};
-  if(isInit){const o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId,offer:o});}
+async function startWebRTC(isInit) {
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  localStream?.getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = e => { $('remote-vid').srcObject = e.streams[0]; };
+  pc.onicecandidate = e => { if (e.candidate) socket.emit('webrtc-ice', { sessionId, candidate: e.candidate }); };
+  if (isInit) { const o = await pc.createOffer(); await pc.setLocalDescription(o); socket.emit('webrtc-offer', { sessionId, offer: o }); }
 }
 
-async function endSession(){if(!confirm('End session?'))return;await patch('/api/sessions/'+sessionId,{status:'ended'});location.href='/dashboard';}
-function copyInvite(){navigator.clipboard.writeText(location.origin+'/join/'+(sessionData?.code||'')).then(()=>toast('Invite link copied!','green'));}
+async function endSession() {
+  if (isRecording) stopRecording();
+  if (!confirm('End session?')) return;
+  await patch('/api/sessions/' + sessionId, { status: 'ended' });
+  location.href = '/dashboard';
+}
+
+function copyInvite() { navigator.clipboard.writeText(location.origin + '/join/' + (sessionData?.code || '')).then(() => toast('Invite link copied!', 'green')); }
 
 init();
 </script>
