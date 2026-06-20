@@ -5,36 +5,73 @@
 <title>Interview - Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
-body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
+body{margin:0;padding:0;background:#000;color:#fff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif}
+.join-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:100vh;gap:20px;text-align:center;padding:32px;background:var(--bg)}
+.join-wrap h2{font-size:26px;font-weight:700;color:var(--text)}
+.join-wrap p{color:var(--text2);max-width:420px;line-height:1.7;font-size:15px}
+.interview-layout{display:flex;flex-direction:column;height:100vh}
+.topbar{height:48px;display:flex;align-items:center;padding:0 16px;background:rgba(0,0,0,0.85);border-bottom:1px solid rgba(255,255,255,0.1);gap:10px;flex-shrink:0}
+.topbar-logo{font-size:14px;font-weight:700;color:#fff}
+.topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
+.video-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:4px;background:#111}
+.video-box{position:relative;background:#1a1a1a;overflow:hidden}
+.video-box video{width:100%;height:100%;object-fit:cover}
+.video-label{position:absolute;bottom:10px;left:12px;background:rgba(0,0,0,0.7);color:#fff;font-size:12px;font-weight:500;padding:3px 8px;border-radius:4px}
+.q-bar{background:rgba(0,0,0,0.85);border-top:1px solid rgba(255,255,255,0.1);padding:12px 20px;font-size:14px;color:#fff;display:none;align-items:center;gap:10px;flex-shrink:0}
+.q-bar-label{font-size:11px;color:rgba(255,255,255,0.5);font-weight:600;letter-spacing:1px;flex-shrink:0}
+.warn-bar{position:fixed;top:0;left:0;right:0;background:#f85149;color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-weight:600;z-index:999;display:none}
+.badge{display:inline-flex;align-items:center;gap:4px;padding:2px 10px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid;background:transparent}
+.badge-green{color:#3fb950;border-color:#3fb950}
+.badge-amber{color:#e3b341;border-color:#e3b341}
+.badge-red{color:#f85149;border-color:#f85149}
+.btn{display:inline-flex;align-items:center;padding:6px 16px;border-radius:6px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-size:13px;font-weight:500;cursor:pointer}
+.btn-primary{background:#58a6ff;border-color:#58a6ff;color:#fff}
+.btn-lg{padding:12px 28px;font-size:16px}
+.input{display:block;width:100%;padding:10px 14px;background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.15);border-radius:6px;color:#fff;font-size:14px;outline:none;margin-bottom:12px}
+#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px}
+.toast{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 16px;font-size:13px;color:#e6edf3}
 </style>
 </head>
 <body>
 <div id="warn-bar" class="warn-bar"></div>
 
-<!-- Join screen -->
+<!-- Join Screen -->
 <div id="join-screen" class="join-wrap">
-  <div style="font-size:52px">&#127908;</div>
+  <div style="font-size:60px">&#127908;</div>
   <h2>Ready to join your interview?</h2>
-  <p>Your camera and microphone will be used. All activity is monitored for interview integrity.</p>
+  <p>Your camera and microphone will be activated. All activity is monitored for interview integrity. Make sure you are in a well-lit area.</p>
   <button class="btn btn-primary btn-lg" id="join-btn" onclick="doJoin()">Join Interview</button>
-  <div id="join-info" style="font-size:12px;color:var(--text2)"></div>
+  <div id="join-info" style="font-size:13px;color:rgba(255,255,255,0.5)"></div>
 </div>
 
-<!-- Interview screen -->
-<div id="interview-screen" style="display:none;flex-direction:column;flex:1">
+<!-- Interview Screen -->
+<div id="interview-screen" style="display:none" class="interview-layout">
   <div class="topbar">
     <div class="topbar-logo">Secure Interview</div>
     <div class="topbar-right">
-      <span id="i-title" style="font-size:12px;color:var(--text2)"></span>
-      <span id="i-status" class="badge badge-green">Connected</span>
+      <span id="i-title" style="font-size:12px;color:rgba(255,255,255,0.5)"></span>
+      <span id="i-status" class="badge badge-amber">Connecting...</span>
     </div>
   </div>
-  <div class="cand-layout" style="flex:1">
-    <div class="cand-video">
+
+  <!-- Two-way video grid -->
+  <div class="video-grid">
+    <!-- Interviewer video (remote) -->
+    <div class="video-box">
       <video id="remote-vid" autoplay playsinline></video>
-      <div class="cand-pip"><video id="local-vid" autoplay playsinline muted></video></div>
-      <div id="q-overlay" class="q-overlay"></div>
+      <div class="video-label">Interviewer</div>
     </div>
+    <!-- Candidate video (self) -->
+    <div class="video-box">
+      <video id="local-vid" autoplay playsinline muted></video>
+      <div class="video-label">You</div>
+    </div>
+  </div>
+
+  <!-- Question bar at bottom -->
+  <div id="q-bar" class="q-bar">
+    <span class="q-bar-label">QUESTION</span>
+    <span id="q-text"></span>
   </div>
 </div>
 
@@ -42,127 +79,130 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <script src="/js/utils.js"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
-const code=location.pathname.split('/').pop().toUpperCase();
-let socket,pc,localStream,sessionData,startTime=Date.now(),flagCount={};
+const code = location.pathname.split('/').pop().toUpperCase();
+let socket, pc, localStream, sessionData, startTime = Date.now(), flagCount = {};
 
-function elapsed(){
-  const s=Math.floor((Date.now()-startTime)/1000);
-  return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');
+function elapsed() {
+  const s = Math.floor((Date.now() - startTime) / 1000);
+  return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0');
 }
 
-function warn(msg){
-  const b=$('warn-bar');
-  b.textContent=msg;b.style.display='block';
-  clearTimeout(b._t);b._t=setTimeout(()=>b.style.display='none',4000);
+function warn(msg) {
+  const b = $('warn-bar');
+  b.textContent = msg; b.style.display = 'block';
+  clearTimeout(b._t); b._t = setTimeout(() => b.style.display = 'none', 4000);
 }
 
-function flag(text,detail,severity){
-  const key=text;
-  flagCount[key]=(flagCount[key]||0)+1;
-  const sev=flagCount[key]>=3?'high':severity;
-  const f={text,detail,severity:sev,time:elapsed()};
-  socket?.emit('candidate-flag',{sessionId:sessionData?.id,flag:f});
-  fetch('/api/sessions/'+sessionData?.id+'/flags',{
-    method:'POST',
-    headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({text,detail,severity:sev,timeOffset:elapsed()})
-  }).catch(()=>{});
+function sendFlag(text, detail, severity) {
+  flagCount[text] = (flagCount[text] || 0) + 1;
+  const sev = flagCount[text] >= 3 ? 'high' : severity;
+  const flag = { text, detail, severity: sev, time: elapsed() };
+  socket?.emit('candidate-flag', { sessionId: sessionData?.id, flag });
+  fetch('/api/sessions/' + sessionData?.id + '/flags', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ text, detail, severity: sev, timeOffset: elapsed() })
+  }).catch(() => {});
 }
 
-function setupProtection(){
-  // Tab / window switch
-  document.addEventListener('visibilitychange',()=>{
-    if(document.hidden){warn('Warning: You left the interview tab!');flag('Tab Switch','Candidate switched to another tab','medium');}
-  });
-  window.addEventListener('blur',()=>{
-    warn('Warning: You left the interview window!');
-    flag('Window Blur','Candidate switched away from interview window','medium');
+function setupProtection() {
+  // Tab switch
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) { warn('Warning: You left the interview tab!'); sendFlag('Tab Switch', 'Candidate switched to another tab', 'medium'); }
   });
 
-  // Copy / paste / cut
-  document.addEventListener('copy',e=>{e.preventDefault();warn('Copying is not allowed!');flag('Copy Detected','Candidate attempted to copy content','medium');});
-  document.addEventListener('paste',e=>{e.preventDefault();warn('Pasting is not allowed!');flag('Paste Detected','Candidate attempted to paste content','medium');});
-  document.addEventListener('cut',e=>{e.preventDefault();warn('Cutting is not allowed!');flag('Cut Detected','Candidate attempted to cut content','low');});
+  // Window blur (switching apps)
+  let blurTimer = null;
+  window.addEventListener('blur', () => {
+    warn('Warning: You switched away from the interview window!');
+    sendFlag('Window Blur', 'Candidate switched away from interview window', 'medium');
+    blurTimer = setTimeout(() => { sendFlag('Extended Absence', 'Candidate has been away for over 10 seconds', 'high'); }, 10000);
+  });
+  window.addEventListener('focus', () => { clearTimeout(blurTimer); });
+
+  // Copy / Paste / Cut
+  document.addEventListener('copy', e => { e.preventDefault(); warn('Copying is not allowed during the interview!'); sendFlag('Copy Detected', 'Candidate attempted to copy content', 'medium'); });
+  document.addEventListener('paste', e => { e.preventDefault(); warn('Pasting is not allowed during the interview!'); sendFlag('Paste Detected', 'Candidate attempted to paste content', 'medium'); });
+  document.addEventListener('cut', e => { e.preventDefault(); warn('Cutting is not allowed!'); sendFlag('Cut Detected', 'Candidate attempted to cut content', 'low'); });
 
   // Right click
-  document.addEventListener('contextmenu',e=>{e.preventDefault();warn('Right-click disabled during interview');flag('Right-Click','Candidate right-clicked during interview','low');});
+  document.addEventListener('contextmenu', e => { e.preventDefault(); warn('Right-click is disabled during the interview'); sendFlag('Right-Click', 'Candidate right-clicked during interview', 'low'); });
 
   // Keyboard shortcuts
-  document.addEventListener('keydown',e=>{
-    if(e.key==='F12'){e.preventDefault();flag('DevTools Attempt','Candidate tried to open DevTools','high');warn('DevTools are not allowed!');}
-    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s'].includes(e.key.toLowerCase())){
-      e.preventDefault();warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
-      flag('Shortcut Blocked','Candidate used Ctrl+'+e.key.toUpperCase(),'low');
-    }
-  });
-
-  // Screen share / multiple displays detection via focus events
-  let focusLossTime=null;
-  window.addEventListener('blur',()=>{focusLossTime=Date.now();});
-  window.addEventListener('focus',()=>{
-    if(focusLossTime){
-      const away=Date.now()-focusLossTime;
-      if(away>10000){flag('Extended Absence','Candidate was away for '+Math.round(away/1000)+'s','high');}
-      focusLossTime=null;
+  document.addEventListener('keydown', e => {
+    if (e.key === 'F12') { e.preventDefault(); warn('DevTools are not allowed!'); sendFlag('DevTools Attempt', 'Candidate tried to open DevTools', 'high'); }
+    if ((e.ctrlKey || e.metaKey) && ['c','v','x','a','u','p','s'].includes(e.key.toLowerCase())) {
+      e.preventDefault();
+      warn('Keyboard shortcut blocked: Ctrl+' + e.key.toUpperCase());
+      sendFlag('Shortcut Blocked', 'Candidate used Ctrl+' + e.key.toUpperCase(), 'low');
     }
   });
 }
 
-async function init(){
-  const s=await get('/api/join/'+code);
-  if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;return;}
-  sessionData=s;
-  $('join-info').textContent='Session: '+s.title;
+async function init() {
+  const s = await get('/api/join/' + code);
+  if (s.error) { $('join-info').textContent = s.error; $('join-btn').disabled = true; return; }
+  sessionData = s;
+  $('join-info').textContent = 'Session: ' + s.title;
 }
 
-async function doJoin(){
-  $('join-btn').disabled=true;$('join-btn').textContent='Starting...';
-  try{
-    localStream=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
-    $('local-vid').srcObject=localStream;
-  }catch(e){
-    $('join-info').textContent='Camera/mic access required to join. '+e.message;
-    $('join-btn').disabled=false;$('join-btn').textContent='Join Interview';
+async function doJoin() {
+  $('join-btn').disabled = true; $('join-btn').textContent = 'Starting...';
+  try {
+    localStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+    $('local-vid').srcObject = localStream;
+  } catch (e) {
+    $('join-info').textContent = 'Camera/mic access required: ' + e.message;
+    $('join-btn').disabled = false; $('join-btn').textContent = 'Join Interview';
     return;
   }
-  $('join-screen').style.display='none';
-  $('interview-screen').style.display='flex';
-  $('i-title').textContent=sessionData?.title||'Interview';
-  startTime=Date.now();
+  $('join-screen').style.display = 'none';
+  $('interview-screen').style.display = 'flex';
+  $('i-title').textContent = sessionData?.title || 'Interview';
+  startTime = Date.now();
   setupProtection();
   connectSocket();
 }
 
-function connectSocket(){
-  socket=io();
-  socket.emit('join-room',{sessionId:sessionData?.id,role:'candidate'});
-  socket.on('peer-joined',async({role})=>{if(role==='interviewer')await startWebRTC(false);});
-  socket.on('peer-already-present',async()=>{await startWebRTC(false);});
-  socket.on('webrtc-offer',async({offer})=>{
-    if(!pc)await createPC();
+function connectSocket() {
+  socket = io();
+  socket.emit('join-room', { sessionId: sessionData?.id, role: 'candidate' });
+
+  socket.on('peer-joined', async ({ role }) => {
+    if (role === 'interviewer') { $('i-status').textContent = 'Connected'; $('i-status').className = 'badge badge-green'; await startWebRTC(false); }
+  });
+  socket.on('peer-already-present', async () => {
+    $('i-status').textContent = 'Connected'; $('i-status').className = 'badge badge-green';
+    await startWebRTC(false);
+  });
+  socket.on('webrtc-offer', async ({ offer }) => {
+    if (!pc) await createPC();
     await pc.setRemoteDescription(offer);
-    const a=await pc.createAnswer();await pc.setLocalDescription(a);
-    socket.emit('webrtc-answer',{sessionId:sessionData?.id,answer:a});
+    const a = await pc.createAnswer(); await pc.setLocalDescription(a);
+    socket.emit('webrtc-answer', { sessionId: sessionData?.id, answer: a });
   });
-  socket.on('webrtc-answer',async({answer})=>{await pc?.setRemoteDescription(answer);});
-  socket.on('webrtc-ice',async({candidate})=>{await pc?.addIceCandidate(candidate);});
-  socket.on('next-question',({qIdx})=>{
-    const qs=sessionData?.questions||[];
-    if(qs[qIdx]){const o=$('q-overlay');o.textContent='Q'+(qIdx+1)+': '+qs[qIdx];o.style.display='block';}
+  socket.on('webrtc-answer', async ({ answer }) => { await pc?.setRemoteDescription(answer); });
+  socket.on('webrtc-ice', async ({ candidate }) => { await pc?.addIceCandidate(candidate); });
+  socket.on('next-question', ({ qIdx }) => {
+    const qs = sessionData?.questions || [];
+    if (qs[qIdx]) {
+      $('q-bar').style.display = 'flex';
+      $('q-text').textContent = 'Q' + (qIdx + 1) + ': ' + qs[qIdx];
+    }
   });
-  socket.on('peer-left',()=>{$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
+  socket.on('peer-left', () => { $('i-status').textContent = 'Interviewer left'; $('i-status').className = 'badge badge-red'; });
 }
 
-async function createPC(){
-  pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  localStream?.getTracks().forEach(t=>pc.addTrack(t,localStream));
-  pc.ontrack=e=>{$('remote-vid').srcObject=e.streams[0];};
-  pc.onicecandidate=e=>{if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData?.id,candidate:e.candidate});};
+async function createPC() {
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] });
+  localStream?.getTracks().forEach(t => pc.addTrack(t, localStream));
+  pc.ontrack = e => { $('remote-vid').srcObject = e.streams[0]; };
+  pc.onicecandidate = e => { if (e.candidate) socket.emit('webrtc-ice', { sessionId: sessionData?.id, candidate: e.candidate }); };
 }
 
-async function startWebRTC(isInit){
+async function startWebRTC(isInit) {
   await createPC();
-  if(isInit){const o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData?.id,offer:o});}
+  if (isInit) { const o = await pc.createOffer(); await pc.setLocalDescription(o); socket.emit('webrtc-offer', { sessionId: sessionData?.id, offer: o }); }
 }
 
 init();
