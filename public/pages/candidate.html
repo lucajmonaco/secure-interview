@@ -2,194 +2,227 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Interview - Secure Interview</title>
-<style>
-*{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#0d1117;color:#e6edf3;height:100vh;overflow:hidden;display:flex;flex-direction:column}
-.join-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:20px;text-align:center;padding:32px}
-.join-wrap h2{font-size:26px;font-weight:700}
-.join-wrap p{color:#8b949e;max-width:420px;line-height:1.7;font-size:15px}
-.btn{display:inline-flex;align-items:center;padding:8px 18px;border-radius:6px;border:1px solid #30363d;background:#161b22;color:#e6edf3;font-size:14px;font-weight:500;cursor:pointer}
-.btn:disabled{opacity:.5;cursor:not-allowed}
-.btn-primary{background:#58a6ff;border-color:#58a6ff;color:#fff}
-.btn-lg{padding:12px 28px;font-size:16px}
-.topbar{height:48px;display:flex;align-items:center;padding:0 16px;background:rgba(0,0,0,.9);border-bottom:1px solid rgba(255,255,255,.08);gap:10px;flex-shrink:0}
-.topbar-logo{font-size:14px;font-weight:700}
-.topbar-right{margin-left:auto;display:flex;gap:8px;align-items:center}
-.badge{padding:2px 10px;border-radius:20px;font-size:11px;font-weight:600;border:1px solid}
-.badge-green{color:#3fb950;border-color:#3fb950;background:rgba(63,185,80,.1)}
-.badge-amber{color:#e3b341;border-color:#e3b341;background:rgba(227,179,65,.1)}
-.badge-red{color:#f85149;border-color:#f85149;background:rgba(248,81,73,.1)}
-.video-grid{flex:1;display:grid;grid-template-columns:1fr 1fr;gap:3px;background:#000;min-height:0}
-.video-box{position:relative;background:#111;overflow:hidden}
-.video-box video{width:100%;height:100%;object-fit:cover;display:block}
-.video-label{position:absolute;bottom:10px;left:12px;background:rgba(0,0,0,.75);color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:20px}
-.q-bar{background:rgba(0,0,0,.9);border-top:1px solid rgba(255,255,255,.08);padding:12px 20px;font-size:14px;display:none;align-items:center;gap:10px;flex-shrink:0}
-.q-label{font-size:11px;color:rgba(255,255,255,.4);font-weight:700;letter-spacing:1px;flex-shrink:0}
-.warn-bar{position:fixed;top:0;left:0;right:0;background:#f85149;color:#fff;padding:10px 20px;text-align:center;font-size:13px;font-weight:700;z-index:9999;display:none}
-
-/* GOODBYE SCREEN */
-.goodbye-screen{display:none;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:24px;text-align:center;padding:40px;background:#0d1117}
-.goodbye-icon{font-size:72px;animation:fadeIn .6s ease}
-.goodbye-title{font-size:28px;font-weight:800;color:#e6edf3;animation:fadeIn .8s ease}
-.goodbye-sub{font-size:16px;color:#8b949e;max-width:420px;line-height:1.7;animation:fadeIn 1s ease}
-.goodbye-badge{padding:8px 20px;border-radius:20px;font-size:13px;font-weight:600;border:1px solid #3fb950;color:#3fb950;background:rgba(63,185,80,.1);animation:fadeIn 1.2s ease}
-@keyframes fadeIn{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
-
-#toast-container{position:fixed;bottom:20px;right:20px;z-index:9999;display:flex;flex-direction:column;gap:8px;pointer-events:none}
-.toast{background:#161b22;border:1px solid #30363d;border-radius:6px;padding:10px 16px;font-size:13px;color:#e6edf3;min-width:180px}
-</style>
+<title>Interview — Secure Interview</title>
+<link rel="stylesheet" href="/css/main.css">
 </head>
-<body>
-<div id="warn-bar" class="warn-bar"></div>
+<body class="cand-body" style="background:#050709">
+
+<div id="warn-banner" class="warn-banner"></div>
 
 <!-- JOIN SCREEN -->
-<div id="join-screen" class="join-wrap">
-  <div style="font-size:60px">&#127908;</div>
-  <h2>Ready to join your interview?</h2>
-  <p>Your camera and microphone will be activated. You will see yourself and your interviewer. All activity is monitored for interview integrity.</p>
-  <button class="btn btn-primary btn-lg" id="join-btn" onclick="doJoin()">Join Interview</button>
-  <div id="join-info" style="font-size:13px;color:#8b949e;margin-top:4px"></div>
+<div id="join-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:22px;text-align:center;padding:40px;min-height:100vh">
+  <div style="font-size:64px;animation:goodbyeIn .6s ease">&#127908;</div>
+  <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
+  <p style="color:#64748b;max-width:440px;line-height:1.8;font-size:15px">Your camera and microphone will be activated. You'll see yourself and your interviewer side by side. All session activity is monitored.</p>
+  <button class="btn btn-primary btn-lg" id="join-btn" onclick="doJoin()" style="min-width:200px">Join Interview</button>
+  <div id="join-info" style="font-size:13px;color:#374151;margin-top:4px"></div>
 </div>
 
 <!-- INTERVIEW SCREEN -->
-<div id="interview-screen" style="display:none;flex-direction:column;flex:1;min-height:0">
-  <div class="topbar">
-    <div class="topbar-logo">Secure Interview</div>
-    <div class="topbar-right">
-      <span id="i-title" style="font-size:12px;color:#8b949e"></span>
+<div id="interview-screen" style="display:none;flex-direction:column;flex:1;min-height:0;height:100vh">
+  <div class="cand-topbar">
+    <div class="cand-logo">SecureInterview</div>
+    <div style="margin-left:auto;display:flex;gap:8px;align-items:center">
+      <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
     </div>
   </div>
-  <div class="video-grid">
+  <div class="video-grid" id="video-grid">
     <div class="video-box">
       <video id="remote-vid" autoplay playsinline></video>
-      <div class="video-label">Interviewer</div>
+      <div class="video-name">Interviewer</div>
     </div>
     <div class="video-box">
       <video id="local-vid" autoplay playsinline muted></video>
-      <div class="video-label">You</div>
+      <div class="video-name">You</div>
     </div>
   </div>
-  <div id="q-bar" class="q-bar">
-    <span class="q-label">QUESTION</span>
-    <span id="q-text"></span>
+  <div id="q-ticker" class="q-ticker">
+    <span class="q-ticker-label">Question</span>
+    <span id="q-text" style="font-size:15px;font-weight:500"></span>
   </div>
 </div>
 
 <!-- GOODBYE SCREEN -->
-<div id="goodbye-screen" class="goodbye-screen">
+<div id="goodbye-screen" class="goodbye-screen" style="display:none">
   <div class="goodbye-icon">&#10004;&#65039;</div>
   <div class="goodbye-title">Thank You!</div>
-  <div class="goodbye-sub">The interview has ended. Thank you for your time and participation. You will hear back from the team soon.</div>
-  <div class="goodbye-badge">Interview Complete</div>
-  <div style="font-size:13px;color:#484f58;margin-top:8px">You may now close this window.</div>
+  <div class="goodbye-sub">The interview has concluded. Thank you for your time. The team will be in touch with next steps soon.</div>
+  <div class="goodbye-pill">&#127881; Interview Complete</div>
+  <div class="goodbye-note">You may now safely close this window.</div>
 </div>
 
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
-var code = location.pathname.split('/').pop().toUpperCase();
-var socket, pc, localStream, sessionData, startTime = Date.now(), flagCount = {};
+var code=location.pathname.split('/').pop().toUpperCase();
+var socket,pc,localStream,sessionData,startTime=Date.now();
+var flagCounts={},blurTimer=null,displayCheckInterval=null;
 
-function elapsed() { var s=Math.floor((Date.now()-startTime)/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function elapsed(){var s=Math.floor((Date.now()-startTime)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
 
-function warn(msg) { var b=document.getElementById('warn-bar'); b.textContent=msg; b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(function(){ b.style.display='none'; },4000); }
-
-function sendFlag(text, detail, severity) {
-  flagCount[text] = (flagCount[text]||0) + 1;
-  var sev = flagCount[text] >= 3 ? 'high' : severity;
-  var flag = {text:text, detail:detail, severity:sev, time:elapsed()};
-  if (socket) socket.emit('candidate-flag', {sessionId: sessionData&&sessionData.id, flag:flag});
-  fetch('/api/sessions/' + (sessionData&&sessionData.id) + '/flags', {method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({text:text, detail:detail, severity:sev, timeOffset:elapsed()})}).catch(function(){});
+function warn(msg){
+  var b=$('warn-banner');b.textContent=msg;b.style.display='block';
+  clearTimeout(b._t);b._t=setTimeout(function(){b.style.display='none';},5000);
 }
 
-function setupProtection() {
-  document.addEventListener('visibilitychange', function() { if(document.hidden){warn('Warning: You left the interview tab!');sendFlag('Tab Switch','Candidate switched to another tab','medium');} });
-  var blurTimer = null;
-  window.addEventListener('blur', function() { warn('Warning: You left the interview window!'); sendFlag('Window Blur','Candidate switched away from interview window','medium'); blurTimer=setTimeout(function(){ sendFlag('Extended Absence','Candidate away for over 10 seconds','high'); },10000); });
-  window.addEventListener('focus', function() { clearTimeout(blurTimer); });
-  document.addEventListener('copy', function(e){ e.preventDefault(); warn('Copying is not allowed!'); sendFlag('Copy Detected','Candidate attempted to copy content','medium'); });
-  document.addEventListener('paste', function(e){ e.preventDefault(); warn('Pasting is not allowed!'); sendFlag('Paste Detected','Candidate attempted to paste content','medium'); });
-  document.addEventListener('cut', function(e){ e.preventDefault(); warn('Cutting is not allowed!'); sendFlag('Cut Detected','Candidate attempted to cut content','low'); });
-  document.addEventListener('contextmenu', function(e){ e.preventDefault(); warn('Right-click disabled during interview'); sendFlag('Right-Click','Candidate right-clicked during interview','low'); });
-  document.addEventListener('keydown', function(e) {
-    if (e.key==='F12') { e.preventDefault(); warn('DevTools are not allowed!'); sendFlag('DevTools Attempt','Candidate tried to open DevTools','high'); }
-    if ((e.ctrlKey||e.metaKey) && ['c','v','x','a','u','p','s'].includes(e.key.toLowerCase())) {
-      e.preventDefault(); warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase()); sendFlag('Shortcut Blocked','Candidate used Ctrl+'+e.key.toUpperCase(),'low');
+function sendFlag(text,detail,severity){
+  flagCounts[text]=(flagCounts[text]||0)+1;
+  if(flagCounts[text]===1&&severity==='low')severity='low';
+  else if(flagCounts[text]>=3)severity='high';
+  var flag={text:text,detail:detail+(flagCounts[text]>1?' (x'+flagCounts[text]+')':''),severity:severity,time:elapsed()};
+  if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag});
+  fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:flag.detail,severity:severity,timeOffset:elapsed()})}).catch(function(){});
+}
+
+// ── MULTI-DISPLAY DETECTION ──
+function checkDisplays(){
+  // Method 1: window.screen.isExtended (Chrome 100+)
+  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){
+    sendFlag('Multiple Displays Detected','Candidate has extended/multiple displays connected','high');
+    warn('Warning: Multiple displays detected! This has been flagged.');
+  }
+  // Method 2: Window positioned outside single screen bounds
+  var x=window.screenX||window.screenLeft||0;
+  var y=window.screenY||window.screenTop||0;
+  if(x<0||y<0||x>window.screen.width||y>window.screen.height){
+    sendFlag('Window Off-Screen','Candidate window appears to be on a secondary display','high');
+    warn('Warning: You appear to be using a secondary display!');
+  }
+}
+
+function setupDisplayMonitoring(){
+  checkDisplays();
+  displayCheckInterval=setInterval(checkDisplays,15000);
+  // Listen for screen change events
+  if(window.screen.addEventListener){
+    window.screen.addEventListener('change',function(){
+      sendFlag('Screen Configuration Changed','Candidate changed screen/display configuration during interview','high');
+      warn('Warning: Display change detected!');
+      setTimeout(checkDisplays,500);
+    });
+  }
+}
+
+function setupProtection(){
+  // ── Tab Switch ──
+  document.addEventListener('visibilitychange',function(){
+    if(document.hidden){warn('Warning: You left the interview tab!');sendFlag('Tab Switch','Candidate switched to another tab','medium');}
+  });
+
+  // ── Window Blur (app switch) ──
+  window.addEventListener('blur',function(){
+    warn('Warning: You left the interview window!');
+    sendFlag('Window Blur','Candidate switched away from interview window','medium');
+    blurTimer=setTimeout(function(){sendFlag('Extended Absence','Candidate was away for over 10 seconds','high');},10000);
+  });
+  window.addEventListener('focus',function(){clearTimeout(blurTimer);});
+
+  // ── Copy / Paste / Cut ──
+  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying is not allowed during the interview!');sendFlag('Copy Detected','Candidate attempted to copy content','medium');});
+  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting is not allowed!');sendFlag('Paste Detected','Candidate attempted to paste content','medium');});
+  document.addEventListener('cut',function(e){e.preventDefault();warn('Cutting is not allowed!');sendFlag('Cut Detected','Candidate attempted to cut content','low');});
+
+  // ── Right Click ──
+  document.addEventListener('contextmenu',function(e){e.preventDefault();warn('Right-click disabled during interview');sendFlag('Right-Click','Candidate right-clicked during interview','low');});
+
+  // ── Keyboard Shortcuts ──
+  document.addEventListener('keydown',function(e){
+    if(e.key==='F12'){e.preventDefault();warn('DevTools are not allowed!');sendFlag('DevTools Attempt','Candidate tried to open DevTools (F12)','high');}
+    if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();warn('Page refresh not allowed!');sendFlag('Page Refresh Attempt','Candidate tried to refresh the page','medium');}
+    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){
+      e.preventDefault();warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
+      sendFlag('Shortcut Blocked','Candidate used Ctrl+'+e.key.toUpperCase(),'low');
     }
   });
+
+  // ── Screen Share Detection (if candidate tries) ──
+  navigator.mediaDevices.addEventListener&&navigator.mediaDevices.addEventListener('devicechange',function(){
+    sendFlag('Device Change','Candidate changed media devices during interview','medium');
+  });
+
+  // ── Window Resize Detection (may indicate split screen) ──
+  var origW=window.innerWidth,origH=window.innerHeight;
+  window.addEventListener('resize',function(){
+    var newW=window.innerWidth,newH=window.innerHeight;
+    if(Math.abs(newW-origW)>100||Math.abs(newH-origH)>100){
+      sendFlag('Window Resized','Candidate resized the interview window (possible split screen)','low');
+      origW=newW;origH=newH;
+    }
+  });
+
+  // ── Multiple Display monitoring ──
+  setupDisplayMonitoring();
 }
 
-function stopMediaTracks() {
-  if (localStream) { localStream.getTracks().forEach(function(t){ t.stop(); }); localStream = null; }
-  if (pc) { pc.close(); pc = null; }
-  var lv = document.getElementById('local-vid'); if(lv) lv.srcObject = null;
-  var rv = document.getElementById('remote-vid'); if(rv) rv.srcObject = null;
+function stopAllMedia(){
+  if(localStream){localStream.getTracks().forEach(function(t){t.stop();});}
+  if(pc){pc.close();}
+  var lv=$('local-vid');if(lv)lv.srcObject=null;
+  var rv=$('remote-vid');if(rv)rv.srcObject=null;
+  if(displayCheckInterval)clearInterval(displayCheckInterval);
 }
 
-function showGoodbye() {
-  stopMediaTracks();
-  document.getElementById('interview-screen').style.display = 'none';
-  var gs = document.getElementById('goodbye-screen');
-  gs.style.display = 'flex';
+function showGoodbye(){
+  stopAllMedia();
+  $('interview-screen').style.display='none';
+  var gs=$('goodbye-screen');gs.style.display='flex';
 }
 
-async function init() {
-  var s = await get('/api/join/' + code);
-  if (s.error === 'SESSION_ENDED') {
-    document.getElementById('join-screen').style.display = 'none';
-    showGoodbye();
-    return;
+async function init(){
+  var s=await get('/api/join/'+code);
+  if(s.error==='SESSION_ENDED'){$('join-screen').style.display='none';showGoodbye();return;}
+  if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;$('join-btn').textContent='Session Unavailable';return;}
+  sessionData=s;$('join-info').textContent='Session: '+s.title;
+}
+
+async function doJoin(){
+  var btn=$('join-btn');btn.disabled=true;btn.textContent='Starting camera...';
+  try{
+    localStream=await navigator.mediaDevices.getUserMedia({video:{width:{ideal:1280},height:{ideal:720}},audio:true});
+    $('local-vid').srcObject=localStream;
+  }catch(e){
+    $('join-info').textContent='Camera/mic access required: '+e.message;
+    btn.disabled=false;btn.textContent='Join Interview';return;
   }
-  if (s.error) { document.getElementById('join-info').textContent = 'Error: ' + s.error; document.getElementById('join-btn').disabled = true; return; }
-  sessionData = s;
-  document.getElementById('join-info').textContent = 'Session: ' + s.title;
+  $('join-screen').style.display='none';
+  var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
+  $('i-title').textContent=sessionData&&sessionData.title||'Interview';
+  startTime=Date.now();
+  setupProtection();connectSocket();
 }
 
-async function doJoin() {
-  var btn = document.getElementById('join-btn');
-  btn.disabled = true; btn.textContent = 'Starting...';
-  try {
-    localStream = await navigator.mediaDevices.getUserMedia({video:true, audio:true});
-    document.getElementById('local-vid').srcObject = localStream;
-  } catch(e) {
-    document.getElementById('join-info').textContent = 'Camera/mic access required: ' + e.message;
-    btn.disabled = false; btn.textContent = 'Join Interview'; return;
-  }
-  document.getElementById('join-screen').style.display = 'none';
-  var is = document.getElementById('interview-screen');
-  is.style.display = 'flex'; is.style.flexDirection = 'column'; is.style.flex = '1';
-  document.getElementById('i-title').textContent = sessionData&&sessionData.title || 'Interview';
-  startTime = Date.now();
-  setupProtection();
-  connectSocket();
+function connectSocket(){
+  socket=io();
+  socket.emit('join-room',{sessionId:sessionData&&sessionData.id,role:'candidate'});
+  socket.on('peer-joined',function(data){if(data.role==='interviewer'){$('i-status').textContent='&#9679; Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
+  socket.on('peer-already-present',function(){$('i-status').textContent='&#9679; Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
+  socket.on('webrtc-offer',async function(data){if(!pc)await createPC();await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
+  socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
+  socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
+  socket.on('next-question',function(data){
+    var qs=sessionData&&sessionData.questions||[];
+    if(qs[data.qIdx]){
+      var ticker=$('q-ticker');ticker.style.display='flex';
+      $('q-text').textContent='Q'+(data.qIdx+1)+': '+qs[data.qIdx];
+      ticker.style.animation='none';void ticker.offsetWidth;ticker.style.animation='toastIn .3s ease';
+    }
+  });
+  socket.on('session-ended',function(){showGoodbye();});
+  socket.on('peer-left',function(){$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
 }
 
-function connectSocket() {
-  socket = io();
-  socket.emit('join-room', {sessionId: sessionData&&sessionData.id, role:'candidate'});
-  socket.on('peer-joined', function(data) { if(data.role==='interviewer'){ document.getElementById('i-status').textContent='Connected'; document.getElementById('i-status').className='badge badge-green'; startWebRTC(false); } });
-  socket.on('peer-already-present', function() { document.getElementById('i-status').textContent='Connected'; document.getElementById('i-status').className='badge badge-green'; startWebRTC(false); });
-  socket.on('webrtc-offer', async function(data) { if(!pc) await createPC(); await pc.setRemoteDescription(data.offer); var a=await pc.createAnswer(); await pc.setLocalDescription(a); socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a}); });
-  socket.on('webrtc-answer', async function(data) { if(pc) await pc.setRemoteDescription(data.answer); });
-  socket.on('webrtc-ice', async function(data) { if(pc) await pc.addIceCandidate(data.candidate); });
-  socket.on('next-question', function(data) { var qs=sessionData&&sessionData.questions||[]; if(qs[data.qIdx]){ var bar=document.getElementById('q-bar'); bar.style.display='flex'; document.getElementById('q-text').textContent='Q'+(data.qIdx+1)+': '+qs[data.qIdx]; } });
-  socket.on('session-ended', function() { showGoodbye(); });
-  socket.on('peer-left', function() { document.getElementById('i-status').textContent='Interviewer disconnected'; document.getElementById('i-status').className='badge badge-red'; });
+async function createPC(){
+  pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
+  pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
 
-async function createPC() {
-  pc = new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'}]});
-  if(localStream) localStream.getTracks().forEach(function(t){ pc.addTrack(t,localStream); });
-  pc.ontrack = function(e){ document.getElementById('remote-vid').srcObject=e.streams[0]; };
-  pc.onicecandidate = function(e){ if(e.candidate) socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate}); };
-}
-
-async function startWebRTC(isInit) {
+async function startWebRTC(isInit){
   await createPC();
-  if(isInit){ var o=await pc.createOffer(); await pc.setLocalDescription(o); socket.emit('webrtc-offer',{sessionId:sessionData&&sessionData.id,offer:o}); }
+  if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData&&sessionData.id,offer:o});}
 }
 
 init();
