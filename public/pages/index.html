@@ -7,88 +7,100 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-logo">Secure Interview</div>
+  <div class="nav-logo">&#127737; Secure Interview</div>
   <div class="nav-right">
     <span id="n-name" style="font-size:12px;color:var(--text2);display:none"></span>
     <a href="/dashboard" class="btn btn-outline" id="n-dash" style="display:none">Dashboard</a>
-    <button class="btn btn-outline" id="n-in" onclick="openSignIn()">Sign In</button>
-    <button class="btn btn-primary" id="n-up" onclick="openSignUp()">Get Started</button>
-    <button class="btn btn-outline" id="n-out" style="display:none" onclick="doLogout()">Sign Out</button>
+    <button class="btn btn-outline" id="n-in">Sign In</button>
+    <button class="btn btn-primary" id="n-up">Get Started</button>
+    <button class="btn btn-outline" id="n-out" style="display:none">Sign Out</button>
   </div>
 </nav>
 <main>
 <div class="hero">
   <h1>AI-Powered Interview Integrity</h1>
-  <p class="hero-sub">Real-time proctoring with WebRTC video, trust scoring, and instant cheat detection alerts.</p>
+  <p class="hero-sub">Real-time WebRTC proctoring with trust scoring, flag detection, and session recording.</p>
   <div class="hero-btns">
-    <button class="btn btn-primary btn-lg" onclick="openSignUp()">Start Free Trial</button>
-    <button class="btn btn-outline btn-lg" onclick="openSignIn()">See Demo</button>
+    <button class="btn btn-primary btn-lg" id="h-start">Start Free Trial</button>
+    <button class="btn btn-outline btn-lg" id="h-demo">Sign In</button>
   </div>
 </div>
 <div class="features">
   <div class="features-grid">
-    <div class="fcard"><h3>Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
-    <div class="fcard"><h3>Trust Score</h3><p>Real-time scoring that flags suspicious behavior instantly.</p></div>
-    <div class="fcard"><h3>Instant Alerts</h3><p>Get notified the moment something looks off.</p></div>
-    <div class="fcard"><h3>Full Reports</h3><p>Detailed session reports with timestamps and flag summaries.</p></div>
+    <div class="fcard"><h3>&#128249; Live Video Proctoring</h3><p>WebRTC video monitoring with zero plugins required.</p></div>
+    <div class="fcard"><h3>&#127919; Trust Score</h3><p>Real-time AI scoring that flags suspicious behavior instantly.</p></div>
+    <div class="fcard"><h3>&#9889; Instant Alerts</h3><p>Get notified the moment something looks off during the interview.</p></div>
+    <div class="fcard"><h3>&#128190; Session Recording</h3><p>Record full sessions and download as video files.</p></div>
   </div>
 </div>
 </main>
 
-<!-- Sign In overlay -->
-<div id="ov-signin" class="overlay" onclick="if(event.target===this)hideModal('ov-signin')">
-  <div class="modal-box">
-    <button class="modal-close-btn" onclick="hideModal('ov-signin')">x</button>
+<div id="ov-signin" style="display:none">
+  <div class="modal-inner">
+    <button class="modal-x" onclick="hideModal('ov-signin')">&#10005;</button>
     <h2>Sign In</h2>
     <label class="label">Email</label>
     <input type="email" id="si-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label>
     <input type="password" id="si-pass" class="input" placeholder="Password">
-    <div id="si-err" class="err" style="display:none"></div>
-    <button class="btn btn-primary btn-block" onclick="doSignIn()">Sign In</button>
-    <p class="auth-switch">No account? <a href="#" onclick="openSignUp();return false">Sign up free</a></p>
+    <div id="si-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-primary btn-block" id="si-btn" onclick="doSignIn()">Sign In</button>
+    <p class="auth-switch">No account? <a href="#" onclick="switchToSignUp();return false">Sign up free</a></p>
   </div>
 </div>
 
-<!-- Sign Up overlay -->
-<div id="ov-signup" class="overlay" onclick="if(event.target===this)hideModal('ov-signup')">
-  <div class="modal-box">
-    <button class="modal-close-btn" onclick="hideModal('ov-signup')">x</button>
+<div id="ov-signup" style="display:none">
+  <div class="modal-inner">
+    <button class="modal-x" onclick="hideModal('ov-signup')">&#10005;</button>
     <h2>Get Started Free</h2>
     <label class="label">Full Name</label>
     <input type="text" id="su-name" class="input" placeholder="Your Name">
     <label class="label">Work Email</label>
     <input type="email" id="su-email" class="input" placeholder="you@company.com">
-    <label class="label">Company / Organization</label>
+    <label class="label">Company</label>
     <input type="text" id="su-org" class="input" placeholder="Company Name">
     <label class="label">Password</label>
     <input type="password" id="su-pass" class="input" placeholder="Min 6 characters">
-    <div id="su-err" class="err" style="display:none"></div>
-    <button class="btn btn-primary btn-block" onclick="doSignUp()">Create Account</button>
-    <p class="auth-switch">Already have an account? <a href="#" onclick="openSignIn();return false">Sign in</a></p>
+    <div id="su-err" class="err" style="display:none;margin-bottom:10px"></div>
+    <button class="btn btn-primary btn-block" id="su-btn" onclick="doSignUp()">Create Account</button>
+    <p class="auth-switch">Have an account? <a href="#" onclick="switchToSignIn();return false">Sign in</a></p>
   </div>
 </div>
 
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-function openSignIn(){hideModal('ov-signup');showModal('ov-signin');}
-function openSignUp(){hideModal('ov-signin');showModal('ov-signup');}
+function switchToSignIn(){hideModal('ov-signup');showModal('ov-signin');}
+function switchToSignUp(){hideModal('ov-signin');showModal('ov-signup');}
+
+document.getElementById('n-in').onclick=()=>showModal('ov-signin');
+document.getElementById('n-up').onclick=()=>showModal('ov-signup');
+document.getElementById('h-start').onclick=()=>showModal('ov-signup');
+document.getElementById('h-demo').onclick=()=>showModal('ov-signin');
+document.getElementById('n-out').onclick=doLogout;
+
+// Close on backdrop click
+['ov-signin','ov-signup'].forEach(id=>{
+  document.getElementById(id).addEventListener('click',function(e){
+    if(e.target===this)hideModal(id);
+  });
+});
 
 async function doSignIn(){
-  const email=$('si-email').value,pass=$('si-pass').value;
-  const err=$('si-err');err.style.display='none';
-  const res=await post('/api/auth/login',{email,password:pass});
-  if(res.error){err.textContent=res.error;err.style.display='block';return;}
+  const btn=document.getElementById('si-btn'),err=document.getElementById('si-err');
+  btn.disabled=true;btn.textContent='Signing in...';err.style.display='none';
+  const res=await post('/api/auth/login',{email:document.getElementById('si-email').value,password:document.getElementById('si-pass').value});
+  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Sign In';return;}
   window.location.href='/dashboard';
 }
 
 async function doSignUp(){
-  const name=$('su-name').value,email=$('su-email').value,org=$('su-org').value,pass=$('su-pass').value;
-  const err=$('su-err');err.style.display='none';
-  if(!name||!email||!org||!pass){err.textContent='All fields required';err.style.display='block';return;}
+  const btn=document.getElementById('su-btn'),err=document.getElementById('su-err');
+  btn.disabled=true;btn.textContent='Creating...';err.style.display='none';
+  const name=document.getElementById('su-name').value,email=document.getElementById('su-email').value,org=document.getElementById('su-org').value,pass=document.getElementById('su-pass').value;
+  if(!name||!email||!org||!pass){err.textContent='All fields required';err.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;}
   const res=await post('/api/auth/signup',{name,email,org,password:pass});
-  if(res.error){err.textContent=res.error;err.style.display='block';return;}
+  if(res.error){err.textContent=res.error;err.style.display='block';btn.disabled=false;btn.textContent='Create Account';return;}
   window.location.href='/dashboard';
 }
 
@@ -97,9 +109,9 @@ async function doLogout(){await post('/api/auth/logout');window.location.reload(
 async function init(){
   const me=await get('/api/auth/me');
   if(me&&me.loggedIn){
-    $('n-name').textContent=me.name;$('n-name').style.display='';
-    $('n-dash').style.display='';$('n-out').style.display='';
-    $('n-in').style.display='none';$('n-up').style.display='none';
+    document.getElementById('n-name').textContent=me.name;document.getElementById('n-name').style.display='';
+    document.getElementById('n-dash').style.display='';document.getElementById('n-out').style.display='';
+    document.getElementById('n-in').style.display='none';document.getElementById('n-up').style.display='none';
   }
 }
 init();
