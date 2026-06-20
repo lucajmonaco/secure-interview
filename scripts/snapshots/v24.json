@@ -1,15 +1,15 @@
 {
   "_meta": {
     "date": "2026-06-20",
-    "note": "v24: Polish UI, screen share fix (replaceTrack), compression fix (16x playback), flag spam prevention, pause overlay, multi-display once-only, goodbye screen, company org auth"
+    "note": "v24-final: ALL PREFLIGHT PASSING. Pause overlay CSS in main.css, screen share fix, compression fix, flag spam prevention, full feature set verified."
   },
   "public/js/utils.js": {
     "sha": "2f4d7c17135bc8649e528d7ea43581400c02a5f6",
     "size": 2719
   },
   "public/css/main.css": {
-    "sha": "25854f80066738d2c052f8f6d54a064dabbe28e4",
-    "size": 20049
+    "sha": "c8cdda66fa29efdd43ede3c0c7d2b988477d2b88",
+    "size": 21202
   },
   "public/pages/index.html": {
     "sha": "67dabb18d5f3aad485d00998f4d9c2015044590e",
