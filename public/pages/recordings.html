@@ -5,28 +5,29 @@
 <title>Recordings - Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
-.rec-grid{display:flex;flex-direction:column;gap:12px}
-.rec-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:16px 18px}
-.rec-card-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.rec-info{flex:1}
-.rec-title{font-size:15px;font-weight:600;margin-bottom:4px}
-.rec-meta{font-size:12px;color:var(--text2);display:flex;flex-wrap:wrap;gap:12px;margin-bottom:8px}
-.rec-meta span{display:flex;align-items:center;gap:4px}
-.rec-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.rec-preview{width:100%;max-width:680px;border-radius:var(--rs);background:#000;display:none;margin-top:12px}
-.progress-bar{width:100%;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden;margin-top:8px;display:none}
-.progress-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .3s}
-.compress-status{font-size:12px;color:var(--text2);margin-top:6px;display:none}
-.empty-state{text-align:center;padding:60px 24px;color:var(--text3)}
+.rec-grid{display:flex;flex-direction:column;gap:14px}
+.rec-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);overflow:hidden}
+.rec-card-body{padding:16px 18px}
+.rec-title{font-size:15px;font-weight:600;margin-bottom:6px}
+.rec-meta{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text2);margin-bottom:12px}
+.rec-actions{display:flex;gap:8px;flex-wrap:wrap}
+.rec-video{width:100%;max-height:400px;background:#000;display:none;border-top:1px solid var(--border)}
+.progress-wrap{margin-top:10px;display:none}
+.prog-bar{width:100%;height:6px;background:var(--bg3);border-radius:3px;overflow:hidden}
+.prog-fill{height:100%;background:var(--blue);border-radius:3px;transition:width .2s}
+.prog-label{font-size:11px;color:var(--text2);margin-top:4px}
+.empty{text-align:center;padding:60px 24px;color:var(--text3)}
 .empty-icon{font-size:56px;margin-bottom:16px}
-.size-badge{background:var(--bg3);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:11px;color:var(--text2);font-family:monospace}
-.trust-val{font-weight:700}
+.score-hi{color:var(--green)} .score-mid{color:var(--amber)} .score-lo{color:var(--red)}
+.copied-flash{animation:flash .3s ease}
+@keyframes flash{0%{opacity:.5}100%{opacity:1}}
 </style>
 </head>
 <body>
 <div class="topbar">
   <div class="topbar-logo">Secure Interview</div>
   <div class="topbar-right">
+    <span id="user-info" style="font-size:12px;color:var(--text2)"></span>
     <a href="/dashboard" class="btn">Dashboard</a>
     <button class="btn" onclick="doLogout()">Sign out</button>
   </div>
@@ -34,279 +35,234 @@
 <div class="page-wrap">
   <div class="page-hdr">
     <div>
-      <h1>Recordings</h1>
+      <h1>Recordings Library</h1>
       <div style="font-size:12px;color:var(--text2);margin-top:2px">All recorded interview sessions for your account</div>
     </div>
-    <button class="btn" onclick="loadRecordings()" id="refresh-btn">Refresh</button>
+    <button class="btn" onclick="loadRecordings()">Refresh</button>
   </div>
-  <div id="recordings-container">
-    <div class="empty-state">
-      <div class="empty-icon">&#127902;</div>
-      <div>Loading recordings...</div>
-    </div>
-  </div>
+  <div id="container"><div class="empty"><div class="empty-icon">&#127902;</div>Loading...</div></div>
 </div>
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-var currentRecordings = [];
+function fmtDate(ts){ if(!ts)return'-'; return new Date(ts*1000).toLocaleString('en-US',{month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function fmtDur(s){ if(!s||s===0)return'0:00'; return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
+function fmtSize(b){ if(!b)return''; if(b<1048576)return(b/1024).toFixed(1)+' KB'; return(b/1048576).toFixed(1)+' MB'; }
+function scoreClass(s){ return s>=80?'score-hi':s>=60?'score-mid':'score-lo'; }
 
-function formatSize(bytes) {
-  if (!bytes) return 'unknown';
-  if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
-  return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
-}
+function buildCard(rec) {
+  var div = document.createElement('div');
+  div.className = 'rec-card';
+  div.id = 'card-' + rec.id;
+  var score = rec.trust_score||100;
 
-function formatDuration(secs) {
-  if (!secs) return '-';
-  var m = Math.floor(secs / 60), s = secs % 60;
-  return String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-}
+  var body = document.createElement('div');
+  body.className = 'rec-card-body';
 
-function buildRecCard(rec) {
-  var card = document.createElement('div');
-  card.className = 'rec-card';
-  card.id = 'rec-' + rec.id;
+  var title = document.createElement('div');
+  title.className = 'rec-title';
+  title.textContent = rec.session_title || 'Interview';
+  body.appendChild(title);
 
-  var score = rec.trust_score != null ? rec.trust_score : 100;
-  var scoreColor = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
-  var date = rec.created_at ? new Date(rec.created_at * 1000).toLocaleString('en-US', {month:'short',day:'numeric',year:'numeric',hour:'2-digit',minute:'2-digit'}) : '-';
+  var meta = document.createElement('div');
+  meta.className = 'rec-meta';
+  meta.innerHTML = '<span>Candidate: <strong>' + (rec.candidate_name||'N/A') + '</strong></span>'
+    + '<span>' + fmtDate(rec.created_at) + '</span>'
+    + '<span>Duration: ' + fmtDur(rec.duration_secs) + '</span>'
+    + '<span class="' + scoreClass(score) + '">Trust: <strong>' + score + '%</strong></span>'
+    + '<span>' + (rec.flag_count||0) + ' flags</span>'
+    + (rec.file_size ? '<span style="color:var(--text3)">' + fmtSize(rec.file_size) + '</span>' : '');
+  body.appendChild(meta);
 
-  var top = document.createElement('div');
-  top.className = 'rec-card-top';
-
-  var info = document.createElement('div');
-  info.className = 'rec-info';
-  info.innerHTML = '<div class="rec-title">' + rec.session_title + '</div>'
-    + '<div class="rec-meta">'
-    + '<span>&#128100; ' + (rec.candidate_name || 'Candidate') + '</span>'
-    + '<span>&#128197; ' + date + '</span>'
-    + '<span>&#9201; ' + formatDuration(rec.duration_secs) + '</span>'
-    + '<span class="trust-val" style="color:' + scoreColor + '">&#127919; ' + score + '% trust</span>'
-    + '<span>&#9873; ' + (rec.flag_count || 0) + ' flags</span>'
-    + '</div>'
-    + '<span class="size-badge">' + formatSize(rec.file_size) + '</span>';
-
-  top.appendChild(info);
-  card.appendChild(top);
-
-  // Progress bar for compression
-  var prog = document.createElement('div');
-  prog.className = 'progress-bar';
-  prog.id = 'prog-' + rec.id;
-  var fill = document.createElement('div');
-  fill.className = 'progress-fill';
-  fill.id = 'fill-' + rec.id;
-  fill.style.width = '0%';
-  prog.appendChild(fill);
-  card.appendChild(prog);
-
-  var status = document.createElement('div');
-  status.className = 'compress-status';
-  status.id = 'status-' + rec.id;
-  card.appendChild(status);
-
-  // Preview video element
-  var video = document.createElement('video');
-  video.className = 'rec-preview';
-  video.id = 'vid-' + rec.id;
-  video.controls = true;
-  video.src = '/api/recordings/' + rec.id + '/stream';
-  card.appendChild(video);
-
-  // Action buttons
   var actions = document.createElement('div');
   actions.className = 'rec-actions';
 
-  var previewBtn = document.createElement('button');
-  previewBtn.className = 'btn';
-  previewBtn.textContent = 'Preview';
-  previewBtn.onclick = function() { togglePreview(rec.id); };
-  actions.appendChild(previewBtn);
+  // Preview button
+  var preBtn = document.createElement('button');
+  preBtn.className = 'btn'; preBtn.textContent = 'Preview';
+  preBtn.onclick = function(){ togglePreview(rec.id); };
+  actions.appendChild(preBtn);
 
+  // Download original
   var dlBtn = document.createElement('button');
-  dlBtn.className = 'btn btn-primary';
-  dlBtn.textContent = 'Download';
-  dlBtn.onclick = function() { downloadRec(rec.id, rec.session_title, rec.candidate_name); };
+  dlBtn.className = 'btn btn-primary'; dlBtn.textContent = 'Download';
+  dlBtn.onclick = function(){
+    var a = document.createElement('a');
+    a.href = '/api/recordings/' + rec.id + '/stream';
+    a.download = 'interview-' + (rec.session_title||'session').replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.webm';
+    a.click();
+    toast('Download started', 'green');
+  };
   actions.appendChild(dlBtn);
 
+  // Compress & download
   var compBtn = document.createElement('button');
-  compBtn.className = 'btn btn-outline';
+  compBtn.className = 'btn btn-outline'; compBtn.id = 'comp-' + rec.id;
   compBtn.textContent = 'Compress & Download';
-  compBtn.id = 'comp-' + rec.id;
-  compBtn.onclick = function() { compressAndDownload(rec.id, rec.session_title); };
+  compBtn.onclick = function(){ compressRec(rec.id, rec.session_title); };
   actions.appendChild(compBtn);
 
+  // Share link
   var shareBtn = document.createElement('button');
-  shareBtn.className = 'btn';
-  shareBtn.textContent = 'Copy Share Link';
-  shareBtn.onclick = function() { copyShareLink(rec.id); };
+  shareBtn.className = 'btn'; shareBtn.textContent = 'Copy Share Link';
+  shareBtn.onclick = function(){
+    var url = location.origin + '/share/' + rec.share_token;
+    navigator.clipboard.writeText(url).then(function(){ toast('Share link copied! Anyone with the link can view this recording.', 'green'); });
+  };
   actions.appendChild(shareBtn);
 
+  // Open share page
+  var openBtn = document.createElement('button');
+  openBtn.className = 'btn'; openBtn.textContent = 'Open Share Page';
+  openBtn.onclick = function(){ window.open('/share/' + rec.share_token, '_blank'); };
+  actions.appendChild(openBtn);
+
+  // Delete
   var delBtn = document.createElement('button');
-  delBtn.className = 'btn btn-danger';
-  delBtn.textContent = 'Delete';
-  delBtn.onclick = function() { deleteRec(rec.id); };
+  delBtn.className = 'btn btn-danger'; delBtn.textContent = 'Delete';
+  delBtn.onclick = function(){ deleteRec(rec.id); };
   actions.appendChild(delBtn);
 
-  card.appendChild(actions);
-  return card;
+  body.appendChild(actions);
+
+  // Progress bar
+  var progWrap = document.createElement('div');
+  progWrap.className = 'progress-wrap'; progWrap.id = 'prog-wrap-' + rec.id;
+  progWrap.innerHTML = '<div class="prog-bar"><div class="prog-fill" id="prog-' + rec.id + '" style="width:0%"></div></div><div class="prog-label" id="prog-label-' + rec.id + '">Starting...</div>';
+  body.appendChild(progWrap);
+
+  div.appendChild(body);
+
+  // Video element (hidden)
+  var vid = document.createElement('video');
+  vid.id = 'vid-' + rec.id; vid.controls = true; vid.preload = 'metadata';
+  vid.className = 'rec-video';
+  vid.src = '/api/recordings/' + rec.id + '/stream';
+  div.appendChild(vid);
+
+  return div;
 }
 
 function togglePreview(id) {
   var vid = document.getElementById('vid-' + id);
-  if (vid.style.display === 'block') {
-    vid.style.display = 'none';
-    vid.pause();
-  } else {
-    vid.style.display = 'block';
-    vid.play();
+  if (vid.style.display === 'block') { vid.style.display = 'none'; vid.pause(); }
+  else { vid.style.display = 'block'; vid.play(); }
+}
+
+async function compressRec(id, title) {
+  var compBtn = document.getElementById('comp-' + id);
+  var progWrap = document.getElementById('prog-wrap-' + id);
+  var progFill = document.getElementById('prog-' + id);
+  var progLabel = document.getElementById('prog-label-' + id);
+
+  compBtn.disabled = true; compBtn.textContent = 'Compressing...';
+  progWrap.style.display = 'block'; progFill.style.width = '5%'; progLabel.textContent = 'Fetching recording...';
+
+  try {
+    // Fetch the recording
+    var resp = await fetch('/api/recordings/' + id + '/stream');
+    if (!resp.ok) throw new Error('Failed to fetch recording');
+    var origBlob = await resp.blob();
+    var origSize = origBlob.size;
+    progFill.style.width = '15%'; progLabel.textContent = 'Loaded ' + (origSize/1048576).toFixed(1) + ' MB. Preparing compression...';
+
+    // Create video element to read from
+    var srcVid = document.createElement('video');
+    srcVid.src = URL.createObjectURL(origBlob);
+    srcVid.muted = true;
+    srcVid.preload = 'metadata';
+
+    await new Promise(function(res, rej) { srcVid.onloadedmetadata = res; srcVid.onerror = rej; });
+
+    var W = Math.round(srcVid.videoWidth * 0.6) || 768;
+    var H = Math.round(srcVid.videoHeight * 0.6) || 432;
+    var FPS = 12;
+    var duration = srcVid.duration;
+
+    if (!duration || duration === Infinity) throw new Error('Cannot determine video duration');
+
+    // Setup canvas recorder
+    var canvas = document.createElement('canvas');
+    canvas.width = W; canvas.height = H;
+    var ctx = canvas.getContext('2d');
+
+    var stream = canvas.captureStream(FPS);
+    var mime = MediaRecorder.isTypeSupported('video/webm;codecs=vp8') ? 'video/webm;codecs=vp8' : 'video/webm';
+    var recorder = new MediaRecorder(stream, {mimeType: mime, videoBitsPerSecond: 400000});
+    var chunks = [];
+    recorder.ondataavailable = function(e){ if(e.data.size>0) chunks.push(e.data); };
+
+    recorder.start(200);
+    progFill.style.width = '20%'; progLabel.textContent = 'Compressing... 0%';
+
+    // Seek through video frame by frame
+    var frameInterval = 1 / FPS;
+    var currentTime = 0;
+
+    await new Promise(function(resolve, reject) {
+      function seekNext() {
+        if (currentTime > duration) {
+          recorder.stop();
+          recorder.onstop = resolve;
+          return;
+        }
+        srcVid.currentTime = currentTime;
+      }
+
+      srcVid.onseeked = function() {
+        ctx.drawImage(srcVid, 0, 0, W, H);
+        var pct = Math.min(Math.round((currentTime / duration) * 75), 75);
+        progFill.style.width = (20 + pct) + '%';
+        progLabel.textContent = 'Compressing... ' + Math.round((currentTime/duration)*100) + '%';
+        currentTime += frameInterval;
+        // Small delay to allow canvas to render
+        setTimeout(seekNext, 5);
+      };
+
+      srcVid.onerror = reject;
+      seekNext();
+    });
+
+    var compBlob = new Blob(chunks, {type: 'video/webm'});
+    progFill.style.width = '100%';
+    progLabel.textContent = 'Done! ' + (origSize/1048576).toFixed(1) + ' MB -> ' + (compBlob.size/1048576).toFixed(1) + ' MB (' + Math.round((1 - compBlob.size/origSize)*100) + '% smaller)';
+
+    // Download compressed version
+    var url = URL.createObjectURL(compBlob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'compressed-' + (title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.webm';
+    a.click();
+    URL.revokeObjectURL(url);
+    URL.revokeObjectURL(srcVid.src);
+    toast('Compressed file downloaded!', 'green');
+
+  } catch(err) {
+    progLabel.textContent = 'Error: ' + err.message;
+    toast('Compression failed: ' + err.message, 'red');
   }
-}
 
-function downloadRec(id, title, candidate) {
-  var a = document.createElement('a');
-  a.href = '/api/recordings/' + id + '/stream';
-  a.download = 'interview-' + (title || 'session').replace(/[^a-z0-9]/gi, '-').toLowerCase()
-    + '-' + (candidate || 'candidate').replace(/[^a-z0-9]/gi, '-').toLowerCase() + '.webm';
-  a.click();
-  toast('Download started', 'green');
-}
-
-function copyShareLink(id) {
-  var url = location.origin + '/recordings/share/' + id;
-  navigator.clipboard.writeText(url).then(function() { toast('Share link copied!', 'green'); });
+  compBtn.disabled = false; compBtn.textContent = 'Compress & Download';
 }
 
 async function deleteRec(id) {
-  if (!confirm('Delete this recording? This cannot be undone.')) return;
-  var res = await fetch('/api/recordings/' + id, {method: 'DELETE'});
-  if (res.ok) {
-    var card = document.getElementById('rec-' + id);
-    if (card) card.remove();
-    toast('Recording deleted', 'amber');
-    if (document.querySelectorAll('.rec-card').length === 0) showEmpty();
-  } else {
-    toast('Failed to delete recording', 'red');
-  }
-}
-
-async function compressAndDownload(id, title) {
-  var btn = document.getElementById('comp-' + id);
-  var prog = document.getElementById('prog-' + id);
-  var fill = document.getElementById('fill-' + id);
-  var status = document.getElementById('status-' + id);
-
-  btn.disabled = true;
-  btn.textContent = 'Compressing...';
-  prog.style.display = 'block';
-  status.style.display = 'block';
-  status.textContent = 'Fetching recording...';
-  fill.style.width = '5%';
-
-  try {
-    // Fetch the original video
-    var response = await fetch('/api/recordings/' + id + '/stream');
-    var blob = await response.blob();
-    fill.style.width = '20%';
-    status.textContent = 'Loading video for compression...';
-
-    // Use canvas-based compression
-    var videoEl = document.createElement('video');
-    videoEl.src = URL.createObjectURL(blob);
-    videoEl.muted = true;
-
-    await new Promise(function(res, rej) { videoEl.onloadedmetadata = res; videoEl.onerror = rej; });
-    fill.style.width = '30%';
-
-    var duration = videoEl.duration;
-    var fps = 15; // Reduce fps for compression
-    var scale = 0.6; // Reduce resolution
-    var canvas = document.createElement('canvas');
-    canvas.width = Math.floor(videoEl.videoWidth * scale);
-    canvas.height = Math.floor(videoEl.videoHeight * scale);
-    var ctx = canvas.getContext('2d');
-
-    var stream = canvas.captureStream(fps);
-    var mimeType = 'video/webm;codecs=vp8';
-    var recorder = new MediaRecorder(stream, {mimeType: mimeType, videoBitsPerSecond: 500000});
-    var chunks = [];
-    recorder.ondataavailable = function(e) { if (e.data.size > 0) chunks.push(e.data); };
-
-    fill.style.width = '35%';
-    status.textContent = 'Compressing video (' + Math.round(duration) + 's)...';
-
-    // Seek and draw frames
-    var frameTime = 0;
-    var interval = 1 / fps;
-    recorder.start();
-
-    function drawNextFrame() {
-      if (frameTime >= duration) {
-        recorder.stop();
-        return;
-      }
-      videoEl.currentTime = frameTime;
-      frameTime += interval;
-      // Update progress
-      var pct = 35 + Math.floor((frameTime / duration) * 55);
-      fill.style.width = Math.min(pct, 90) + '%';
-      status.textContent = 'Compressing... ' + Math.min(Math.round((frameTime/duration)*100), 99) + '%';
-    }
-
-    videoEl.onseeked = function() {
-      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-      setTimeout(drawNextFrame, Math.floor(1000 / fps));
-    };
-
-    videoEl.currentTime = 0;
-
-    await new Promise(function(resolve) {
-      recorder.onstop = function() {
-        var compressed = new Blob(chunks, {type: 'video/webm'});
-        fill.style.width = '100%';
-        status.textContent = 'Done! Original: ' + formatSize(blob.size) + ' -> Compressed: ' + formatSize(compressed.size);
-        var url = URL.createObjectURL(compressed);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = 'compressed-' + (title||'interview').replace(/[^a-z0-9]/gi,'-').toLowerCase() + '.webm';
-        a.click();
-        URL.revokeObjectURL(url);
-        resolve();
-      };
-    });
-
-    toast('Compressed file downloaded!', 'green');
-    btn.disabled = false;
-    btn.textContent = 'Compress & Download';
-  } catch(err) {
-    toast('Compression failed: ' + err.message, 'red');
-    status.textContent = 'Error: ' + err.message;
-    btn.disabled = false;
-    btn.textContent = 'Compress & Download';
-  }
-}
-
-function showEmpty() {
-  document.getElementById('recordings-container').innerHTML =
-    '<div class="empty-state"><div class="empty-icon">&#127902;</div>'
-    + '<div style="font-size:16px;font-weight:600;margin-bottom:8px">No recordings yet</div>'
-    + '<div style="color:var(--text2)">Start a session and click Record to capture your interviews.</div>'
-    + '<a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a>'
-    + '</div>';
+  if (!confirm('Delete this recording permanently?')) return;
+  var res = await fetch('/api/recordings/' + id, {method:'DELETE'});
+  if (res.ok) { var card = document.getElementById('card-'+id); if(card) card.remove(); toast('Deleted', 'amber'); }
+  else toast('Failed to delete', 'red');
 }
 
 async function loadRecordings() {
-  document.getElementById('refresh-btn').textContent = 'Loading...';
   var recs = await get('/api/recordings');
-  document.getElementById('refresh-btn').textContent = 'Refresh';
-  var container = document.getElementById('recordings-container');
+  var container = document.getElementById('container');
   container.innerHTML = '';
-  if (!recs || !recs.length) { showEmpty(); return; }
-  currentRecordings = recs;
+  if (!recs || !recs.length) {
+    container.innerHTML = '<div class="empty"><div class="empty-icon">&#127902;</div><div style="font-size:16px;font-weight:600;margin-bottom:8px">No recordings yet</div><div style="color:var(--text2)">Go to a session and click Record to capture an interview.</div><a href="/dashboard" class="btn btn-primary" style="display:inline-flex;margin-top:20px">Go to Dashboard</a></div>';
+    return;
+  }
   var grid = document.createElement('div');
   grid.className = 'rec-grid';
-  recs.forEach(function(rec) { grid.appendChild(buildRecCard(rec)); });
+  recs.forEach(function(rec){ grid.appendChild(buildCard(rec)); });
   container.appendChild(grid);
 }
 
@@ -315,6 +271,7 @@ async function doLogout() { await post('/api/auth/logout'); window.location.href
 async function init() {
   var me = await requireLogin('/');
   if (!me) return;
+  document.getElementById('user-info').textContent = me.name + ' (' + (me.orgCode||'') + ')';
   await loadRecordings();
 }
 
