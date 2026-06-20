@@ -8,383 +8,281 @@
 <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils@0.3.1632090044/camera_utils.js" crossorigin="anonymous"></script>
 </head>
 <body class="cand-body" style="background:#050709">
-
 <div id="warn-banner" class="warn-banner"></div>
-
-<!-- TAB BLOCK OVERLAY -->
 <div id="tab-block-overlay" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.97);flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:40px">
   <div style="font-size:60px;margin-bottom:20px">X</div>
   <h2 style="font-size:26px;font-weight:800;color:#ef4444;margin-bottom:12px">Other Tabs Detected</h2>
-  <p style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:28px">
-    You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other browser tab(s) open.<br>
-    All other tabs must be closed before you can join this interview.<br>
-    <strong style="color:#ef4444">The session cannot start until all other tabs are closed.</strong>
-  </p>
-  <button onclick="recheckTabs()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I Have Closed All Tabs - Check Again</button>
+  <p style="color:#94a3b8;font-size:15px;max-width:480px;line-height:1.8;margin-bottom:28px">You have <strong id="other-tab-count" style="color:#f59e0b"></strong> other browser tab(s) open. All other tabs must be closed before you can join this interview.</p>
+  <button onclick="recheckTabsBeforeJoin()" style="padding:12px 32px;background:#3b82f6;border:none;border-radius:8px;color:#fff;font-size:15px;font-weight:700;cursor:pointer;font-family:inherit">I Have Closed All Tabs - Check Again</button>
 </div>
-
-<!-- PAUSE OVERLAY -->
 <div id="pause-overlay">
   <div class="pause-icon">||</div>
   <div class="pause-title">Session Paused</div>
-  <div class="pause-sub">
-    You have switched away from the interview window.<br>
-    The session is paused and your interviewer has been notified.<br>
-    <strong style="color:#f59e0b">Return to this tab and close all other windows to resume.</strong>
-  </div>
-  <button class="pause-return-btn" onclick="returnToInterview()">I am Back - Resume Interview</button>
+  <div class="pause-sub">You have left the interview window. The session is paused and your interviewer has been notified.<br><strong style="color:#ef4444">You MUST close ALL other tabs and windows before you can resume.</strong></div>
+  <button class="pause-return-btn" id="resume-btn" onclick="tryResume()">Check Tabs and Resume</button>
   <div class="pause-count" id="pause-count"></div>
 </div>
-
-<!-- JOIN SCREEN -->
 <div id="join-screen" style="display:flex;flex-direction:column;align-items:center;justify-content:center;flex:1;gap:16px;text-align:center;padding:40px;min-height:100vh">
   <div style="font-size:64px">&#127908;</div>
   <h2 style="font-size:28px;font-weight:800;letter-spacing:-.5px;color:#fff">Ready to join your interview?</h2>
-  <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">
-    Your camera and microphone will be activated. You will see yourself and your interviewer side by side.<br>
-    <strong style="color:#ef4444;font-size:13px">All activity is monitored. All other browser tabs must be closed before joining.</strong>
-  </p>
-
-  <!-- Device selector panel -->
+  <p style="color:#64748b;max-width:460px;line-height:1.8;font-size:15px">Your camera and microphone will be activated.<br><strong style="color:#ef4444;font-size:13px">All activity is monitored. All other browser tabs must be closed before joining.</strong></p>
   <div id="device-panel" style="display:none;margin-top:8px;background:rgba(255,255,255,0.04);border:1px solid rgba(255,255,255,0.1);border-radius:10px;padding:16px 20px;width:100%;max-width:480px;text-align:left">
     <div style="font-size:11px;font-weight:700;color:#475569;letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px">Device Settings</div>
-    <div style="margin-bottom:10px">
-      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Camera</div>
-      <select id="sel-camera" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select>
-    </div>
-    <div style="margin-bottom:10px">
-      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Microphone</div>
-      <select id="sel-mic" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select>
-    </div>
-    <div style="margin-bottom:12px">
-      <div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Speaker</div>
-      <select id="sel-speaker" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="applySpeaker()"></select>
-    </div>
-    <div style="border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:150px">
-      <video id="preview-vid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video>
-    </div>
+    <div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Camera</div><select id="sel-camera" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select></div>
+    <div style="margin-bottom:10px"><div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Microphone</div><select id="sel-mic" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit" onchange="startPreview()"></select></div>
+    <div style="margin-bottom:12px"><div style="font-size:12px;font-weight:600;color:#94a3b8;margin-bottom:5px">Speaker</div><select id="sel-speaker" style="width:100%;padding:7px 10px;background:#0f1319;border:1px solid #1e2a3a;border-radius:6px;color:#e2e8f0;font-size:13px;outline:none;cursor:pointer;font-family:inherit"></select></div>
+    <div style="border-radius:8px;overflow:hidden;background:#000;aspect-ratio:16/9;max-height:150px"><video id="preview-vid" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover"></video></div>
   </div>
-
   <div style="display:flex;gap:10px;align-items:center;margin-top:8px">
     <button class="btn btn-primary btn-lg" id="join-btn" onclick="attemptJoin()" style="min-width:200px">Join Interview</button>
-    <button class="btn btn-outline" onclick="loadDevices()" title="Device settings" style="padding:10px 14px;font-size:16px">Settings</button>
+    <button class="btn btn-outline" onclick="loadDevices()" style="padding:10px 14px;font-size:16px">Settings</button>
   </div>
   <div id="join-info" style="font-size:13px;color:#374151;margin-top:4px"></div>
 </div>
-
-<!-- INTERVIEW SCREEN -->
 <div id="interview-screen" style="display:none;flex-direction:column;flex:1;min-height:0;height:100vh">
   <div class="cand-topbar">
     <div class="cand-logo">SecureInterview</div>
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
-      <span id="session-paused-chip" class="badge badge-red" style="display:none">Paused</span>
+      <span id="session-paused-chip" class="badge badge-red" style="display:none">PAUSED</span>
       <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">Gaze Away</span>
     </div>
   </div>
   <div class="video-grid" id="video-grid">
-    <div class="video-box">
-      <video id="remote-vid" autoplay playsinline></video>
-      <div class="video-name">Interviewer</div>
-    </div>
-    <div class="video-box">
-      <video id="local-vid" autoplay playsinline muted></video>
-      <div class="video-name">You</div>
-    </div>
+    <div class="video-box"><video id="remote-vid" autoplay playsinline></video><div class="video-name">Interviewer</div></div>
+    <div class="video-box"><video id="local-vid" autoplay playsinline muted></video><div class="video-name">You</div></div>
   </div>
-  <div id="q-ticker" class="q-ticker">
-    <span class="q-ticker-label">Question</span>
-    <span id="q-text" style="font-size:15px;font-weight:500"></span>
-  </div>
+  <div id="q-ticker" class="q-ticker"><span class="q-ticker-label">Question</span><span id="q-text" style="font-size:15px;font-weight:500"></span></div>
 </div>
-
-<!-- GOODBYE SCREEN -->
 <div id="goodbye-screen" class="goodbye-screen" style="display:none">
   <div class="goodbye-icon">&#10004;&#65039;</div>
   <div class="goodbye-title">Thank You!</div>
-  <div class="goodbye-sub">The interview has concluded. Thank you for your time. The team will be in touch with next steps soon.</div>
+  <div class="goodbye-sub">The interview has concluded. Thank you for your time.</div>
   <div class="goodbye-pill">Interview Complete</div>
   <div class="goodbye-note">You may now safely close this window.</div>
 </div>
-
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
 <script>
-var code = location.pathname.split('/').pop().toUpperCase();
-var socket, pc, localStream, previewStream, sessionData, startTime = Date.now();
+var code=location.pathname.split('/').pop().toUpperCase();
+var socket,pc,localStream,previewStream,sessionData,startTime=Date.now();
+var flaggedOnce={},flagCooldowns={};
+function elapsed(){var s=Math.floor((Date.now()-startTime)/1000);return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0');}
+function warn(msg){var b=$('warn-banner');b.textContent=msg;b.style.display='block';clearTimeout(b._t);b._t=setTimeout(function(){b.style.display='none';},5000);}
+function sendFlagOnce(key,text,detail,severity){if(flaggedOnce[key])return;flaggedOnce[key]=true;doSendFlag(text,detail,severity);}
+function sendFlagCooldown(key,text,detail,severity,cd){var now=Date.now();if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return;flagCooldowns[key]=now;doSendFlag(text,detail,severity);}
+function doSendFlag(text,detail,severity){var flag={text:text,detail:detail,severity:severity,time:elapsed()};if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag});fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){});}
 
-// ── FLAG SYSTEM ──
-var flaggedOnce = {};
-var flagCooldowns = {};
-function elapsed(){ var s=Math.floor((Date.now()-startTime)/1000); return String(Math.floor(s/60)).padStart(2,'0')+':'+String(s%60).padStart(2,'0'); }
-// FIX B1: No HTML entities in JS strings - use plain text
-function warn(msg){ var b=$('warn-banner'); b.textContent=msg; b.style.display='block'; clearTimeout(b._t); b._t=setTimeout(function(){ b.style.display='none'; },5000); }
-function sendFlagOnce(key,text,detail,severity){ if(flaggedOnce[key])return; flaggedOnce[key]=true; doSendFlag(text,detail,severity); }
-function sendFlagCooldown(key,text,detail,severity,cd){ var now=Date.now(); if(flagCooldowns[key]&&(now-flagCooldowns[key])<(cd||2000))return; flagCooldowns[key]=now; doSendFlag(text,detail,severity); }
-function doSendFlag(text,detail,severity){ var flag={text:text,detail:detail,severity:severity,time:elapsed()}; if(socket)socket.emit('candidate-flag',{sessionId:sessionData&&sessionData.id,flag:flag}); fetch('/api/sessions/'+(sessionData&&sessionData.id)+'/flags',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({text:text,detail:detail,severity:severity,timeOffset:elapsed()})}).catch(function(){}); }
+// PAUSE SYSTEM - STRICT: never auto-resume, always require tab check
+var isPaused=false,pauseCount=0,blurTimer=null;
+function pauseSession(){
+  if(isPaused)return;
+  isPaused=true;pauseCount++;
+  $('pause-overlay').classList.add('active');
+  $('session-paused-chip').style.display='';
+  $('pause-count').textContent='Paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'. Close ALL other tabs and windows, then click the button below.';
+  if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
+}
+// Only way to resume - must pass tab check
+async function tryResume(){
+  var btn=$('resume-btn');
+  btn.disabled=true;btn.textContent='Checking for open tabs...';
+  var other=await checkOtherTabsOpen();
+  if(other>0){
+    sendFlagCooldown('resume-blocked','Resume Attempt With Tabs Open','Candidate tried to resume with '+other+' other tab(s) still open','high',5000);
+    $('pause-count').textContent='BLOCKED: '+other+' other tab(s) still open. Close them all, then try again.';
+    btn.disabled=false;btn.textContent='Try Again - Check Tabs';
+  } else {
+    isPaused=false;
+    $('pause-overlay').classList.remove('active');
+    $('session-paused-chip').style.display='none';
+    if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
+    btn.disabled=false;btn.textContent='Check Tabs and Resume';
+  }
+}
 
-// ── PAUSE SYSTEM ──
-var isPaused=false, pauseCount=0, blurTimer=null;
-function pauseSession(){ if(isPaused)return; isPaused=true; pauseCount++; $('pause-overlay').classList.add('active'); $('session-paused-chip').style.display=''; $('pause-count').textContent='Session paused '+pauseCount+' time'+(pauseCount>1?'s':'')+'.'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=false;}); }
-function resumeSession(){ if(!isPaused)return; isPaused=false; $('pause-overlay').classList.remove('active'); $('session-paused-chip').style.display='none'; if(localStream)localStream.getAudioTracks().forEach(function(t){t.enabled=true;}); }
-function returnToInterview(){ resumeSession(); window.focus(); }
-
-// ── TAB ENFORCEMENT ──
-var bc=null, tabId=Math.random().toString(36).slice(2);
+// TAB ENFORCEMENT
+var bc=null,tabId=Math.random().toString(36).slice(2);
 function initTabEnforcement(){
   try{
     bc=new BroadcastChannel('secure_interview_tabs');
     bc.postMessage({type:'TAB_ANNOUNCE',id:tabId});
     bc.onmessage=function(e){
-      if(e.data.type==='TAB_ANNOUNCE'&&e.data.id!==tabId){
-        sendFlagOnce('tab-opened-during','New Tab Opened During Interview','Candidate opened a new browser tab during the interview','high');
-        warn('A new tab was detected! Your session is being reviewed.');
-      }
-      if(e.data.type==='TAB_OPEN_CHECK') bc.postMessage({type:'TAB_RESPONSE',id:tabId});
+      if(e.data.type==='TAB_ANNOUNCE'&&e.data.id!==tabId){sendFlagOnce('new-tab','New Tab Opened During Interview','Candidate opened a new tab while in interview','high');warn('A new tab was detected. This has been flagged.');}
+      if(e.data.type==='TAB_OPEN_CHECK')bc.postMessage({type:'TAB_RESPONSE',id:tabId});
     };
   }catch(e){console.warn('BroadcastChannel not supported');}
 }
 function checkOtherTabsOpen(){
   return new Promise(function(resolve){
     if(!window.BroadcastChannel){resolve(0);return;}
-    var responses=0;
-    var checkBc=new BroadcastChannel('secure_interview_tabs');
-    var timeout=setTimeout(function(){checkBc.close();resolve(responses);},600);
-    checkBc.onmessage=function(e){if(e.data.type==='TAB_RESPONSE'&&e.data.id!==tabId)responses++;};
-    checkBc.postMessage({type:'TAB_OPEN_CHECK',id:tabId});
+    var count=0;
+    var cb=new BroadcastChannel('secure_interview_tabs');
+    var t=setTimeout(function(){cb.close();resolve(count);},800);
+    cb.onmessage=function(e){if(e.data.type==='TAB_RESPONSE'&&e.data.id!==tabId)count++;};
+    cb.postMessage({type:'TAB_OPEN_CHECK',id:tabId});
   });
 }
-async function recheckTabs(){
-  var count=await checkOtherTabsOpen();
-  if(count>0){ $('other-tab-count').textContent=count; }
-  else{ $('tab-block-overlay').style.display='none'; doJoin(); }
+async function recheckTabsBeforeJoin(){
+  var c=await checkOtherTabsOpen();
+  if(c>0){$('other-tab-count').textContent=c;}
+  else{$('tab-block-overlay').style.display='none';doJoin();}
 }
 async function attemptJoin(){
-  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Checking tabs...';
-  var otherTabs=await checkOtherTabsOpen();
-  if(otherTabs>0){ $('other-tab-count').textContent=otherTabs; $('tab-block-overlay').style.display='flex'; btn.disabled=false; btn.textContent='Join Interview'; }
+  var btn=$('join-btn');btn.disabled=true;btn.textContent='Checking tabs...';
+  var other=await checkOtherTabsOpen();
+  if(other>0){$('other-tab-count').textContent=other;$('tab-block-overlay').style.display='flex';btn.disabled=false;btn.textContent='Join Interview';}
   else doJoin();
 }
 
-// ── DEVICE SELECTOR ──
-var previewStream=null;
+// DEVICE SELECTOR
 async function loadDevices(){
-  var btn=document.querySelector('#join-screen .btn.btn-outline');
-  if(btn){btn.disabled=true; btn.textContent='Loading...';}
+  var btn=document.querySelector('#join-screen button.btn-outline');
+  if(btn){btn.disabled=true;btn.textContent='Loading...';}
   try{
-    // Request permission to get labels
     var tmp=await navigator.mediaDevices.getUserMedia({video:true,audio:true});
     tmp.getTracks().forEach(function(t){t.stop();});
-    var devices=await navigator.mediaDevices.enumerateDevices();
-    function fill(selId,devs,label){
-      var sel=document.getElementById(selId); if(!sel)return; sel.innerHTML='';
-      devs.forEach(function(d,i){var opt=document.createElement('option');opt.value=d.deviceId;opt.textContent=d.label||(label+' '+(i+1));sel.appendChild(opt);});
-      if(!devs.length){var opt=document.createElement('option');opt.textContent='No '+label+' found';sel.appendChild(opt);}
-    }
-    fill('sel-camera',devices.filter(function(d){return d.kind==='videoinput';}),'Camera');
-    fill('sel-mic',devices.filter(function(d){return d.kind==='audioinput';}),'Microphone');
-    var spks=devices.filter(function(d){return d.kind==='audiooutput';});
-    fill('sel-speaker',spks,'Speaker');
-    if(!spks.length){ var s=document.getElementById('sel-speaker'); if(s) s.innerHTML='<option value="">Default</option>'; }
-    document.getElementById('device-panel').style.display='block';
+    var devs=await navigator.mediaDevices.enumerateDevices();
+    function fill(id,list,label){var sel=document.getElementById(id);if(!sel)return;sel.innerHTML='';list.forEach(function(d,i){var o=document.createElement('option');o.value=d.deviceId;o.textContent=d.label||(label+' '+(i+1));sel.appendChild(o);});if(!list.length){var o=document.createElement('option');o.textContent='No '+label;sel.appendChild(o);}}
+    fill('sel-camera',devs.filter(function(d){return d.kind==='videoinput';}),'Camera');
+    fill('sel-mic',devs.filter(function(d){return d.kind==='audioinput';}),'Microphone');
+    fill('sel-speaker',devs.filter(function(d){return d.kind==='audiooutput';}),'Speaker');
+    $('device-panel').style.display='block';
     await startPreview();
-  }catch(e){ $('join-info').textContent='Could not access devices: '+e.message; }
+  }catch(e){$('join-info').textContent='Device access failed: '+e.message;}
   if(btn){btn.disabled=false;btn.textContent='Settings';}
 }
 async function startPreview(){
-  if(previewStream){previewStream.getTracks().forEach(function(t){t.stop();});}
-  var camId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
-  var micId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
-  try{
-    var c={video:camId?{deviceId:{exact:camId}}:{facingMode:'user'},audio:micId?{deviceId:{exact:micId}}:true};
-    previewStream=await navigator.mediaDevices.getUserMedia(c);
-    document.getElementById('preview-vid').srcObject=previewStream;
-    localStream=previewStream;
-  }catch(e){console.warn('Preview failed:',e.message);}
-}
-function applySpeaker(){
-  var spk=document.getElementById('sel-speaker')&&document.getElementById('sel-speaker').value;
-  if(!spk)return;
-  document.querySelectorAll('video').forEach(function(v){if(typeof v.setSinkId==='function') v.setSinkId(spk).catch(function(){});});
+  if(previewStream)previewStream.getTracks().forEach(function(t){t.stop();});
+  var cam=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
+  var mic=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
+  try{var c={video:cam?{deviceId:{exact:cam}}:{facingMode:'user'},audio:mic?{deviceId:{exact:mic}}:true};previewStream=await navigator.mediaDevices.getUserMedia(c);document.getElementById('preview-vid').srcObject=previewStream;localStream=previewStream;}catch(e){console.warn('Preview failed:',e.message);}
 }
 
-// ── AUDIO MISMATCH DETECTION ──
+// AUDIO MISMATCH
 var audioCheckInterval=null;
 function initAudioMonitoring(stream){
   try{
-    var actx=new (window.AudioContext||window.webkitAudioContext)();
+    var actx=new(window.AudioContext||window.webkitAudioContext)();
     var src=actx.createMediaStreamSource(stream);
-    var analyser=actx.createAnalyser();
-    analyser.fftSize=2048; analyser.smoothingTimeConstant=0.8;
-    src.connect(analyser);
-    var data=new Uint8Array(analyser.frequencyBinCount);
-    var bgVoiceBuf=[];
+    var an=actx.createAnalyser();an.fftSize=2048;an.smoothingTimeConstant=0.8;src.connect(an);
+    var data=new Uint8Array(an.frequencyBinCount),buf=[];
     audioCheckInterval=setInterval(function(){
-      analyser.getByteFrequencyData(data);
-      var binStart=Math.floor(300/(actx.sampleRate/2)*analyser.frequencyBinCount);
-      var binEnd=Math.floor(3400/(actx.sampleRate/2)*analyser.frequencyBinCount);
-      var peakCount=0, lastVal=0, rising=false;
-      for(var j=binStart;j<binEnd;j++){
-        if(data[j]>lastVal&&!rising){rising=true;}
-        else if(data[j]<lastVal&&rising&&lastVal>60){peakCount++;rising=false;}
-        lastVal=data[j];
-      }
-      bgVoiceBuf.push(peakCount); if(bgVoiceBuf.length>10) bgVoiceBuf.shift();
-      var avgPeaks=bgVoiceBuf.reduce(function(a,b){return a+b;},0)/bgVoiceBuf.length;
-      var energy=0; for(var k=binStart;k<binEnd;k++) energy+=data[k];
-      if(avgPeaks>=2.5&&(energy/(binEnd-binStart))>20){
-        sendFlagCooldown('bg-voice','Background Voice Detected','Audio analysis: second voice detected - possible coaching','high',20000);
-        warn('Background voice detected - coaching is not permitted');
-      }
+      an.getByteFrequencyData(data);
+      var bs=Math.floor(300/(actx.sampleRate/2)*an.frequencyBinCount),be=Math.floor(3400/(actx.sampleRate/2)*an.frequencyBinCount);
+      var peaks=0,lv=0,rising=false;
+      for(var j=bs;j<be;j++){if(data[j]>lv&&!rising)rising=true;else if(data[j]<lv&&rising&&lv>60){peaks++;rising=false;}lv=data[j];}
+      buf.push(peaks);if(buf.length>10)buf.shift();
+      var avg=buf.reduce(function(a,b){return a+b;},0)/buf.length;
+      var energy=0;for(var k=bs;k<be;k++)energy+=data[k];
+      if(avg>=2.5&&(energy/(be-bs))>20){sendFlagCooldown('bg-voice','Background Voice Detected','Audio analysis: second voice - possible coaching','high',20000);warn('Background voice detected - coaching is not permitted');}
     },500);
   }catch(e){console.warn('Audio monitoring failed:',e.message);}
 }
 
-// ── GAZE / EYE TRACKING ──
-// FIX B5: Use polling approach instead of Camera utility to avoid interference
-var gazeOffStart=null, displayCheckInterval=null;
+// GAZE TRACKING
+var gazeOffStart=null,gazeCheckTimer=null,displayCheckInterval=null;
 var GAZE_THRESHOLD_SEC=5;
-var faceMeshReady=false;
-var gazeCheckTimer=null;
-
 function initGazeTracking(videoEl){
   try{
-    if(typeof FaceMesh==='undefined'){console.warn('FaceMesh CDN not loaded');return;}
+    if(typeof FaceMesh==='undefined'){console.warn('FaceMesh not loaded');return;}
     var fm=new FaceMesh({locateFile:function(f){return 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh@0.4.1633559619/'+f;}});
     fm.setOptions({maxNumFaces:1,refineLandmarks:true,minDetectionConfidence:0.5,minTrackingConfidence:0.5});
     fm.onResults(function(results){
       if(!results.multiFaceLandmarks||!results.multiFaceLandmarks.length){
-        if(!gazeOffStart) gazeOffStart=Date.now();
+        if(!gazeOffStart)gazeOffStart=Date.now();
         var away=(Date.now()-gazeOffStart)/1000;
-        if(away>2) $('gaze-chip').style.display='';
-        if(away>GAZE_THRESHOLD_SEC){
-          sendFlagCooldown('face-not-visible','Face Not Visible','Candidate face was not visible for '+Math.round(away)+'s','high',10000);
-          warn('Please keep your face visible on camera');
-        }
+        if(away>2)$('gaze-chip').style.display='';
+        if(away>GAZE_THRESHOLD_SEC){sendFlagCooldown('face-not-visible','Face Not Visible','Candidate face not visible for '+Math.round(away)+'s','high',10000);warn('Please keep your face visible on camera');}
         return;
       }
       var lm=results.multiFaceLandmarks[0];
-      // Iris landmarks (refineLandmarks required): 468=left iris, 473=right iris
-      var li=lm[468], ri=lm[473];
+      var li=lm[468],ri=lm[473];
       if(!li||!ri){gazeOffStart=null;$('gaze-chip').style.display='none';return;}
-      // Eye corners: left eye 33(outer), 133(inner) | right eye 362(inner), 263(outer)
       var lo=lm[33],lin=lm[133],ri2=lm[362],ro=lm[263];
-      var leftGaze=(li.x-lo.x)/(lin.x-lo.x);
-      var rightGaze=(ri.x-ri2.x)/(ro.x-ri2.x);
-      var avgGaze=(leftGaze+rightGaze)/2;
-      // Vertical: top lid=159, bottom lid=145 for left eye
-      var lt=lm[159],lb=lm[145];
-      var vertGaze=lt&&lb?(li.y-lt.y)/(lb.y-lt.y):0.5;
-      var lookingAway=avgGaze<0.2||avgGaze>0.8||vertGaze<0.15||vertGaze>0.85;
-      if(lookingAway){
-        if(!gazeOffStart) gazeOffStart=Date.now();
-        var away=(Date.now()-gazeOffStart)/1000;
+      var lg=(li.x-lo.x)/(lin.x-lo.x),rg=(ri.x-ri2.x)/(ro.x-ri2.x),avg=(lg+rg)/2;
+      var lt=lm[159],lb=lm[145],vert=lt&&lb?(li.y-lt.y)/(lb.y-lt.y):0.5;
+      var lookAway=avg<0.2||avg>0.8||vert<0.15||vert>0.85;
+      if(lookAway){
+        if(!gazeOffStart)gazeOffStart=Date.now();
+        var s=(Date.now()-gazeOffStart)/1000;
         $('gaze-chip').style.display='';
-        if(away>GAZE_THRESHOLD_SEC){
-          sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate looked away from screen for '+Math.round(away)+'s','medium',12000);
-          warn('Please keep your eyes on the screen');
-        }
-      } else {
-        gazeOffStart=null; $('gaze-chip').style.display='none';
-      }
+        if(s>GAZE_THRESHOLD_SEC){sendFlagCooldown('gaze-away','Suspicious Eye Movement','Candidate looked away for '+Math.round(s)+'s','medium',12000);warn('Please keep your eyes on the screen');}
+      } else {gazeOffStart=null;$('gaze-chip').style.display='none';}
     });
-    faceMeshReady=true;
-    // FIX B5: Poll every 500ms using offscreen canvas instead of Camera utility
-    gazeCheckTimer=setInterval(async function(){
-      if(!videoEl.readyState||videoEl.readyState<2) return;
-      try{await fm.send({image:videoEl});}catch(e){}
-    },500);
-  }catch(e){console.warn('Gaze tracking init failed:',e.message);}
+    gazeCheckTimer=setInterval(async function(){if(!videoEl.readyState||videoEl.readyState<2)return;try{await fm.send({image:videoEl});}catch(e){}},500);
+  }catch(e){console.warn('Gaze init failed:',e.message);}
 }
 
-// ── DISPLAY DETECTION ──
+// DISPLAY DETECTION
 function checkDisplays(){
   if(flaggedOnce['multi-display'])return;
-  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays connected','high');warn('Multiple displays detected - this has been flagged');return;}
+  if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high');warn('Multiple displays detected');return;}
   var x=window.screenX||0,y=window.screenY||0;
-  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Window on Secondary Display','Candidate window appears on secondary monitor','high');warn('Secondary display detected');}
+  if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Window on Secondary Display','Window on secondary monitor','high');warn('Secondary display detected');}
 }
 
-// ── PROTECTION ──
+// PROTECTION SETUP
 function setupProtection(){
-  // FIX B4: Comprehensive tab switch detection
-  // Method 1: visibilitychange - fires when tab loses focus within same window
+  // TAB SWITCH - fire on hide, NEVER auto-resume on show
   document.addEventListener('visibilitychange',function(){
     if(document.hidden){
-      warn('You left the interview tab! Return immediately.');
-      sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab or minimized browser','medium',3000);
+      warn('You left the interview tab! Session is paused.');
+      sendFlagCooldown('tab-switch','Tab Switch','Candidate switched to another tab','medium',3000);
       pauseSession();
-    } else {
-      // Only auto-resume if pause was from tab switch (not window blur which needs manual resume)
-      if(isPaused) resumeSession();
     }
+    // NO auto-resume here. Candidate must use tryResume() button.
   });
 
-  // Method 2: window blur - fires when window loses focus (switching apps, clicking desktop)
+  // WINDOW BLUR - pause when window loses focus
   window.addEventListener('blur',function(){
-    warn('You left the interview window!');
-    sendFlagCooldown('window-blur','Window Switch','Candidate switched away from interview window','medium',3000);
+    warn('You left the interview window! Session is paused.');
+    sendFlagCooldown('window-blur','Window Switch','Candidate switched away from window','medium',3000);
     pauseSession();
-    blurTimer=setTimeout(function(){ if(isPaused) sendFlagCooldown('extended-absence','Extended Absence','Candidate away for 10+ seconds','high',15000); },10000);
+    blurTimer=setTimeout(function(){if(isPaused)sendFlagCooldown('extended-absence','Extended Absence','Away for 10+ seconds','high',15000);},10000);
   });
+
+  // WINDOW FOCUS - update message only, do NOT auto-resume
   window.addEventListener('focus',function(){
     clearTimeout(blurTimer);
-    // Auto-resume on focus only if document is also visible
-    if(isPaused&&!document.hidden) resumeSession();
+    if(isPaused){$('pause-count').textContent='You are back. Close ALL other tabs/windows, then click the button below.';}
   });
 
-  // FIX B4: Additional - page visibility API polyfill for older browsers
-  if(typeof document.hidden!=='undefined'){
-    // Already handled above
-  } else if(typeof document.webkitHidden!=='undefined'){
+  // Webkit fallback
+  if(typeof document.webkitHidden!=='undefined'){
     document.addEventListener('webkitvisibilitychange',function(){
-      if(document.webkitHidden){warn('Tab switch detected!');sendFlagCooldown('tab-switch','Tab Switch','Candidate switched tabs','medium',3000);pauseSession();}
-      else{if(isPaused)resumeSession();}
+      if(document.webkitHidden){sendFlagCooldown('tab-switch','Tab Switch','Candidate switched tabs','medium',3000);pauseSession();}
     });
   }
 
-  // Copy/paste/cut
-  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying is not allowed!');sendFlagCooldown('copy','Copy Detected','Candidate attempted to copy content','medium',2000);});
-  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting is not allowed!');sendFlagCooldown('paste','Paste Detected','Candidate attempted to paste','medium',2000);});
-  document.addEventListener('cut',function(e){e.preventDefault();warn('Cutting is not allowed!');sendFlagCooldown('cut','Cut Detected','Candidate attempted to cut','low',2000);});
-  document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Candidate right-clicked during interview','low',2000);});
-
-  // Keyboard shortcuts
+  // Input protection
+  document.addEventListener('copy',function(e){e.preventDefault();warn('Copying is not allowed!');sendFlagCooldown('copy','Copy Detected','Tried to copy','medium',2000);});
+  document.addEventListener('paste',function(e){e.preventDefault();warn('Pasting is not allowed!');sendFlagCooldown('paste','Paste Detected','Tried to paste','medium',2000);});
+  document.addEventListener('cut',function(e){e.preventDefault();sendFlagCooldown('cut','Cut Detected','Tried to cut','low',2000);});
+  document.addEventListener('contextmenu',function(e){e.preventDefault();sendFlagCooldown('rightclick','Right-Click','Right-clicked','low',2000);});
   document.addEventListener('keydown',function(e){
-    if(e.key==='F12'){e.preventDefault();warn('DevTools are not allowed!');sendFlagCooldown('f12','DevTools Attempt','Candidate pressed F12','high',3000);}
-    if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();sendFlagCooldown('refresh','Refresh Attempt','Candidate tried to refresh','medium',3000);}
-    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){
-      e.preventDefault();warn('Keyboard shortcut blocked: Ctrl+'+e.key.toUpperCase());
-      sendFlagCooldown('shortcut-'+e.key,'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);
-    }
-    // Block new tab/window attempts
-    if((e.ctrlKey||e.metaKey)&&(e.key==='t'||e.key==='n')){
-      e.preventDefault();warn('Opening new tabs is not allowed!');
-      sendFlagCooldown('new-tab','New Tab Attempt','Candidate tried to open a new tab/window','high',3000);
-    }
+    if(e.key==='F12'){e.preventDefault();warn('DevTools are not allowed!');sendFlagCooldown('f12','DevTools Attempt','F12 pressed','high',3000);}
+    if(e.key==='F5'||((e.ctrlKey||e.metaKey)&&e.key==='r')){e.preventDefault();sendFlagCooldown('refresh','Refresh Attempt','Tried to refresh','medium',3000);}
+    if((e.ctrlKey||e.metaKey)&&(e.key==='t'||e.key==='n')){e.preventDefault();warn('New tabs are not allowed!');sendFlagCooldown('new-tab','New Tab Attempt','Ctrl+'+e.key.toUpperCase(),'high',3000);}
+    if((e.ctrlKey||e.metaKey)&&['c','v','x','a','u','p','s','i','j'].includes(e.key.toLowerCase())){e.preventDefault();sendFlagCooldown('shortcut-'+e.key,'Shortcut Blocked','Ctrl+'+e.key.toUpperCase(),'low',2000);}
   });
-
-  // Multi-display
   checkDisplays();
   displayCheckInterval=setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},30000);
-  if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display configuration','high');setTimeout(function(){flaggedOnce['multi-display']=false;checkDisplays();},1000);});
-
-  // Window resize (split screen indicator)
+  if(window.screen&&window.screen.addEventListener)window.screen.addEventListener('change',function(){sendFlagOnce('screen-change','Screen Config Changed','Display configuration changed','high');setTimeout(function(){flaggedOnce['multi-display']=false;checkDisplays();},1000);});
   var origW=window.innerWidth,origH=window.innerHeight;
-  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Candidate significantly resized interview window','low',10000);origW=nW;origH=nH;}});
-
+  window.addEventListener('resize',function(){var nW=window.innerWidth,nH=window.innerHeight;if(Math.abs(nW-origW)>150||Math.abs(nH-origH)>150){sendFlagCooldown('resize','Window Resized','Significantly resized window','low',10000);origW=nW;origH=nH;}});
   initTabEnforcement();
 }
 
 function stopAllMedia(){
-  if(localStream){localStream.getTracks().forEach(function(t){t.stop();});}
-  if(previewStream){previewStream.getTracks().forEach(function(t){t.stop();});}
-  if(pc){pc.close();}
-  if(audioCheckInterval){clearInterval(audioCheckInterval);}
-  if(displayCheckInterval){clearInterval(displayCheckInterval);}
-  if(gazeCheckTimer){clearInterval(gazeCheckTimer);}
+  if(localStream)localStream.getTracks().forEach(function(t){t.stop();});
+  if(previewStream&&previewStream!==localStream)previewStream.getTracks().forEach(function(t){t.stop();});
+  if(pc)pc.close();
+  if(audioCheckInterval)clearInterval(audioCheckInterval);
+  if(displayCheckInterval)clearInterval(displayCheckInterval);
+  if(gazeCheckTimer)clearInterval(gazeCheckTimer);
   var lv=$('local-vid');if(lv)lv.srcObject=null;
   var rv=$('remote-vid');if(rv)rv.srcObject=null;
 }
@@ -400,37 +298,27 @@ async function init(){
   var s=await get('/api/join/'+code);
   if(s.error==='SESSION_ENDED'){$('join-screen').style.display='none';showGoodbye();return;}
   if(s.error){$('join-info').textContent='Error: '+s.error;$('join-btn').disabled=true;$('join-btn').textContent='Session Unavailable';return;}
-  sessionData=s; $('join-info').textContent='Session: '+s.title;
+  sessionData=s;$('join-info').textContent='Session: '+s.title;
 }
 
 async function doJoin(){
-  var btn=$('join-btn'); btn.disabled=true; btn.textContent='Starting camera...';
+  var btn=$('join-btn');btn.disabled=true;btn.textContent='Starting camera...';
   try{
     if(!localStream||localStream.getTracks().some(function(t){return t.readyState==='ended';})){
-      var camId=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
-      var micId=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
-      localStream=await navigator.mediaDevices.getUserMedia({
-        video:camId?{deviceId:{exact:camId},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},
-        audio:micId?{deviceId:{exact:micId}}:true
-      });
+      var cam=document.getElementById('sel-camera')&&document.getElementById('sel-camera').value;
+      var mic=document.getElementById('sel-mic')&&document.getElementById('sel-mic').value;
+      localStream=await navigator.mediaDevices.getUserMedia({video:cam?{deviceId:{exact:cam},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},audio:mic?{deviceId:{exact:mic}}:true});
     }
     $('local-vid').srcObject=localStream;
-    // Stop preview
-    var pv=document.getElementById('preview-vid'); if(pv) pv.srcObject=null;
-    if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();}); previewStream=null;}
-  }catch(e){
-    $('join-info').textContent='Camera/mic access required: '+e.message;
-    btn.disabled=false; btn.textContent='Join Interview'; return;
-  }
+    var pv=document.getElementById('preview-vid');if(pv)pv.srcObject=null;
+    if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();});previewStream=null;}
+  }catch(e){$('join-info').textContent='Camera/mic access required: '+e.message;btn.disabled=false;btn.textContent='Join Interview';return;}
   $('join-screen').style.display='none';
-  var is=$('interview-screen'); is.style.display='flex'; is.style.flexDirection='column';
+  var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
   $('i-title').textContent=sessionData&&sessionData.title||'Interview';
   startTime=Date.now();
-  var spk=document.getElementById('sel-speaker')&&document.getElementById('sel-speaker').value;
-  if(spk){var rv=$('remote-vid');if(rv&&typeof rv.setSinkId==='function')rv.setSinkId(spk).catch(function(){});}
   setupProtection();
   initAudioMonitoring(localStream);
-  // FIX B5: Start gaze tracking 3s after join to let camera stabilize
   setTimeout(function(){initGazeTracking($('local-vid'));},3000);
   connectSocket();
 }
@@ -438,19 +326,18 @@ async function doJoin(){
 function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionData&&sessionData.id,role:'candidate'});
-  socket.on('peer-joined',function(data){if(data.role==='interviewer'){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
+  socket.on('peer-joined',function(d){if(d.role==='interviewer'){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
   socket.on('peer-already-present',function(){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
-  socket.on('webrtc-offer',async function(data){if(!pc)await createPC();await pc.setRemoteDescription(data.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
-  socket.on('webrtc-answer',async function(data){if(pc)await pc.setRemoteDescription(data.answer);});
-  socket.on('webrtc-ice',async function(data){if(pc)await pc.addIceCandidate(data.candidate);});
-  socket.on('next-question',function(data){var qs=sessionData&&sessionData.questions||[];if(qs[data.qIdx]){var tk=$('q-ticker');tk.style.display='flex';$('q-text').textContent='Q'+(data.qIdx+1)+': '+qs[data.qIdx];}});
+  socket.on('webrtc-offer',async function(d){if(!pc)await createPC();await pc.setRemoteDescription(d.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
+  socket.on('webrtc-answer',async function(d){if(pc)await pc.setRemoteDescription(d.answer);});
+  socket.on('webrtc-ice',async function(d){if(pc)await pc.addIceCandidate(d.candidate);});
+  socket.on('next-question',function(d){var qs=sessionData&&sessionData.questions||[];if(qs[d.qIdx]){var tk=$('q-ticker');tk.style.display='flex';$('q-text').textContent='Q'+(d.qIdx+1)+': '+qs[d.qIdx];}});
   socket.on('session-ended',function(){showGoodbye();});
   socket.on('peer-left',function(){$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
 }
-
 async function createPC(){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
-  if(localStream) localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
+  if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
   pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
   pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
@@ -458,7 +345,6 @@ async function startWebRTC(isInit){
   await createPC();
   if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionData&&sessionData.id,offer:o});}
 }
-
 init();
 </script>
 </body>
