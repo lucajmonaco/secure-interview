@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Secure Interview Ã¢ÂÂ Interview Integrity Platform</title>
+<title>Secure Interview</title>
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
-<div id="app">
 <nav class="navbar">
-  <div class="nav-brand">Ã°ÂÂÂ¡Ã¯Â¸Â SecureInterview</div>
-  <div class="nav-links" id="nav-links">
+  <div class="nav-brand">SecureInterview</div>
+  <div class="nav-links">
     <a href="/dashboard" class="btn btn-primary" id="nav-dashboard" style="display:none">Dashboard</a>
     <button class="btn btn-outline" id="nav-login">Sign In</button>
     <button class="btn btn-primary" id="nav-signup">Get Started</button>
@@ -29,20 +28,18 @@
 </section>
 <section class="features">
   <div class="features-grid">
-    <div class="feature-card"><div class="feature-icon">Ã°ÂÂÂ¹</div><h3>Live Video Proctoring</h3><p>WebRTC-powered video monitoring with zero plugins required.</p></div>
-    <div class="feature-card"><div class="feature-icon">Ã°ÂÂÂ¯</div><h3>Trust Score</h3><p>Real-time AI scoring that flags suspicious behavior instantly.</p></div>
-    <div class="feature-card"><div class="feature-icon">Ã¢ÂÂ¡</div><h3>Instant Alerts</h3><p>Get notified the moment something looks off during the interview.</p></div>
-    <div class="feature-card"><div class="feature-icon">Ã°ÂÂÂ</div><h3>Full Reports</h3><p>Detailed session reports with timestamps and flag summaries.</p></div>
+    <div class="feature-card"><h3>Live Video Proctoring</h3><p>WebRTC-powered video monitoring with zero plugins required.</p></div>
+    <div class="feature-card"><h3>Trust Score</h3><p>Real-time AI scoring that flags suspicious behavior instantly.</p></div>
+    <div class="feature-card"><h3>Instant Alerts</h3><p>Get notified the moment something looks off during the interview.</p></div>
+    <div class="feature-card"><h3>Full Reports</h3><p>Detailed session reports with timestamps and flag summaries.</p></div>
   </div>
 </section>
 </main>
-</div>
 
-<!-- Auth Modal -->
 <div id="auth-modal" class="modal hidden">
   <div class="modal-backdrop"></div>
   <div class="modal-content">
-    <button class="modal-close" id="modal-close">Ã¢ÂÂ</button>
+    <button class="modal-close" id="modal-close">X</button>
     <div id="login-form">
       <h2>Sign In</h2>
       <input type="email" id="login-email" placeholder="Email" class="input">
@@ -66,10 +63,9 @@
 
 <script src="/js/utils.js"></script>
 <script>
-
 async function checkAuth() {
-  const me = await api('/api/auth/me');
-  if (me.loggedIn) {
+  const me = await get('/api/auth/me');
+  if (me && me.loggedIn) {
     $('nav-dashboard').style.display = '';
     $('nav-logout').style.display = '';
     $('nav-login').style.display = 'none';
@@ -86,29 +82,28 @@ function showModal(form) {
 $('nav-login').onclick = () => showModal('login');
 $('nav-signup').onclick = () => showModal('signup');
 $('hero-start').onclick = () => showModal('signup');
-$('hero-demo').onclick = () => { showModal('login'); };
+$('hero-demo').onclick = () => showModal('login');
 $('modal-close').onclick = () => $('auth-modal').classList.add('hidden');
 $('auth-modal').querySelector('.modal-backdrop').onclick = () => $('auth-modal').classList.add('hidden');
 $('switch-to-signup').onclick = e => { e.preventDefault(); showModal('signup'); };
 $('switch-to-login').onclick = e => { e.preventDefault(); showModal('login'); };
 
 $('login-submit').onclick = async () => {
-  const res = await api('/api/auth/login', { email: $('login-email').value, password: $('login-password').value });
+  const res = await post('/api/auth/login', { email: $('login-email').value, password: $('login-password').value });
   if (res.error) { $('login-error').textContent = res.error; $('login-error').classList.remove('hidden'); }
   else { location.href = '/dashboard'; }
 };
 
 $('signup-submit').onclick = async () => {
-  const res = await api('/api/auth/signup', { name: $('signup-name').value, email: $('signup-email').value, org: $('signup-org').value, password: $('signup-password').value });
+  const res = await post('/api/auth/signup', { name: $('signup-name').value, email: $('signup-email').value, org: $('signup-org').value, password: $('signup-password').value });
   if (res.error) { $('signup-error').textContent = res.error; $('signup-error').classList.remove('hidden'); }
   else { location.href = '/dashboard'; }
 };
 
-$('nav-logout').onclick = async () => { await api('/api/auth/logout'); location.reload(); };
+$('nav-logout').onclick = async () => { await post('/api/auth/logout'); location.reload(); };
 $('nav-dashboard').onclick = () => { location.href = '/dashboard'; };
 
 checkAuth();
 </script>
-<!-- v1781913293692 -->
 </body>
 </html>
