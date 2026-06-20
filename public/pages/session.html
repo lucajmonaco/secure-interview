@@ -269,8 +269,10 @@ async function startWebRTC(isInit) {
 async function endSession() {
   if (isRec) stopRec();
   if (!confirm('End this session?')) return;
+  // Notify candidate first, then update DB
+  if (socket) socket.emit('session-ended', {sessionId: sessionId});
   await patch('/api/sessions/' + sessionId, {status: 'ended'});
-  location.href = '/dashboard';
+  setTimeout(function(){ location.href = '/dashboard'; }, 500);
 }
 
 function copyInvite() {
