@@ -36,13 +36,13 @@
       <button class="nav-drawer-close" id="drawer-close" aria-label="Close menu">X</button>
     </div>
     <nav class="nav-drawer-links" id="drawer-links">
-      <a href="/" class="nav-drawer-link active"><span class="nav-drawer-link-icon">Home</span>Home</a>
-      <a href="/dashboard" class="nav-drawer-link" id="dl-dashboard" style="display:none"><span class="nav-drawer-link-icon">Dash</span>Dashboard</a>
-      <a href="/recordings" class="nav-drawer-link" id="dl-recordings" style="display:none"><span class="nav-drawer-link-icon">Rec</span>Recordings Library</a>
+      <a href="/" class="nav-drawer-link active"><span class="nav-drawer-link-icon">&#127968;</span>Home</a>
+      <a href="/dashboard" class="nav-drawer-link" id="dl-dashboard" style="display:none"><span class="nav-drawer-link-icon">&#128203;</span>Dashboard</a>
+      <a href="/recordings" class="nav-drawer-link" id="dl-recordings" style="display:none"><span class="nav-drawer-link-icon">&#127902;</span>Recordings Library</a>
       <div class="nav-drawer-sep"></div>
-      <a href="#" class="nav-drawer-link" id="dl-signin" data-modal="ov-signin" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">In</span>Sign In</a>
-      <a href="#" class="nav-drawer-link" id="dl-signup" data-modal="ov-create" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">+</span>Create Account</a>
-      <a href="#" class="nav-drawer-link" id="dl-join-org" data-modal="ov-join" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">Team</span>Join Company</a>
+      <a href="#" class="nav-drawer-link" id="dl-signin" data-modal="ov-signin" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">&#128275;</span>Sign In</a>
+      <a href="#" class="nav-drawer-link" id="dl-signup" data-modal="ov-create" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">&#10133;</span>Create Account</a>
+      <a href="#" class="nav-drawer-link" id="dl-join-org" data-modal="ov-join" onclick="openAuthModal(this);return false"><span class="nav-drawer-link-icon">&#127970;</span>Join Company</a>
     </nav>
     <div class="nav-drawer-user" id="drawer-user" style="display:none">
       <div class="nav-drawer-user-name" id="drawer-user-name"></div>
@@ -70,7 +70,7 @@
       <h2>Joining an Interview?</h2>
       <p>Enter the session code your interviewer sent you to join your interview session.</p>
       <div class="join-code-row">
-        <input type="text" id="join-code" class="join-code-input" placeholder="e.g. ABC-123" maxlength="7"
+        <input type="text" id="join-code" class="join-code-input" placeholder="ABC-123" autocomplete="off" maxlength="7"
           oninput="formatCode(this)" onkeydown="if(event.key==='Enter')joinSession()">
         <button class="btn btn-blue" onclick="joinSession()" style="padding:13px 22px;font-size:14px;font-weight:700;border-radius:var(--rs)">Join</button>
       </div>
@@ -92,12 +92,12 @@
     <div class="section-label">Everything you need</div>
     <h2 class="section-title">Built for serious hiring teams</h2>
     <div class="features-grid">
-      <div class="fcard"><div class="fcard-icon">Video</div><h3>Live Video Proctoring</h3><p>WebRTC video - no plugins, no downloads. Works in any browser on any device.</p></div>
-      <div class="fcard"><div class="fcard-icon">Trust</div><h3>Real-Time Trust Score</h3><p>AI scoring flags suspicious behavior the moment it happens, with calibrated penalties.</p></div>
-      <div class="fcard"><div class="fcard-icon">Screen</div><h3>Tab & Screen Detection</h3><p>30-second lockouts for tab switches. Multiple display detection. Full enforcement.</p></div>
-      <div class="fcard"><div class="fcard-icon">Team</div><h3>Team Management</h3><p>Company codes let your whole team share sessions, recordings, and job opening folders.</p></div>
-      <div class="fcard"><div class="fcard-icon">Rec</div><h3>Session Recording</h3><p>Dual-participant recording with audio mixing. Share or download with a single link.</p></div>
-      <div class="fcard"><div class="fcard-icon">Flag</div><h3>Instant Flags</h3><p>Tab switches, copy-paste, DevTools, gaze tracking - all caught and logged in real time.</p></div>
+      <div class="fcard"><div class="fcard-icon">&#127909;</div><h3>Live Video Proctoring</h3><p>WebRTC video - no plugins, no downloads. Works in any browser on any device.</p></div>
+      <div class="fcard"><div class="fcard-icon">&#9989;</div><h3>Real-Time Trust Score</h3><p>AI scoring flags suspicious behavior the moment it happens, with calibrated penalties.</p></div>
+      <div class="fcard"><div class="fcard-icon">Screen</div><h3>Tab &amp; Screen Detection</h3><p>30-second lockouts for tab switches. Multiple display detection. Full enforcement.</p></div>
+      <div class="fcard"><div class="fcard-icon">&#128101;</div><h3>Team Management</h3><p>Company codes let your whole team share sessions, recordings, and job opening folders.</p></div>
+      <div class="fcard"><div class="fcard-icon">&#128252;</div><h3>Session Recording</h3><p>Dual-participant recording with audio mixing. Share or download with a single link.</p></div>
+      <div class="fcard"><div class="fcard-icon">&#9888;</div><h3>Instant Flags</h3><p>Tab switches, copy-paste, DevTools, gaze tracking - all caught and logged in real time.</p></div>
     </div>
   </div>
 </main>
@@ -219,6 +219,10 @@ async function doJoin(){var btn=$('jo-btn'),err=$('jo-err');btn.disabled=true;bt
 async function doLogout(){await post('/api/auth/logout');window.location.reload();}
 
 async function init(){
+  // Clear stale join code from previous session
+  var jc=document.getElementById('join-code');
+  if(jc && jc.value && jc.value.trim()!=='') jc.value='';
+
   var me=await get('/api/auth/me');
   if(me&&me.loggedIn){
     $('n-name').textContent=me.name;$('n-name').style.display='';
