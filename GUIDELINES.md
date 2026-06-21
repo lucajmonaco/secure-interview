@@ -1,189 +1,95 @@
-# Secure Interview — Build Guidelines & Safety Protocols
+# SECURE INTERVIEW — DEVELOPMENT GUIDELINES
+## MANDATORY: Run before EVERY deploy
 
-> **These rules apply to every code change, no exceptions.**
-> Before ANY push: run `node scripts/preflight.js`
-> Before ANY deploy: verify preflight passes with 0 failures
+```
+GITHUB_TOKEN=your_token node scripts/preflight.js
+```
+
+**If preflight fails, fix first. Never deploy broken code.**
 
 ---
 
-## 1. GOLDEN RULES
+## THE 8 GOLDEN RULES
 
-| # | Rule |
-|---|------|
-| G1 | **Never break working features.** If sign-in works, it must still work after your change. |
-| G2 | **One concern per commit.** Fix compression → one commit. Fix flags → separate commit. |
-| G3 | **Always snapshot SHAs before editing.** If something breaks, you can rollback instantly. |
-| G4 | **Test the live site after every deploy.** Don't assume it worked — verify it. |
-| G5 | **No template literals with embedded quotes in HTML files.** Use DOM API or var concatenation. |
-| G6 | **No `api(url)` calls.** Always use `get(url)`, `post(url,body)`, or `patch(url,body)`. |
-| G7 | **showModal() sets inline styles** — never rely on CSS classes for visibility. |
-| G8 | **GitHub API calls only work from httpbin.org tab** — not from GitHub or Fly.io pages. |
+1. **No single quotes inside single-quoted JS strings in innerHTML**
+   - BAD:  `c.innerHTML = '<button onclick="showModal(\'ov-id\')">';`
+   - GOOD: `c.innerHTML = '<button onclick="showModal(&quot;ov-id&quot;)">';`
+   - OR:   Use data-* attributes + event delegation, no inline onclick
 
----
+2. **No ES6 shorthand object literals in post() calls**
+   - BAD:  `post('/api/x', { title, description });`
+   - GOOD: `post('/api/x', { title: title, description: description });`
 
-## 2. PRE-PUSH CHECKLIST
+3. **No optional chaining (?.) - use fallback instead**
+   - BAD:  `arr.find(p => p.id===id)?.title`
+   - GOOD: `(arr.find(p => p.id===id)||{}).title`
 
-Run through this before every GitHub push:
+4. **Always use get()/post()/patch() from utils.js - never api(url)**
 
-### HTML Files
-- [ ] No SyntaxErrors — paste JS section into browser console to validate
-- [ ] No `${}` template literals inside HTML `onclick` attributes
-- [ ] No escaped quotes like `\'` in innerHTML strings
-- [ ] Every modal has a close button and backdrop-click-to-close
-- [ ] All buttons are wired via `document.getElementById().onclick` not inline `onclick=` with complex JS
-- [ ] All `$('id')` calls reference IDs that actually exist in the HTML
+5. **Trust score null check: always !== null, never || 100**
+   - 0 || 100 evaluates to 100 so zero scores show as 100
 
-### JavaScript
-- [ ] No calls to `api(url)` — only `get()`, `post()`, `patch()`, `del()`
-- [ ] `requireLogin()` called on every authenticated page
-- [ ] `socket.emit()` only called after socket is initialized
-- [ ] WebRTC `pc.getSenders()` used for track replacement (not recreating peer connection)
-- [ ] All event listeners use named functions or have cooldowns where needed
+6. **Strings with HTML must never nest same-type quotes unescaped**
 
-### Server.js
-- [ ] All new routes added before the page routes section
-- [ ] All DB migrations wrapped in try/catch (ALTER TABLE)
-- [ ] New tables created with IF NOT EXISTS
-- [ ] requireAuth middleware on all protected endpoints
-- [ ] File paths use `path.join(__dirname, ...)` not hardcoded strings
+7. **Every new server.js API endpoint must appear in preflight required list**
 
-### CSS
-- [ ] No class-based show/hide for modals — use inline `style.display`
-- [ ] New classes don't conflict with existing ones (check for duplicates)
+8. **After every deploy: check browser console before closing**
 
 ---
 
-## 3. WHAT EACH FILE DOES (never accidentally overwrite)
+## QUOTE ESCAPING QUICK REFERENCE
 
-| File | Purpose | Key dependencies |
-|------|---------|-----------------|
-| `server.js` | Express + Socket.io + SQLite API | multer, bcryptjs, better-sqlite3 |
-| `public/js/utils.js` | Shared helpers: get/post/patch, showModal, toast, requireLogin | Used by ALL pages |
-| `public/css/main.css` | All styles | Imported by ALL pages |
-| `public/pages/index.html` | Landing + auth (3 modals) | utils.js |
-| `public/pages/dashboard.html` | Session list + team mgmt | utils.js |
-| `public/pages/session.html` | Interviewer view: video, sidebar, recording, screen share | utils.js, socket.io |
-| `public/pages/candidate.html` | Candidate view: two-way video, protection, pause overlay | utils.js, socket.io |
-| `public/pages/recordings.html` | Recording library, compression, share links | utils.js |
-| `public/pages/share.html` | Public recording player (no auth) | none |
+Context: onclick in HTML template -> onclick="fn('value')" is fine
+Context: onclick inside JS string concat -> onclick="fn(&quot;value&quot;)"
+Context: onclick in template literal -> onclick="fn('${val}')" is fine
 
 ---
 
-## 4. KNOWN GOTCHAS (things that have broken before)
+## DEPLOY PROCEDURE (never skip steps)
 
-### Docker Cache
-- `COPY . .` caches old static files → **always use separate `COPY public ./public` with a CACHE_BUST comment**
-- Changing `CACHE_BUST=<timestamp>` forces Docker to re-copy static files
-
-### JavaScript Template Literals in HTML
-```js
-// ❌ BREAKS — quote escaping causes SyntaxError
-el.innerHTML = sessions.map(s =>
-  '<div onclick="go(\''+s.id+'\')">'+s.title+'</div>'
-).join('');
-
-// ✅ WORKS — use createElement
-sessions.forEach(s => {
-  var div = document.createElement('div');
-  div.textContent = s.title;
-  div.onclick = function(){ go(s.id); };
-  el.appendChild(div);
-});
-```
-
-### Modal Visibility
-```js
-// ❌ BREAKS — CSS .hidden class may be overridden
-modal.classList.remove('hidden');
-
-// ✅ WORKS — inline style always wins
-showModal('ov-signin'); // sets position:fixed, display:flex inline
-```
-
-### GitHub API from Browser
-```
-❌ GitHub.com tab    → extension intercepts, 45s timeout
-❌ Fly.io tab        → CORS blocks GitHub API  
-✅ httpbin.org/get   → clean, no interference
-```
-
-### WebM Compression
-```js
-// ❌ BREAKS — MediaRecorder WebM has duration=Infinity
-video.currentTime = seekTime; // doesn't work
-
-// ✅ WORKS — play at 16x speed + canvas capture
-video.playbackRate = 16;
-video.play(); // draw frames in requestAnimationFrame loop
-```
-
-### Screen Sharing
-```js
-// ❌ BREAKS — only changes local display
-video.srcObject = screenStream;
-
-// ✅ WORKS — replaces track in peer connection
-var sender = pc.getSenders().find(s => s.track?.kind === 'video');
-sender.replaceTrack(screenStream.getVideoTracks()[0]);
-```
+1. Run: GITHUB_TOKEN=your_token node scripts/preflight.js - must exit 0
+2. Update Dockerfile CACHE_BUST timestamp
+3. Deploy on fly.io
+4. After deploy: open site, check browser console for errors
+5. Test the specific feature changed
 
 ---
 
-## 5. FEATURE STATUS (last verified: v24)
+## KNOWN GOTCHAS (bugs hit before - never reintroduce)
 
-| Feature | Status | Notes |
-|---------|--------|-------|
-| Sign in / Company code | ✅ Working | 3 flows: create org, join, sign in |
-| Dashboard + New Session | ✅ Working | Stats row, session list, modals |
-| WebRTC video + audio | ✅ Working | Two-way in both session and candidate pages |
-| Flagging system | ✅ Working | No spam: once-only, cooldowns per flag type |
-| Session pause overlay | ✅ Working | Fires on window blur/tab switch |
-| Multiple display detection | ✅ Working | Fires ONCE per session only |
-| Questions + Next/Prev | ✅ Working | Synced to candidate via socket |
-| Goodbye screen | ✅ Working | session-ended socket → candidate sees thank you |
-| Recording (local download) | ✅ Working | Canvas capture + audio, auto-uploads |
-| Recordings library | ✅ Working | Per-user, stream, delete |
-| Compression | ✅ Working | 16x playback approach, works with Infinity duration |
-| Share link | ✅ Working | /share/:token → public player |
-| Screen sharing | ✅ Working | replaceTrack() sends to candidate |
-| Team management | ✅ Working | Create, join, invite codes |
-| Multi-session concurrency | ✅ Working | Socket.io rooms, unlimited simultaneous |
+- HTML entities in JS strings -> symbols on page -> use plain text in JS
+- score||100 falsy check -> 0% shows as 100% -> use score!==null?score:100
+- SyntaxError in dashboard.js -> sessions list blank -> quote escaping in onclick
+- SyntaxError in recordings.js -> loading forever -> showModal(&quot;ov-...&quot;)
+- visibility:hidden still shows video -> use srcObject=null + AudioContext for audio
+- canvas.captureStream() is video only -> compressed recordings silent -> use createMediaElementSource()
+- BroadcastChannel = same-origin only -> other tabs not blocked -> use 30s countdown timer
+- Encoded dashes in string anchor -> job positions route 404 -> anchor on route string directly
 
 ---
 
-## 6. ROLLBACK PROCEDURE
+## FILE MAP
 
-If something breaks after a deploy:
-
-```
-1. Open httpbin.org/get in Chrome (where GitHub API works)
-2. Run: node scripts/rollback.js <version>
-3. Go to Fly.io → Deploy app → Start Deploy
-```
-
-SHA snapshots are stored in `scripts/snapshots/` — one file per stable version.
-
----
-
-## 7. DEPLOY PROCEDURE (every time)
-
-```
-Step 1: Make changes
-Step 2: Run node scripts/preflight.js — must show 0 FAILURES
-Step 3: Push to GitHub from httpbin.org tab
-Step 4: Go to fly.io/apps/luca-proctor-fly-v1 → Deploy app → Start Deploy
-Step 5: Wait for "Complete" (60-90s)
-Step 6: Hard refresh (Ctrl+Shift+R) and test the specific feature you changed
-Step 7: Test that previously working features still work
-```
+- server.js: Express backend, all API routes, Socket.io
+- public/pages/index.html: Home page, candidate join section
+- public/pages/dashboard.html: Interviewer dashboard, session list
+- public/pages/session.html: Live interview page (interviewer side)
+- public/pages/candidate.html: Live interview page (candidate side)
+- public/pages/recordings.html: Recordings library, job opening folders
+- public/css/main.css: Global design system
+- public/js/utils.js: get(), post(), patch(), helpers
+- scripts/preflight.js: Pre-deploy safety checks (RUN EVERY TIME)
+- scripts/rollback.js: Rollback to stable snapshot
+- scripts/snapshots/v24.json: Stable baseline SHAs
 
 ---
 
-## 8. ENVIRONMENT
+## PREFLIGHT CHECKS
 
-- **App URL:** https://luca-proctor-fly-v1.fly.dev
-- **GitHub:** lucajmonaco/proctorapp-backend (branch: main)
-- **Fly.io app:** luca-proctor-fly-v1, org: lucajmonaco-gmail-com, region: IAD
-- **DB:** SQLite at /app/proctor.db (persists across deploys via Fly volume)
-- **Recordings:** /app/recordings/ (persists via Fly volume)
-- **Node:** 22.21.1-slim
+scripts/preflight.js validates:
+1. Syntax - quote escaping, ES6 shorthand, optional chaining, api() usage
+2. API Consistency - every /api/ call in frontend has a matching server route
+3. Required Elements - key functions/variables exist in each file
+4. Forbidden Patterns - unsafe patterns flagged
+
+Run it. Fix failures. Then deploy.
