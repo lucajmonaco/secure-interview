@@ -433,6 +433,11 @@ async function init(){
 
   // Handle invite links
   handleInviteLink();
+  // Auto-open settings modal if redirected from another page
+  if(window.location.search.includes('settings=1')){
+    history.replaceState(null,'','/');
+    openSettingsModal();
+  }
 
   // Check login state
   var me = await get('/api/auth/me');
