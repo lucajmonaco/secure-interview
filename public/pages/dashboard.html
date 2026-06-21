@@ -145,7 +145,7 @@ function buildSessionRow(s){
     +(flagCount ? ' - <span style="color:var(--amber)">'+flagCount+' flag'+(flagCount!==1?'s':'')+'</span>' : '')
     +'</div></div>'
     +'<div class="sr-right" style="display:flex;align-items:center;gap:6px">'
-    +(s.status!=='ended'?'<button class="btn btn-outline btn-sm sr-copy-btn" onclick="copyInviteCode(''+s.code+'')" style="font-size:11px;padding:3px 8px">Copy Link</button>':'')
+    +(s.status!=='ended'?'<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:3px 8px">Copy Link</button>':'')
     +'<span class="sr-score" style="color:'+scoreColor+'">'+score+'%</span>'
     +statusBadge
     +'</div>';
@@ -189,7 +189,7 @@ async function loadSessions(){
   var avgScore = null;
   if(endedSessions.length > 0){
     var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB â use it as-is, only default if genuinely null/undefined
+      // trust_score is an integer from DB Ã¢ÂÂ use it as-is, only default if genuinely null/undefined
       var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
       return acc + score;
     }, 0);
@@ -257,6 +257,11 @@ async function joinTeam(){
 
 async function doLogout(){ await post('/api/auth/logout'); window.location.href = '/'; }
 function copyInviteCode(code){ navigator.clipboard.writeText(location.origin+'/join/'+code).then(function(){ toast('Invite link copied!','green'); }); }
+// Handle copy button clicks via delegation (avoids inline onclick quote issues)
+document.addEventListener('click',function(e){
+  var btn=e.target.closest('.sr-copy-btn');
+  if(btn&&btn.dataset.code) copyInviteCode(btn.dataset.code);
+});
 
 async function init(){
   var me = await requireLogin('/'); if(!me) return;
