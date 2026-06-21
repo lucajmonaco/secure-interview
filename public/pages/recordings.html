@@ -61,7 +61,7 @@
   <div class="page-hdr">
     <div class="page-hdr-left">
       <h1 id="page-title">Recordings Library</h1>
-      <p id="page-sub">Recordings organized by job opening â shared across your company</p>
+      <p id="page-sub">Recordings organized by job opening Ã¢ÂÂ shared across your company</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="view-toggle">
@@ -121,7 +121,7 @@ function reload(){
   else loadAllRecordings();
 }
 
-// ââ POSITIONS VIEW ââ
+// Ã¢ÂÂÃ¢ÂÂ POSITIONS VIEW Ã¢ÂÂÃ¢ÂÂ
 async function loadPositions(){
   $('new-pos-btn').style.display='';
   var positions = await get('/api/positions');
@@ -132,7 +132,7 @@ async function loadPositions(){
     c.innerHTML='<div class="empty"><div class="empty-icon" style="font-size:52px;opacity:.3">folder</div>'
       +'<h3 style="font-size:16px;font-weight:700;color:var(--text2);margin-bottom:8px">No job openings yet</h3>'
       +'<p style="color:var(--text3);font-size:13px">Create a job opening folder to organize interview recordings by role.<br>All company members can see and contribute to each folder.</p>'
-      +'<button class="btn btn-primary" onclick="showModal('ov-new-position')" style="margin-top:20px">+ Create First Job Opening</button>'
+      +'<button class="btn btn-primary" onclick="showModal(&quot;ov-new-position&quot;)" style="margin-top:20px">+ Create First Job Opening</button>'
       +'</div>';
     return;
   }
@@ -206,13 +206,13 @@ async function createPosition(){
 }
 
 async function deletePosition(id, title){
-  if(!confirm('Delete "'+title+'"? Recordings will not be deleted, just removed from this folder.'))return;
+  if(!confirm('Delete this folder? Recordings will not be deleted, just removed from this folder.'))return;
   var res=await fetch('/api/positions/'+id,{method:'DELETE'});
   if(res.ok){toast('Deleted: '+title,'amber');await loadPositions();}
   else toast('Failed to delete','red');
 }
 
-// ââ ALL RECORDINGS VIEW ââ
+// Ã¢ÂÂÃ¢ÂÂ ALL RECORDINGS VIEW Ã¢ÂÂÃ¢ÂÂ
 async function loadAllRecordings(){
   $('new-pos-btn').style.display='none';
   // Also fetch positions for the assign dropdown
@@ -231,7 +231,7 @@ async function loadAllRecordings(){
   c.appendChild(grid);
 }
 
-// ââ RECORDING CARD ââ
+// Ã¢ÂÂÃ¢ÂÂ RECORDING CARD Ã¢ÂÂÃ¢ÂÂ
 function buildRecCard(rec, inPositionView){
   var score=(rec.trust_score!==null&&rec.trust_score!==undefined)?rec.trust_score:100;
   var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
