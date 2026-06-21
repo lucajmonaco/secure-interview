@@ -57,7 +57,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <body class="session-page">
 <div class="topbar">
   <a href="/" class="topbar-logo" style="text-decoration:none"><span class="logo-interview">Interview</span><span class="logo-my">My</span><span class="logo-candidate">Candidate</span></a>
-  <div class="topbar-right">
+  <div class="topbar-right"><button class="burger-btn" id="burger-btn"><span class="burger-line"></span><span class="burger-line"></span><span class="burger-line"></span></button>
     <span id="s-code" class="pill"></span>
     <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red);font-weight:600"><span class="rec-dot"></span>REC</span>
     <button id="rec-btn" class="btn btn-danger btn-sm" onclick="toggleRec()">Record</button>
@@ -68,6 +68,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
   </div>
 </div>
 
+<div class="nav-drawer" id="nav-drawer"><div class="nav-drawer-bg" id="drawer-bg"></div><div class="nav-drawer-panel"><div class="nav-drawer-header"><span class="nav-drawer-title">Navigation</span><button class="nav-drawer-close" id="drawer-close">X</button></div><nav class="nav-drawer-links"><a href="/" class="nav-drawer-link"><span class="nav-drawer-link-icon">🏠</span>Home</a><a href="/dashboard" class="nav-drawer-link active"><span class="nav-drawer-link-icon">📋</span>Dashboard</a><a href="/recordings" class="nav-drawer-link"><span class="nav-drawer-link-icon">📼</span>Recordings</a></nav></div></div>
 <div class="session-layout">
   <div class="video-pane" id="video-pane" style="position:relative">
     <video id="remote-vid" autoplay playsinline></video>
@@ -430,7 +431,8 @@ async function applyInterviewerDevices(){
 }
 function applyInterviewerSpeaker(){var spk=document.getElementById('int-sel-speaker').value;if(!spk)return;var rv=$('remote-vid');if(rv&&typeof rv.setSinkId==='function')rv.setSinkId(spk).then(function(){toast('Speaker changed','green');}).catch(function(e){toast('Speaker: '+e.message,'red');});}
 
-async function init(){
+function initBurger(){var b=document.getElementById('burger-btn'),bg=document.getElementById('drawer-bg'),cl=document.getElementById('drawer-close'),d=document.getElementById('nav-drawer'),op=false;if(b)b.onclick=function(){op=!op;d.classList.toggle('open',op);b.classList.toggle('open',op);};if(cl)cl.onclick=function(){op=false;d.classList.remove('open');b.classList.remove('open');};if(bg)bg.onclick=function(){op=false;d.classList.remove('open');b.classList.remove('open');};}
+async function init(){initBurger();
   var me=await requireLogin('/'); if(!me)return;
   var s=await get('/api/sessions/'+sessionId);
   if(s.error){toast(s.error,'red');return;}
