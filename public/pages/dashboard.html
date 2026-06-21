@@ -6,13 +6,42 @@
 <link rel="stylesheet" href="/css/main.css">
 </head>
 <body>
-<div class="topbar">
-  <div class="topbar-logo">Interview<span style="color:var(--blue-light)">MyCandidate</span></div>
+<nav class="nav">
+  <a href="/" class="nav-logo" aria-label="Home">
+    <span class="logo-interview">Interview</span><span class="logo-my">My</span><span class="logo-candidate">Candidate</span>
+  </a>
+  <div class="nav-right">
+    <span id="user-chip" style="font-size:12px;color:rgba(255,255,255,.5)"></span>
+    <div class="topbar-sep"></div>
+    <button class="burger-btn" id="burger-btn" aria-label="Open menu" aria-expanded="false">
+      <span class="burger-line"></span><span class="burger-line"></span><span class="burger-line"></span>
+    </button>
+  </div>
+</nav>
+<div class="nav-drawer" id="nav-drawer">
+  <div class="nav-drawer-bg" id="drawer-bg"></div>
+  <div class="nav-drawer-panel">
+    <div class="nav-drawer-header">
+      <span class="nav-drawer-title">Navigation</span>
+      <button class="nav-drawer-close" id="drawer-close">X</button>
+    </div>
+    <nav class="nav-drawer-links">
+      <a href="/" class="nav-drawer-link"><span class="nav-drawer-link-icon">Home</span>Home</a>
+      <a href="/dashboard" class="nav-drawer-link active"><span class="nav-drawer-link-icon">Dash</span>Dashboard</a>
+      <a href="/recordings" class="nav-drawer-link"><span class="nav-drawer-link-icon">Rec</span>Recordings Library</a>
+    </nav>
+    <div class="nav-drawer-user" id="drawer-user">
+      <div class="nav-drawer-user-name" id="drawer-user-name"></div>
+      <div class="nav-drawer-user-org" id="drawer-user-org"></div>
+      <button class="nav-drawer-signout" onclick="doLogout()">Sign Out</button>
+    </div>
+  </div>
+</div>
   <div class="topbar-right">
     <a href="/recordings" class="btn btn-outline btn-sm">Recordings</a>
     <div class="topbar-sep"></div>
-    <span id="user-chip" style="font-size:12px;color:var(--text2)"></span>
-    <button class="btn btn-outline btn-sm" onclick="doLogout()">Sign out</button>
+    
+    
   </div>
 </div>
 
@@ -189,7 +218,7 @@ async function loadSessions(){
   var avgScore = null;
   if(endedSessions.length > 0){
     var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB ÃÃÃ use it as-is, only default if genuinely null/undefined
+      // trust_score is an integer from DB ÃÃÃ use it as-is, only default if genuinely null/undefined
       var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
       return acc + score;
     }, 0);
@@ -263,6 +292,16 @@ document.addEventListener('click',function(e){
   if(btn&&btn.dataset.code) copyInviteCode(btn.dataset.code);
 });
 
+
+// ── BURGER NAV ──
+var drawerOpen=false;
+function openDrawer(){drawerOpen=true;$('nav-drawer').classList.add('open');$('burger-btn').classList.add('open');$('burger-btn').setAttribute('aria-expanded','true');document.body.style.overflow='hidden';}
+function closeDrawer(){drawerOpen=false;$('nav-drawer').classList.remove('open');$('burger-btn').classList.remove('open');$('burger-btn').setAttribute('aria-expanded','false');document.body.style.overflow='';}
+$('burger-btn').onclick=function(){drawerOpen?closeDrawer():openDrawer();};
+$('drawer-close').onclick=closeDrawer;
+$('drawer-bg').onclick=closeDrawer;
+document.addEventListener('keydown',function(e){if(e.key==='Escape'&&drawerOpen)closeDrawer();});
+async function doLogout(){await post('/api/auth/logout');window.location.href='/';}
 async function init(){
   var me = await requireLogin('/'); if(!me) return;
   $('user-chip').textContent = me.name + ' (' + (me.orgCode||'') + ')';
