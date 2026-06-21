@@ -243,114 +243,163 @@ async function loadCompanyPanel(){
   var panel = document.getElementById('company-panel');
   if(!panel) return;
   var me = currentMe;
-  if(!me){ panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text4)">Please sign in to view company info.</div>'; return; }
+  if(!me){
+    panel.innerHTML = '';
+    var d = document.createElement('div');
+    d.style.textAlign = 'center'; d.style.padding = '24px'; d.style.color = 'var(--text4)';
+    d.textContent = 'Please sign in.';
+    panel.appendChild(d);
+    return;
+  }
   var orgInfo = await get('/api/org/info');
   var members = await get('/api/org/members');
   if(!orgInfo || !Array.isArray(members)){
-    panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red)">Could not load company info.</div>';
+    panel.innerHTML = '';
+    var errDiv = document.createElement('div');
+    errDiv.style.color = 'var(--red)'; errDiv.style.textAlign = 'center'; errDiv.style.padding = '24px';
+    errDiv.textContent = 'Could not load company info.';
+    panel.appendChild(errDiv);
     return;
   }
   var isAdmin = me.role === 'admin';
   var code = orgInfo.code || me.orgCode || '';
   var orgName = orgInfo.name || me.orgName || '';
   var inviteUrl = location.origin + '/join-company/' + code;
-  var html = '';
 
-  // Code card - use data-copy attribute, no inline onclick
-  html += '<div style="background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">';
-  html += '<div>';
-  html += '<div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Company Invite Code</div>';
-  html += '<div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:6px;font-family:monospace">' + code + '</div>';
-  html += '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">' + orgName + '</div>';
-  html += '</div>';
-  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-  html += '<button class="btn btn-blue btn-sm" data-copy-code="' + code + '">&#128203; Copy Code</button>';
-  html += '<button class="btn btn-outline btn-sm" style="background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)" data-copy-invite="' + inviteUrl + '">&#128279; Copy Invite</button>';
-  html += '</div></div>';
+  panel.innerHTML = '';
 
-  // Invite box (admin only)
+  // --- Code card (navy background) ---
+  var codeCard = document.createElement('div');
+  codeCard.style.cssText = 'background:linear-gradient(135deg,#0f2241,#1a3560);border-radius:12px;padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap';
+  var codeLeft = document.createElement('div');
+  var codeLabel = document.createElement('div');
+  codeLabel.style.cssText = 'font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px';
+  codeLabel.textContent = 'Company Invite Code';
+  var codeVal = document.createElement('div');
+  codeVal.style.cssText = 'font-size:28px;font-weight:900;color:#fff;letter-spacing:6px;font-family:monospace';
+  codeVal.textContent = code;
+  var codeName = document.createElement('div');
+  codeName.style.cssText = 'font-size:13px;color:rgba(255,255,255,.6);margin-top:4px';
+  codeName.textContent = orgName;
+  codeLeft.appendChild(codeLabel); codeLeft.appendChild(codeVal); codeLeft.appendChild(codeName);
+  var codeBtns = document.createElement('div');
+  codeBtns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
+  var copyCodeBtn = document.createElement('button');
+  copyCodeBtn.className = 'btn btn-blue btn-sm';
+  copyCodeBtn.textContent = 'Copy Code';
+  copyCodeBtn.setAttribute('data-copy-code', code);
+  var copyInvBtn = document.createElement('button');
+  copyInvBtn.className = 'btn btn-outline btn-sm';
+  copyInvBtn.style.cssText = 'background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)';
+  copyInvBtn.textContent = 'Copy Invite Link';
+  copyInvBtn.setAttribute('data-copy-invite', inviteUrl);
+  codeBtns.appendChild(copyCodeBtn); codeBtns.appendChild(copyInvBtn);
+  codeCard.appendChild(codeLeft); codeCard.appendChild(codeBtns);
+  panel.appendChild(codeCard);
+
+  // --- Invite box (admin only) ---
   if(isAdmin){
-    html += '<div style="background:var(--sky);border:1.5px solid var(--sky-deep);border-radius:var(--r);padding:16px 18px;margin-bottom:20px">';
-    html += '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">&#128231; Share Invite Link</div>';
-    html += '<div style="font-size:12px;color:var(--text4);margin-bottom:10px;line-height:1.5">Send this link to new team members. They can create an account and join instantly.</div>';
-    html += '<div style="display:flex;gap:8px;align-items:center">';
-    html += '<input style="flex:1;padding:7px 11px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--navy);font-family:monospace;outline:none" readonly value="' + inviteUrl + '">';
-    html += '<button class="btn btn-blue btn-sm" data-copy-invite="' + inviteUrl + '">Copy</button>';
-    html += '</div></div>';
+    var invBox = document.createElement('div');
+    invBox.style.cssText = 'background:#eff6ff;border:1.5px solid #bfdbfe;border-radius:12px;padding:16px 18px;margin-bottom:20px';
+    var invTitle = document.createElement('div');
+    invTitle.style.cssText = 'font-size:13px;font-weight:700;color:#0f2241;margin-bottom:4px';
+    invTitle.textContent = 'Share Invite Link';
+    var invSub = document.createElement('div');
+    invSub.style.cssText = 'font-size:12px;color:#64748b;margin-bottom:10px;line-height:1.5';
+    invSub.textContent = 'Send this link to new team members. They can create an account and join instantly.';
+    var invRow = document.createElement('div');
+    invRow.style.cssText = 'display:flex;gap:8px;align-items:center';
+    var invInput = document.createElement('input');
+    invInput.readOnly = true; invInput.value = inviteUrl;
+    invInput.style.cssText = 'flex:1;padding:7px 11px;background:#fff;border:1.5px solid #cbd5e1;border-radius:6px;font-size:12px;color:#0f2241;font-family:monospace;outline:none';
+    var invCopy = document.createElement('button');
+    invCopy.className = 'btn btn-blue btn-sm';
+    invCopy.textContent = 'Copy';
+    invCopy.setAttribute('data-copy-invite', inviteUrl);
+    invRow.appendChild(invInput); invRow.appendChild(invCopy);
+    invBox.appendChild(invTitle); invBox.appendChild(invSub); invBox.appendChild(invRow);
+    panel.appendChild(invBox);
   }
 
-  // Members heading
-  html += '<div style="font-size:13px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px">Team Members <span style="color:var(--blue);font-size:12px;font-weight:700;background:var(--sky);padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0">' + members.length + '</span></div>';
+  // --- Members heading ---
+  var memHdr = document.createElement('div');
+  memHdr.style.cssText = 'font-size:13px;font-weight:700;color:#64748b;letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px';
+  memHdr.textContent = 'Team Members';
+  var memCount = document.createElement('span');
+  memCount.style.cssText = 'color:#2563eb;font-size:12px;font-weight:700;background:#eff6ff;padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0';
+  memCount.textContent = members.length;
+  memHdr.appendChild(memCount);
+  panel.appendChild(memHdr);
 
-  // Member cards - use data attributes for all actions
+  // --- Member cards ---
   members.forEach(function(m){
     var isYou = me && m.id === me.userId;
     var initials = (m.name||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
     var isAdm = m.role === 'admin';
-    var badgeStyle = isAdm
-      ? 'background:rgba(124,58,237,.12);color:var(--purple);border:1px solid rgba(124,58,237,.3)'
-      : 'background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep)';
-    var badgeText = isAdm ? '&#128081; Admin' : '&#128203; Recruiter';
-    var avatarBg = isAdm
-      ? 'background:linear-gradient(135deg,var(--navy),var(--navy-mid))'
-      : 'background:linear-gradient(135deg,var(--blue-mid),var(--blue))';
     var joined = m.created_at ? new Date(m.created_at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-    var safeName = (m.name||'Member').replace(/"/g,'').replace(/'/g,'');
 
-    html += '<div class="member-card" id="mcard-' + m.id + '" style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px">';
-    html += '<div style="width:40px;height:40px;border-radius:10px;' + avatarBg + ';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">' + initials + '</div>';
-    html += '<div style="flex:1;min-width:0">';
-    html += '<div style="font-size:14px;font-weight:700;color:var(--navy)">' + (m.name||'Unknown') + (isYou ? ' <span style="font-size:10px;color:var(--text4);font-style:italic">(you)</span>' : '') + '</div>';
-    html += '<div style="font-size:12px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + (m.email||'') + '</div>';
-    html += '<div style="font-size:11px;color:var(--text4);margin-top:1px">Joined ' + joined + '</div>';
-    html += '</div>';
-    html += '<span style="' + badgeStyle + ';border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;flex-shrink:0">' + badgeText + '</span>';
+    var card = document.createElement('div');
+    card.id = 'mcard-' + m.id;
+    card.style.cssText = 'background:#fff;border:1.5px solid #e2e8f0;border-radius:12px;padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px';
+
+    var avatar = document.createElement('div');
+    avatar.style.cssText = 'width:40px;height:40px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;background:' + (isAdm ? '#0f2241' : '#2563eb');
+    avatar.textContent = initials;
+
+    var info = document.createElement('div');
+    info.style.cssText = 'flex:1;min-width:0';
+    var nameEl = document.createElement('div');
+    nameEl.style.cssText = 'font-size:14px;font-weight:700;color:#0f2241';
+    nameEl.textContent = (m.name||'Unknown') + (isYou ? ' (you)' : '');
+    var emailEl = document.createElement('div');
+    emailEl.style.cssText = 'font-size:12px;color:#64748b;overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
+    emailEl.textContent = m.email||'';
+    var joinedEl = document.createElement('div');
+    joinedEl.style.cssText = 'font-size:11px;color:#94a3b8;margin-top:1px';
+    joinedEl.textContent = 'Joined ' + joined;
+    info.appendChild(nameEl); info.appendChild(emailEl); info.appendChild(joinedEl);
+
+    var badge = document.createElement('span');
+    badge.style.cssText = 'border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;flex-shrink:0;' + (isAdm ? 'background:rgba(124,58,237,.12);color:#7c3aed;border:1px solid rgba(124,58,237,.3)' : 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe');
+    badge.textContent = isAdm ? 'Admin' : 'Recruiter';
+
+    card.appendChild(avatar); card.appendChild(info); card.appendChild(badge);
 
     if(isAdmin && !isYou){
+      var actions = document.createElement('div');
+      actions.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
       var newRole = isAdm ? 'recruiter' : 'admin';
-      var roleLabel = isAdm ? 'Make Recruiter' : 'Make Admin';
-      html += '<div style="display:flex;gap:6px;flex-shrink:0">';
-      html += '<button class="btn btn-outline btn-sm" style="font-size:11px" data-member-id="' + m.id + '" data-new-role="' + newRole + '">' + roleLabel + '</button>';
-      html += '<button class="btn btn-danger btn-sm" style="font-size:11px" data-remove-id="' + m.id + '" data-member-name="' + safeName + '">&#128465;</button>';
-      html += '</div>';
+      var roleBtn = document.createElement('button');
+      roleBtn.className = 'btn btn-outline btn-sm';
+      roleBtn.style.fontSize = '11px';
+      roleBtn.textContent = isAdm ? 'Make Recruiter' : 'Make Admin';
+      roleBtn.setAttribute('data-member-id', m.id);
+      roleBtn.setAttribute('data-new-role', newRole);
+      var removeBtn = document.createElement('button');
+      removeBtn.className = 'btn btn-danger btn-sm';
+      removeBtn.style.fontSize = '11px';
+      removeBtn.textContent = 'Remove';
+      removeBtn.setAttribute('data-remove-id', m.id);
+      removeBtn.setAttribute('data-member-name', (m.name||'').replace(/"/g,''));
+      actions.appendChild(roleBtn); actions.appendChild(removeBtn);
+      card.appendChild(actions);
     }
-    html += '</div>';
+    panel.appendChild(card);
   });
 
-  panel.innerHTML = html;
-
-  // Wire copy buttons via delegation on panel (no inline onclick)
-  panel.addEventListener('click', function panelClick(e){
-    var copyCode = e.target.closest('[data-copy-code]');
-    if(copyCode){ navigator.clipboard.writeText(copyCode.getAttribute('data-copy-code')).then(function(){ toast('Code copied!','green'); }); return; }
-    var copyInv = e.target.closest('[data-copy-invite]');
-    if(copyInv){ navigator.clipboard.writeText(copyInv.getAttribute('data-copy-invite')).then(function(){ toast('Invite link copied!','green'); }); return; }
-    var roleBtn = e.target.closest('[data-new-role]');
-    if(roleBtn){ changeMemberRole(roleBtn.getAttribute('data-member-id'), roleBtn.getAttribute('data-new-role')); return; }
-    var removeBtn = e.target.closest('[data-remove-id]');
-    if(removeBtn){ removeMember(removeBtn.getAttribute('data-remove-id'), removeBtn.getAttribute('data-member-name')); }
-  }, {once: false});
+  // Wire copy buttons and actions via delegation
+  panel.addEventListener('click', function(e){
+    var cc = e.target.closest('[data-copy-code]');
+    if(cc){ navigator.clipboard.writeText(cc.getAttribute('data-copy-code')).then(function(){ toast('Code copied!','green'); }); return; }
+    var ci = e.target.closest('[data-copy-invite]');
+    if(ci){ navigator.clipboard.writeText(ci.getAttribute('data-copy-invite')).then(function(){ toast('Invite link copied!','green'); }); return; }
+    var rb = e.target.closest('[data-new-role]');
+    if(rb){ changeMemberRole(rb.getAttribute('data-member-id'), rb.getAttribute('data-new-role')); return; }
+    var rm = e.target.closest('[data-remove-id]');
+    if(rm){ removeMember(rm.getAttribute('data-remove-id'), rm.getAttribute('data-member-name')); }
+  });
 }
 
-async function changeMemberRole(userId, newRole){
-  if(!confirm('Change this member to '+newRole+'?')) return;
-  var res = await fetch('/api/org/members/'+userId+'/role',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:newRole})}).then(function(r){return r.json();});
-  if(res.ok){ toast('Role updated','green'); loadCompanyPanel(); }
-  else toast(res.error||'Failed','red');
-}
-async function removeMember(userId, name){
-  if(!confirm('Remove '+name+' from the company?')) return;
-  var res = await fetch('/api/org/members/'+userId,{method:'DELETE'}).then(function(r){return r.json();});
-  if(res.ok){ toast(name+' removed','green'); loadCompanyPanel(); }
-  else toast(res.error||'Failed','red');
-}
-
-async function doLogout(){
-  await post('/api/auth/logout');
-  window.location.href = '/';
-}
-
-//  INIT 
 function showRoleBadge(me){
   var el = document.getElementById('org-name');
   if(!el || !me) return;
