@@ -9,7 +9,7 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essen
 COPY package.json ./
 RUN npm install
 COPY server.js ./
-# CACHE_BUST=1782065305798
+# CACHE_BUST=1782066226124
 COPY public ./public
 
 FROM base
