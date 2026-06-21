@@ -61,14 +61,14 @@
   <div class="page-hdr">
     <div class="page-hdr-left">
       <h1 id="page-title">Recordings Library</h1>
-      <p id="page-sub">Recordings organized by job opening Ã¢ÂÂ shared across your company</p>
+      <p id="page-sub">Recordings organized by job opening ÃÂ¢ÃÂÃÂ shared across your company</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="view-toggle">
         <button class="view-btn active" id="view-positions-btn" onclick="switchView('positions',this)">Job Openings</button>
         <button class="view-btn" id="view-all-btn" onclick="switchView('all',this)">All Recordings</button>
       </div>
-      <button id="new-pos-btn" class="btn btn-primary btn-sm" onclick="showModal('ov-new-position')" style="display:none">+ New Job Opening</button>
+      <button id="new-pos-btn" class="btn btn-primary btn-sm" onclick="showModal(&quot;ov-new-position&quot;)" style="display:none">+ New Job Opening</button>
       <button class="btn btn-outline btn-sm" onclick="reload()">Refresh</button>
     </div>
   </div>
@@ -121,7 +121,7 @@ function reload(){
   else loadAllRecordings();
 }
 
-// Ã¢ÂÂÃ¢ÂÂ POSITIONS VIEW Ã¢ÂÂÃ¢ÂÂ
+// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ POSITIONS VIEW ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 async function loadPositions(){
   $('new-pos-btn').style.display='';
   var positions = await get('/api/positions');
@@ -212,7 +212,7 @@ async function deletePosition(id, title){
   else toast('Failed to delete','red');
 }
 
-// Ã¢ÂÂÃ¢ÂÂ ALL RECORDINGS VIEW Ã¢ÂÂÃ¢ÂÂ
+// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ ALL RECORDINGS VIEW ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 async function loadAllRecordings(){
   $('new-pos-btn').style.display='none';
   // Also fetch positions for the assign dropdown
@@ -231,7 +231,7 @@ async function loadAllRecordings(){
   c.appendChild(grid);
 }
 
-// Ã¢ÂÂÃ¢ÂÂ RECORDING CARD Ã¢ÂÂÃ¢ÂÂ
+// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ RECORDING CARD ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 function buildRecCard(rec, inPositionView){
   var score=(rec.trust_score!==null&&rec.trust_score!==undefined)?rec.trust_score:100;
   var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
