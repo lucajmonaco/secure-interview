@@ -56,7 +56,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 </head>
 <body>
 <div class="topbar">
-  <div class="topbar-logo">Interview<span style="color:var(--blue-light)">MyCandidate</span></div>
+  <a href="/" class="topbar-logo" style="text-decoration:none">Interview<span style="color:var(--blue-light)">MyCandidate</span></div>
   <div class="topbar-right">
     <span id="s-code" class="pill"></span>
     <span id="rec-ind" style="display:none;align-items:center;gap:5px;font-size:12px;color:var(--red);font-weight:600"><span class="rec-dot"></span>REC</span>
@@ -104,7 +104,7 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
       <div class="lockout-ov-timer" id="lockout-ov-timer">0:30</div>
       <div class="lockout-ov-bar"><div class="lockout-ov-bar-fill" id="lockout-ov-bar-fill" style="width:100%"></div></div>
       <div class="lockout-ov-note" id="lockout-ov-violation"></div>
-      <div class="lockout-ov-audio">&#128266; Audio still active ÃÃÃ you can speak to the candidate</div>
+      <div class="lockout-ov-audio">&#128266; Audio still active ÃÃÃ you can speak to the candidate</div>
     </div>
 
     <div id="screenshare-bar" class="screen-share-bar" style="display:none">
@@ -153,7 +153,7 @@ var mediaRecorder = null, recChunks = [], isRec = false, recStart = null;
 var isScreenSharing = false, timerInterval = null;
 var remoteStream = null, audioCtxRec = null;
 
-// ÃÃÃÃÃÃ PRE-FILLED FLAG REGISTRY ÃÃÃÃÃÃ
+// ÃÃÃÃÃÃ PRE-FILLED FLAG REGISTRY ÃÃÃÃÃÃ
 // All detection types shown from session start with count 0
 // When a flag comes in matching a key, the card updates live
 var FLAG_TYPES = [
@@ -169,7 +169,7 @@ var FLAG_TYPES = [
   {key:'misc',          text:'Other Activity',            detail:'Right-click, window resize, or other minor activity',        severity:'low'},
 ];
 
-var flagRegistry = {};  // key ÃÃÃ {count, cardEl, lastTime}
+var flagRegistry = {};  // key ÃÃÃ {count, cardEl, lastTime}
 var totalFlagCount = 0;
 
 function initFlagPanel(){
@@ -204,7 +204,7 @@ function buildFlagCard(key, text, detail, severity, count){
   return card;
 }
 
-// Map incoming flag text ÃÃÃ registry key
+// Map incoming flag text ÃÃÃ registry key
 function resolveKey(flagText){
   var t = (flagText||'').toLowerCase();
   // Consolidated groups
@@ -302,7 +302,7 @@ function startRec(){
   var remVid = $('remote-vid');
   if(!remVid.srcObject && !remoteStream){ toast('No candidate video yet','red'); return; }
 
-  // Canvas: side by side ÃÃÃ left=candidate (remote), right=interviewer (local)
+  // Canvas: side by side ÃÃÃ left=candidate (remote), right=interviewer (local)
   var W = 1280, H = 360; // 720p split into two 640x360 halves
   var canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
   var ctx = canvas.getContext('2d');
