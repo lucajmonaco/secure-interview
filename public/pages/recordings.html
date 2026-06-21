@@ -61,7 +61,7 @@
   <div class="page-hdr">
     <div class="page-hdr-left">
       <h1 id="page-title">Recordings Library</h1>
-      <p id="page-sub">Recordings organized by job opening ÃÂ¢ÃÂÃÂ shared across your company</p>
+      <p id="page-sub">Recordings organized by job opening ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ shared across your company</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="view-toggle">
@@ -121,7 +121,7 @@ function reload(){
   else loadAllRecordings();
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ POSITIONS VIEW ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ POSITIONS VIEW ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 async function loadPositions(){
   $('new-pos-btn').style.display='';
   var positions = await get('/api/positions');
@@ -212,7 +212,7 @@ async function deletePosition(id, title){
   else toast('Failed to delete','red');
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ ALL RECORDINGS VIEW ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ALL RECORDINGS VIEW ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 async function loadAllRecordings(){
   $('new-pos-btn').style.display='none';
   // Also fetch positions for the assign dropdown
@@ -231,7 +231,7 @@ async function loadAllRecordings(){
   c.appendChild(grid);
 }
 
-// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ RECORDING CARD ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
+// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ RECORDING CARD ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
 function buildRecCard(rec, inPositionView){
   var score=(rec.trust_score!==null&&rec.trust_score!==undefined)?rec.trust_score:100;
   var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
@@ -332,7 +332,21 @@ async function compressRec(id,title,btn){
     var canvas=document.createElement('canvas');canvas.width=W;canvas.height=H;
     var ctx=canvas.getContext('2d');
     var csStream=canvas.captureStream(15);
-    var recorder=new MediaRecorder(csStream,{mimeType:'video/webm;codecs=vp8',videoBitsPerSecond:400000});
+
+    // ADD AUDIO: pipe source video audio through WebAudio into the canvas stream
+    var audioCtx=null, audioTracks=[];
+    try{
+      audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+      var audioDest=audioCtx.createMediaStreamDestination();
+      var audioSrc=audioCtx.createMediaStreamSource(new MediaStream(src.captureStream?src.captureStream().getAudioTracks().map(function(t){return t;}):[]));
+      // Simpler: use the src element directly
+      audioSrc=audioCtx.createMediaElementSource(src);
+      audioSrc.connect(audioDest);
+      audioSrc.connect(audioCtx.destination); // also play to speakers so playback works
+      audioDest.stream.getAudioTracks().forEach(function(t){ csStream.addTrack(t); audioTracks.push(t); });
+    }catch(e){ console.warn('Compression audio setup failed:',e.message); }
+
+    var recorder=new MediaRecorder(csStream,{mimeType:'video/webm;codecs=vp8,opus',videoBitsPerSecond:400000});
     var chunks=[];recorder.ondataavailable=function(e){if(e.data.size>0)chunks.push(e.data);};
     recorder.start(200);pf.style.width='18%';pl.textContent='Compressing at real speed...';
     var knownDur=src.duration&&isFinite(src.duration)?src.duration:null;
