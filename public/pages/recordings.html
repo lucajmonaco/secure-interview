@@ -9,6 +9,15 @@
 .view-btn{padding:6px 16px;border:none;background:transparent;color:var(--text2);font-size:13px;font-weight:500;cursor:pointer;border-radius:5px;font-family:inherit;transition:all .15s;}
 .view-btn.active{background:var(--bg4);color:var(--text);}
 
+/* Notes section on recording cards */
+.rec-notes{margin-top:12px;border-top:1px solid var(--border);padding-top:10px;}
+.rec-notes-label{font-size:11px;font-weight:700;color:var(--text3);letter-spacing:1px;text-transform:uppercase;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;}
+.rec-notes-view{font-size:13px;color:var(--text2);line-height:1.6;min-height:18px;cursor:pointer;border-radius:4px;padding:4px 6px;margin:-4px -6px;}
+.rec-notes-view:hover{background:var(--bg3);color:var(--text);}
+.rec-notes-view.empty{color:var(--text3);font-style:italic;}
+.rec-notes-edit{width:100%;padding:8px 10px;background:var(--bg);border:1.5px solid var(--blue);border-radius:var(--rs);color:var(--text);font-size:13px;font-family:inherit;line-height:1.6;resize:vertical;outline:none;min-height:72px;display:none;}
+.rec-notes-actions{display:flex;gap:6px;margin-top:6px;display:none;}
+
 /* Position / Job folder cards */
 .pos-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px;margin-bottom:28px;}
 .pos-card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--r);padding:20px;cursor:pointer;transition:all .15s;position:relative;}
@@ -61,7 +70,7 @@
   <div class="page-hdr">
     <div class="page-hdr-left">
       <h1 id="page-title">Recordings Library</h1>
-      <p id="page-sub">Recordings organized by job opening ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ shared across your company</p>
+      <p id="page-sub">Recordings organized by job opening ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ shared across your company</p>
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <div class="view-toggle">
@@ -121,7 +130,7 @@ function reload(){
   else loadAllRecordings();
 }
 
-// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ POSITIONS VIEW ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ POSITIONS VIEW ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 async function loadPositions(){
   $('new-pos-btn').style.display='';
   var positions = await get('/api/positions');
@@ -212,7 +221,7 @@ async function deletePosition(id, title){
   else toast('Failed to delete','red');
 }
 
-// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ALL RECORDINGS VIEW ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ALL RECORDINGS VIEW ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 async function loadAllRecordings(){
   $('new-pos-btn').style.display='none';
   // Also fetch positions for the assign dropdown
@@ -231,7 +240,7 @@ async function loadAllRecordings(){
   c.appendChild(grid);
 }
 
-// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ RECORDING CARD ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ RECORDING CARD ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 function buildRecCard(rec, inPositionView){
   var score=(rec.trust_score!==null&&rec.trust_score!==undefined)?rec.trust_score:100;
   var scoreClass=score>=80?'trust-hi':score>=60?'trust-mid':'trust-lo';
@@ -298,7 +307,26 @@ function buildRecCard(rec, inPositionView){
 
   var pw=document.createElement('div');pw.className='prog-wrap';pw.id='pw-'+rec.id;
   pw.innerHTML='<div class="prog-bar"><div class="prog-fill" id="pf-'+rec.id+'" style="width:0%"></div></div><div class="prog-label" id="pl-'+rec.id+'"></div>';
-  body.appendChild(pw);card.appendChild(body);
+  body.appendChild(pw);
+
+  // NOTES SECTION
+  var notesDiv=document.createElement('div');notesDiv.className='rec-notes';
+  var notesLabel=document.createElement('div');notesLabel.className='rec-notes-label';
+  notesLabel.innerHTML='<span>Interviewer Notes</span><button onclick="toggleNotesEdit(''+rec.id+'')" style="background:none;border:none;color:var(--text3);cursor:pointer;font-size:11px;font-family:inherit;padding:0">Edit</button>';
+  var notesView=document.createElement('div');notesView.className='rec-notes-view'+(rec.notes?'':' empty');
+  notesView.id='notes-view-'+rec.id;notesView.textContent=rec.notes||'Click Edit to add interview notes, feedback, or summary...';
+  notesView.onclick=function(){toggleNotesEdit(rec.id);};
+  var notesEdit=document.createElement('textarea');notesEdit.className='rec-notes-edit';notesEdit.id='notes-edit-'+rec.id;
+  notesEdit.placeholder='Add interview notes, candidate feedback, strengths/weaknesses, hiring recommendation...';
+  notesEdit.value=rec.notes||'';
+  var notesActions=document.createElement('div');notesActions.className='rec-notes-actions';notesActions.id='notes-actions-'+rec.id;
+  notesActions.style.display='none';
+  notesActions.innerHTML='<button class="btn btn-primary btn-sm" onclick="saveNotes(''+rec.id+'')">Save Notes</button>'
+    +'<button class="btn btn-outline btn-sm" onclick="cancelNotes(''+rec.id+'',''+encodeURIComponent(rec.notes||'')+'')">Cancel</button>';
+  notesDiv.appendChild(notesLabel);notesDiv.appendChild(notesView);notesDiv.appendChild(notesEdit);notesDiv.appendChild(notesActions);
+  body.appendChild(notesDiv);
+
+  card.appendChild(body);
 
   var vid=document.createElement('video');vid.id='vid-'+rec.id;vid.controls=true;vid.preload='none';
   vid.className='rec-video';vid.src=streamUrl;
@@ -370,6 +398,40 @@ async function compressRec(id,title,btn){
     toast('Compressed download started!'+(saved>0?' '+saved+'% smaller':''),'green',5000);
   }catch(e){pl.textContent='Error: '+e.message;toast('Compression failed: '+e.message,'red');}
   btn.disabled=false;btn.innerHTML='Compress for Email';
+}
+
+// NOTES FUNCTIONS
+function toggleNotesEdit(id){
+  var view=document.getElementById('notes-view-'+id);
+  var edit=document.getElementById('notes-edit-'+id);
+  var actions=document.getElementById('notes-actions-'+id);
+  var isEditing=edit.style.display==='block';
+  if(isEditing){cancelNotes(id,'');return;}
+  view.style.display='none';edit.style.display='block';actions.style.display='flex';
+  edit.focus();edit.setSelectionRange(edit.value.length,edit.value.length);
+}
+function cancelNotes(id,encoded){
+  var orig=decodeURIComponent(encoded||'');
+  var view=document.getElementById('notes-view-'+id);
+  var edit=document.getElementById('notes-edit-'+id);
+  var actions=document.getElementById('notes-actions-'+id);
+  edit.value=orig;edit.style.display='none';actions.style.display='none';view.style.display='block';
+}
+async function saveNotes(id){
+  var edit=document.getElementById('notes-edit-'+id);
+  var notes=edit.value.trim();
+  var view=document.getElementById('notes-view-'+id);
+  var actions=document.getElementById('notes-actions-'+id);
+  try{
+    var res=await fetch('/api/recordings/'+id+'/notes',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({notes:notes})});
+    var data=await res.json();
+    if(data.ok){
+      view.textContent=notes||'Click Edit to add interview notes, feedback, or summary...';
+      view.className='rec-notes-view'+(notes?'':' empty');
+      edit.style.display='none';actions.style.display='none';view.style.display='block';
+      toast('Notes saved','green');
+    } else toast(data.error||'Failed to save','red');
+  }catch(e){toast('Error: '+e.message,'red');}
 }
 
 async function doLogout(){await post('/api/auth/logout');window.location.href='/';}
