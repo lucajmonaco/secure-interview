@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Secure Interview - AI-Powered Proctoring</title>
+<title>InterviewMyCandidate - AI-Powered Interview Proctoring</title>
 <link rel="stylesheet" href="/css/main.css">
 <style>
 .join-section{
@@ -40,7 +40,7 @@
 </head>
 <body>
 <nav class="nav">
-  <div class="nav-logo">SecureInterview</div>
+  <div class="nav-logo">Interview<span style="color:var(--blue-light);font-weight:600">MyCandidate</span></div>
   <div class="nav-right">
     <span id="n-name" style="font-size:12px;color:var(--text2);display:none"></span>
     <a href="/dashboard" class="btn btn-outline btn-sm" id="n-dash" style="display:none">Dashboard</a>
@@ -52,7 +52,7 @@
 
 <main>
   <div class="hero-section">
-    <div class="hero-tag">AI-Powered Interview Integrity</div>
+    <div class="hero-tag">AI-Powered Interview Proctoring</div>
     <h1 class="hero-title">Hire with <span class="grad">confidence</span>.</h1>
     <p class="hero-sub">Real-time video proctoring, trust scoring, flag detection, and session recording for your entire team.</p>
     <div class="hero-btns">
@@ -178,7 +178,7 @@
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-// ââ NAV BUTTONS ââ
+// Ã¢Ã¢ NAV BUTTONS Ã¢Ã¢
 document.getElementById('n-in').onclick = function(){ showModal('ov-signin'); };
 document.getElementById('n-up').onclick = function(){ showModal('ov-create'); };
 document.getElementById('h-start').onclick = function(){ showModal('ov-create'); };
@@ -188,7 +188,7 @@ document.getElementById('h-in').onclick = function(){ showModal('ov-signin'); };
 });
 function switchTo(id){['ov-signin','ov-create','ov-join'].forEach(function(x){hideModal(x);});showModal(id);}
 
-// ââ CANDIDATE JOIN ââ
+// Ã¢Ã¢ CANDIDATE JOIN Ã¢Ã¢
 function formatCode(input){
   var v = input.value.toUpperCase().replace(/[^A-Z0-9]/g,'');
   if(v.length>3 && v.indexOf('-')===-1) v = v.slice(0,3)+'-'+v.slice(3);
@@ -221,7 +221,7 @@ async function joinSession(){
   }
 }
 
-// ââ DEVICE SETTINGS ON JOIN SECTION ââ
+// Ã¢Ã¢ DEVICE SETTINGS ON JOIN SECTION Ã¢Ã¢
 var joinPreviewStream = null;
 var joinDevicesLoaded = false;
 
@@ -275,7 +275,7 @@ async function startJoinPreview(){
   }catch(e){ document.getElementById('join-device-status').textContent='Preview failed: '+e.message; }
 }
 
-// ââ AUTH ââ
+// Ã¢Ã¢ AUTH Ã¢Ã¢
 async function doSignIn(){
   var btn=$('si-btn'),err=$('si-err'); btn.disabled=true; btn.textContent='Signing in...'; err.style.display='none';
   var res=await post('/api/auth/login',{orgCode:$('si-code').value.trim(),email:$('si-email').value.trim(),password:$('si-pass').value});
