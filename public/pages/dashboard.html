@@ -58,6 +58,11 @@
       <label class="label">Interview Questions <span style="color:var(--text3);font-weight:400">(one per line)</span></label>
       <textarea class="input" id="ns-questions" rows="5" placeholder="Tell me about yourself.&#10;What is your biggest strength?&#10;Describe a challenging project.&#10;How do you handle conflict?&#10;Where do you see yourself in 5 years?"></textarea>
     </div>
+    <div class="field">
+      <label class="label">Schedule Interview <span style="color:var(--text3);font-weight:400">(optional - leave blank to start now)</span></label>
+      <input class="input" type="datetime-local" id="ns-scheduled" style="color-scheme:dark">
+      <div style="font-size:11px;color:var(--text3);margin-top:4px">Candidate will not be able to join until 5 minutes before this time. The code and link are generated immediately so you can send them now.</div>
+    </div>
     <div id="ns-err" class="err" style="display:none"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" onclick="hideModal('ov-new-session')">Cancel</button>
@@ -99,7 +104,13 @@
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-document.getElementById('new-sess-btn').onclick = function(){ showModal('ov-new-session'); };
+document.getElementById('new-sess-btn').onclick = function(){ 
+    // Set min datetime to now for the scheduler
+    var now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
+    var nsEl = document.getElementById('ns-scheduled'); 
+    if(nsEl) nsEl.min = now.toISOString().slice(0,16);
+    showModal('ov-new-session'); 
+  };
 document.getElementById('create-team-btn').onclick = function(){ showModal('ov-create-team'); };
 document.getElementById('join-team-btn').onclick = function(){ showModal('ov-join-team'); };
 ['ov-new-session','ov-create-team','ov-join-team'].forEach(function(id){
@@ -120,7 +131,11 @@ function buildSessionRow(s){
   var statusBadge;
   if(s.status === 'active') statusBadge = '<span class="badge badge-green">Live</span>';
   else if(s.status === 'ended') statusBadge = '<span class="badge badge-default">Ended</span>';
-  else statusBadge = '<span class="badge badge-amber">Waiting</span>';
+  else if(s.scheduled_at) {
+    var schedD = new Date(s.scheduled_at*1000);
+    var schedStr = schedD.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+    statusBadge = '<span class="badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border-color:#7c3aed">Scheduled: '+schedStr+'</span>';
+  } else statusBadge = '<span class="badge badge-amber">Waiting</span>';
   var div = document.createElement('div');
   div.className = 'session-row';
   div.innerHTML = '<div class="session-avatar">S</div>'
@@ -129,11 +144,12 @@ function buildSessionRow(s){
     +'<div class="sr-meta">'+(s.candidate_name||'Candidate')+' - '+fmtDate(s.created_at)
     +(flagCount ? ' - <span style="color:var(--amber)">'+flagCount+' flag'+(flagCount!==1?'s':'')+'</span>' : '')
     +'</div></div>'
-    +'<div class="sr-right">'
+    +'<div class="sr-right" style="display:flex;align-items:center;gap:6px">'
+    +(s.status!=='ended'?'<button class="btn btn-outline btn-sm sr-copy-btn" onclick="copyInviteCode(''+s.code+'')" style="font-size:11px;padding:3px 8px">Copy Link</button>':'')
     +'<span class="sr-score" style="color:'+scoreColor+'">'+score+'%</span>'
     +statusBadge
     +'</div>';
-  div.onclick = function(){ window.location.href = '/session/'+s.id; };
+  div.onclick = function(e){ if(!e.target.closest('.sr-copy-btn')) window.location.href = '/session/'+s.id; };
   return div;
 }
 
@@ -173,7 +189,7 @@ async function loadSessions(){
   var avgScore = null;
   if(endedSessions.length > 0){
     var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB — use it as-is, only default if genuinely null/undefined
+      // trust_score is an integer from DB â use it as-is, only default if genuinely null/undefined
       var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
       return acc + score;
     }, 0);
@@ -240,6 +256,7 @@ async function joinTeam(){
 }
 
 async function doLogout(){ await post('/api/auth/logout'); window.location.href = '/'; }
+function copyInviteCode(code){ navigator.clipboard.writeText(location.origin+'/join/'+code).then(function(){ toast('Invite link copied!','green'); }); }
 
 async function init(){
   var me = await requireLogin('/'); if(!me) return;
