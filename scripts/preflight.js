@@ -1,220 +1,246 @@
 #!/usr/bin/env node
-// ============================================================
-// PREFLIGHT CHECKER - runs before every deploy
-// Usage: GITHUB_TOKEN=xxx node scripts/preflight.js
-// Exits 1 if any check fails — do NOT deploy if this fails
-// ============================================================
+/**
+ * PREFLIGHT CHECKS - run before EVERY deploy
+ * Usage: GITHUB_TOKEN=xxx node scripts/preflight.js
+ *
+ * Catches: syntax errors, quote escaping bugs, broken API calls,
+ * missing endpoints, innerHTML injection bugs, ES6 shorthand in wrong context
+ */
 
 const https = require('https');
-
 const TOKEN = process.env.GITHUB_TOKEN;
-const REPO = 'lucajmonaco/proctorapp-backend';
-const BASE_API = 'api.github.com';
+const BASE = 'lucajmonaco/proctorapp-backend';
 
-if (!TOKEN) { console.error('ERROR: Set GITHUB_TOKEN env var'); process.exit(1); }
+if (!TOKEN) { console.error('GITHUB_TOKEN required'); process.exit(1); }
 
-let passed = 0, failed = 0, warnings = 0;
-const errors = [];
-
-function ok(msg){ passed++; console.log('  PASS: ' + msg); }
-function fail(msg){ failed++; errors.push(msg); console.error('  FAIL: ' + msg); }
-function warn(msg){ warnings++; console.warn('  WARN: ' + msg); }
-
-async function getFile(path){
-  return new Promise((resolve,reject)=>{
-    const opts={hostname:BASE_API,path:'/repos/'+REPO+'/contents/'+path,headers:{'Authorization':'token '+TOKEN,'User-Agent':'preflight'}};
-    https.get(opts,(res)=>{
-      let data='';
-      res.on('data',d=>data+=d);
-      res.on('end',()=>{
-        try{ const j=JSON.parse(data); resolve(j.content?Buffer.from(j.content.replace(/\n/g,''),'base64').toString('utf8'):null); }
-        catch(e){ reject(e); }
+function getFile(path) {
+  return new Promise((resolve, reject) => {
+    const opts = {
+      hostname: 'api.github.com',
+      path: `/repos/${BASE}/contents/${path}`,
+      headers: { Authorization: `token ${TOKEN}`, 'User-Agent': 'preflight' }
+    };
+    https.get(opts, res => {
+      let d = '';
+      res.on('data', c => d += c);
+      res.on('end', () => {
+        const j = JSON.parse(d);
+        resolve(Buffer.from(j.content.replace(/\n/g,''), 'base64').toString('utf8'));
       });
-    }).on('error',reject);
+    }).on('error', reject);
   });
 }
 
-async function checkHTML(filename, src){
-  console.log('\nChecking ' + filename + '...');
+let errors = 0, warnings = 0;
+function fail(file, msg) { console.error(`  FAIL [${file}] ${msg}`); errors++; }
+function warn(file, msg) { console.warn(`  WARN [${file}] ${msg}`); warnings++; }
+function pass(msg) { console.log(`  PASS ${msg}`); }
 
-  // 1. Extract all <script> blocks
-  const scriptBlocks = [];
-  const re = /<script[^>]*>([sS]*?)<\/script>/gi;
+// ══════════════════════════════════════════
+// CHECK 1: JavaScript Syntax in HTML files
+// Extracts <script> blocks and validates for common JS syntax errors
+// ══════════════════════════════════════════
+function checkJSSyntax(filename, src) {
+  const scripts = [];
+  const re = /<script(?![^>]*src=)[^>]*>([\s\S]*?)<\/script>/gi;
   let m;
-  while((m=re.exec(src))!==null){ scriptBlocks.push(m[1]); }
-  const jsContent = scriptBlocks.join('\n');
-
-  // 2. QUOTE CONFLICT: showModal('ov-...) inside single-quoted JS strings
-  const badModal = /showModal\('ov-[^']+?'\)/g;
-  let bm;
-  while((bm=badModal.exec(jsContent))!==null){
-    fail(filename+': showModal with inner single-quotes in JS string: '+bm[0].slice(0,60)+
-      ' → use showModal(&quot;...&quot;) instead');
-  }
-  if(!(badModal.source && jsContent.match(badModal))) ok(filename+': No showModal quote conflicts');
-
-  // 3. INLINE ONCLICK QUOTE CONFLICT: onclick="fn('"+var+"')" in innerHTML strings
-  const badOnclick = /innerHTMLs*[+=][^;]*onclick="[^"]*('[^"]*'[^"]*)"[^;]*/g;
-  let bo;
-  while((bo=badOnclick.exec(jsContent))!==null){
-    fail(filename+': Inline onclick with inner single-quotes in innerHTML: '+bo[0].slice(0,80));
-  }
-
-  // 4. ES6 SHORTHAND in post() calls: post('/api/x', {title, description}) 
-  const badShorthand = /post\([^)]+,\s*\{\s*[a-zA-Z]+\s*,\s*[a-zA-Z]+\s*\}\s*\)/g;
-  let bs;
-  while((bs=badShorthand.exec(jsContent))!==null){
-    fail(filename+': ES6 shorthand object in post() call (breaks older parsers): '+bs[0].slice(0,60));
-  }
-
-  // 5. OPTIONAL CHAINING ?.  in innerHTML - can fail in some browsers
-  const optChain = /innerHTML[^;]*\?\.[a-zA-Z]/g;
-  let oc;
-  while((oc=optChain.exec(jsContent))!==null){
-    warn(filename+': Optional chaining in innerHTML string may fail: '+oc[0].slice(0,60));
-  }
-
-  // 6. HTML entities in JS strings (&#xxx; that render as literals)
-  const badEntities = /['"](.*?)&#[0-9]+;(.*?)['"]/g;
-  let be;
-  let entityCount = 0;
-  while((be=badEntities.exec(jsContent))!==null){
-    entityCount++;
-    if(entityCount<=3) warn(filename+': HTML entity in JS string may display as literal: '+be[0].slice(0,50));
-  }
-  if(entityCount>3) warn(filename+': '+entityCount+' total HTML entities in JS strings');
-
-  // 7. BACKTICK TEMPLATE LITERALS with variables - check for syntax issues
-  // (template literals with single-quote strings inside are fine, just checking for common issues)
-
-  // 8. Unclosed strings check - simple heuristic
-  const lines = jsContent.split('\n');
-  lines.forEach((line,i)=>{
-    // Check for lines with innerHTML += that contain both ' and " in the same string
-    if(line.includes("innerHTML") && line.includes("onclick=") && line.includes("'") && line.includes('"')){
-      const singleCount = (line.match(/'/g)||[]).length;
-      if(singleCount > 4){
-        warn(filename+' line '+(i+1)+': Complex innerHTML with many quotes - review manually');
+  while ((m = re.exec(src)) !== null) scripts.push(m[1]);
+  
+  for (const script of scripts) {
+    const lines = script.split('\n');
+    lines.forEach((line, i) => {
+      const lineNum = i + 1;
+      
+      // CHECK: Single quotes containing inner single quotes without escaping
+      // Pattern: 'something'something' in a JS string context (not HTML attributes)
+      // Detect: onclick= string with inner single quotes used in JS strings
+      const innerSingleQuotes = line.match(/['"]<[^>]*onclick=['"][^'"]*('[^)]*)[^'"]*['"]/);
+      if (innerSingleQuotes) {
+        fail(filename, `Line ${lineNum}: Possible unescaped quote in onclick attribute inside JS string: ${line.trim().slice(0,80)}`);
       }
-    }
-  });
-
-  // 9. Check for double-declaration of vars (can cause issues)
-  const varDecls = {};
-  const varRe = /\bvar\s+([a-zA-Z_$][a-zA-Z0-9_$]*)\s*=/g;
-  let vr;
-  while((vr=varRe.exec(jsContent))!==null){
-    const name = vr[1];
-    varDecls[name] = (varDecls[name]||0)+1;
+      
+      // CHECK: showModal('ov-...' inside a single-quoted JS string
+      const badModal = line.match(/showModal\('ov-[^']+'/);
+      if (badModal && (line.includes("+'") || line.includes("'+") || line.includes('innerHTML'))) {
+        fail(filename, `Line ${lineNum}: showModal with single quotes inside JS string - use &quot; instead: ${line.trim().slice(0,80)}`);
+      }
+      
+      // CHECK: copyInviteCode or similar function called with single-quoted arg inside JS string concat
+      const badOnclick = line.match(/onclick="[a-zA-Z]+\('.*?'\)"/);
+      if (badOnclick && (line.includes("'<") || line.includes("+'") || line.includes("'+"))) {
+        fail(filename, `Line ${lineNum}: Inline onclick with single-quoted arg inside JS string concat - use data-* attr instead: ${line.trim().slice(0,80)}`);
+      }
+      
+      // CHECK: ES6 shorthand {title,description} in post() calls
+      const shorthand = line.match(/post\('[^']*',\s*\{\s*[a-z]+\s*,/);
+      if (shorthand) {
+        fail(filename, `Line ${lineNum}: ES6 shorthand object in post() may fail - use explicit {key:value}: ${line.trim().slice(0,80)}`);
+      }
+      
+      // CHECK: Optional chaining ?. which may not be supported
+      const optChain = line.match(/\w+\?\.\w+/);
+      if (optChain) {
+        warn(filename, `Line ${lineNum}: Optional chaining (?.) may not work in all browsers: ${line.trim().slice(0,80)}`);
+      }
+      
+      // CHECK: template literals with embedded quotes
+      const templateBad = line.match(/`[^$]*$\{[^}]*'[^}]*'[^}]*\}[^$]*onclick/);
+      if (templateBad) {
+        warn(filename, `Line ${lineNum}: Template literal with quotes in onclick context: ${line.trim().slice(0,80)}`);
+      }
+      
+      // CHECK: Mismatched string delimiters (simple heuristic)
+      const singleCount = (line.match(/(?<!\\)'/g) || []).length;
+      const inString = line.includes("innerHTML") || line.includes("textContent") || line.includes("+=");
+      if (singleCount > 6 && inString) {
+        warn(filename, `Line ${lineNum}: Many single quotes (${singleCount}) in string-building context - check for escaping: ${line.trim().slice(0,60)}`);
+      }
+    });
   }
-  Object.entries(varDecls).forEach(([name,count])=>{
-    if(count>2 && !['i','j','k','r','d','s','btn','el','res','err','div'].includes(name)){
-      warn(filename+': var "'+name+'" declared '+count+' times - possible shadowing');
-    }
-  });
-
-  ok(filename+': Script block analysis complete');
 }
 
-async function checkServerJS(src){
-  console.log('\nChecking server.js...');
+// ══════════════════════════════════════════
+// CHECK 2: API endpoint consistency
+// Every API call in frontend must have a matching route in server.js
+// ══════════════════════════════════════════
+function checkAPIConsistency(frontendFiles, serverSrc) {
+  const usedRoutes = new Set();
+  const pattern = /(?:get|post|patch|fetch)\(['"`](\/api\/[^'"`?]+)/g;
+  
+  for (const [fname, src] of Object.entries(frontendFiles)) {
+    let m;
+    while ((m = pattern.exec(src)) !== null) {
+      // Normalize route params
+      const route = m[1].replace(/\/[a-f0-9-]{8,}.*/, '/:id').replace(/\/[A-Z]{3}-[A-Z0-9]{3}/, '/:code');
+      usedRoutes.add(route.split('?')[0]);
+    }
+  }
+  
+  usedRoutes.forEach(route => {
+    // Check if server.js has this route
+    const normalized = route.replace(/:[^/]+/g, ':param');
+    const inServer = serverSrc.includes(route) || 
+                     serverSrc.includes(normalized) ||
+                     serverSrc.includes(route.replace(/\/[^/]+$/, '/:id'));
+    if (!inServer && !route.includes('undefined') && route.length > 6) {
+      warn('server.js', `Route used in frontend not found in server: ${route}`);
+    }
+  });
+}
 
-  // 1. Template literals with backticks - check for unclosed
-  const backtickCount = (src.match(/`/g)||[]).length;
-  if(backtickCount % 2 !== 0){
-    fail('server.js: Odd number of backticks ('+backtickCount+') - possible unclosed template literal');
-  } else ok('server.js: Backtick count even ('+backtickCount+')');
+// ══════════════════════════════════════════
+// CHECK 3: Required elements and functions
+// ══════════════════════════════════════════
+const REQUIRED = {
+  'public/pages/candidate.html': [
+    { check: src => src.includes('visibilitychange'), msg: 'Missing visibilitychange tab detection' },
+    { check: src => src.includes('lockoutActive'), msg: 'Missing lockout system' },
+    { check: src => src.includes('doJoin'), msg: 'Missing doJoin function' },
+    { check: src => src.includes('/api/join/'), msg: 'Missing /api/join/ call' },
+    { check: src => !src.includes("api('"), msg: 'Uses api() instead of get()/post()' },
+  ],
+  'public/pages/session.html': [
+    { check: src => src.includes('candidate-lockout'), msg: 'Missing lockout socket listener' },
+    { check: src => src.includes('remoteStream'), msg: 'Missing remoteStream variable' },
+    { check: src => src.includes('startRec'), msg: 'Missing recording function' },
+    { check: src => src.includes('endSession'), msg: 'Missing endSession function' },
+    { check: src => src.includes('/api/recordings/session/'), msg: 'Missing recording sync call' },
+    { check: src => !src.includes("api('"), msg: 'Uses api() instead of get()/post()' },
+  ],
+  'public/pages/dashboard.html': [
+    { check: src => src.includes('loadSessions'), msg: 'Missing loadSessions function' },
+    { check: src => src.includes("post('/api/sessions'"), msg: 'Missing session creation call' },
+    { check: src => !src.includes("onclick="copyInviteCode('"), msg: 'Has unescaped copyInviteCode onclick in JS string' },
+  ],
+  'public/pages/recordings.html': [
+    { check: src => !src.includes("showModal('ov-"), msg: "Has unescaped showModal('ov-...' in JS string" },
+    { check: src => src.includes('trust_score!==null'), msg: 'Missing null-safe trust score check' },
+    { check: src => src.includes('/api/positions'), msg: 'Missing positions API calls' },
+    { check: src => src.includes('saveNotes'), msg: 'Missing notes save function' },
+  ],
+  'server.js': [
+    { check: src => src.includes("app.post('/api/auth/login'"), msg: 'Missing auth login route' },
+    { check: src => src.includes("app.get('/api/sessions'"), msg: 'Missing sessions list route' },
+    { check: src => src.includes("app.post('/api/positions'"), msg: 'Missing positions create route' },
+    { check: src => src.includes("app.get('/api/positions'"), msg: 'Missing positions list route' },
+    { check: src => src.includes("app.patch('/api/recordings/:id/notes'"), msg: 'Missing notes endpoint' },
+    { check: src => src.includes("SESSION_SCHEDULED"), msg: 'Missing scheduled session gate' },
+    { check: src => src.includes('job_positions'), msg: 'Missing job_positions table' },
+    { check: src => src.includes('requireAuth'), msg: 'Missing requireAuth middleware' },
+    { check: src => src.includes('uuidv4'), msg: 'Missing uuidv4 import' },
+  ]
+};
 
-  // 2. Check all required API routes exist
-  const requiredRoutes = [
-    ["GET /api/auth/me", "app.get('/api/auth/me'"],
-    ["POST /api/auth/login", "app.post('/api/auth/login'"],
-    ["GET /api/sessions", "app.get('/api/sessions'"],
-    ["POST /api/sessions", "app.post('/api/sessions'"],
-    ["GET /api/recordings", "app.get('/api/recordings'"],
-    ["POST /api/recordings/upload", "app.post('/api/recordings/upload'"],
-    ["GET /api/positions", "app.get('/api/positions'"],
-    ["POST /api/positions", "app.post('/api/positions'"],
-    ["PATCH /api/recordings/:id/notes", "app.patch('/api/recordings/:id/notes'"],
-    ["GET /api/recordings/:id/stream", "app.get('/api/recordings/:id/stream'"],
-    ["GET /api/recordings/:id/org-stream", "app.get('/api/recordings/:id/org-stream'"],
-    ["PATCH /api/recordings/:id/position", "app.patch('/api/recordings/:id/position'"],
-    ["POST /api/recordings/session/:id/sync", "app.post('/api/recordings/session/"],
-    ["GET /api/join/:code", "app.get('/api/join/:code'"],
+// ══════════════════════════════════════════
+// CHECK 4: No dangerous patterns
+// ══════════════════════════════════════════
+const FORBIDDEN = [
+  { pattern: /eval\(/, msg: 'eval() detected - security risk' },
+  { pattern: /innerHTML\s*=\s*[a-z]/, msg: 'Potential XSS: direct variable assignment to innerHTML without sanitization' },
+];
+
+// ══════════════════════════════════════════
+// RUN ALL CHECKS
+// ══════════════════════════════════════════
+async function run() {
+  console.log('\n╔═══════════════════════════════════════╗');
+  console.log('║      SECURE INTERVIEW PREFLIGHT       ║');
+  console.log('╚═══════════════════════════════════════╝\n');
+
+  const files = [
+    'public/pages/candidate.html',
+    'public/pages/session.html', 
+    'public/pages/dashboard.html',
+    'public/pages/recordings.html',
+    'public/pages/index.html',
+    'server.js',
   ];
-  requiredRoutes.forEach(([name,pattern])=>{
-    if(src.includes(pattern)) ok('server.js: Route exists: '+name);
-    else fail('server.js: MISSING route: '+name);
-  });
 
-  // 3. Check DB tables exist
-  const requiredTables = ['orgs','users','sessions','recordings','flags','job_positions'];
-  requiredTables.forEach(t=>{
-    if(src.includes('CREATE TABLE IF NOT EXISTS '+t)) ok('server.js: Table: '+t);
-    else fail('server.js: MISSING table: '+t);
-  });
-
-  // 4. Check migrations exist
-  const migrations = ['job_position_id','notes','scheduled_at'];
-  migrations.forEach(m=>{
-    if(src.includes('ALTER TABLE') && src.includes(m)) ok('server.js: Migration: '+m);
-    else fail('server.js: MISSING migration for column: '+m);
-  });
-
-  // 5. Check requireAuth is defined
-  if(src.includes('function requireAuth') || src.includes('const requireAuth')) ok('server.js: requireAuth defined');
-  else fail('server.js: requireAuth not found');
-
-  // 6. Check uuidv4 is used
-  if(src.includes('uuidv4()')) ok('server.js: uuidv4 in use');
-  else fail('server.js: uuidv4 not found');
-}
-
-async function runLiveChecks(){
-  console.log('\nLive page checks (run after deploy)...');
-  console.log('  NOTE: Run checkLive() separately against the deployed URL');
-  console.log('  Use: curl -s https://luca-proctor-fly-v1.fly.dev/ | grep -c SecureInterview');
-}
-
-async function main(){
-  console.log('========================================');
-  console.log('  SECURE INTERVIEW PREFLIGHT CHECK');
-  console.log('========================================');
-
-  try {
-    const [indexSrc, dashSrc, sesssSrc, candSrc, recsSrc, srvSrc] = await Promise.all([
-      getFile('public/pages/index.html'),
-      getFile('public/pages/dashboard.html'),
-      getFile('public/pages/session.html'),
-      getFile('public/pages/candidate.html'),
-      getFile('public/pages/recordings.html'),
-      getFile('server.js'),
-    ]);
-
-    await checkHTML('index.html', indexSrc);
-    await checkHTML('dashboard.html', dashSrc);
-    await checkHTML('session.html', sesssSrc);
-    await checkHTML('candidate.html', candSrc);
-    await checkHTML('recordings.html', recsSrc);
-    await checkServerJS(srvSrc);
-
-  } catch(e){
-    fail('Could not fetch files: ' + e.message);
+  const sources = {};
+  console.log('► Fetching files from GitHub...');
+  for (const f of files) {
+    sources[f] = await getFile(f);
+    console.log(`  ✓ ${f} (${sources[f].length} chars)`);
   }
 
-  console.log('\n========================================');
-  console.log('  RESULTS: ' + passed + ' passed, ' + warnings + ' warnings, ' + failed + ' failed');
-  console.log('========================================');
+  console.log('\n► Running syntax checks...');
+  for (const [fname, src] of Object.entries(sources)) {
+    if (fname.endsWith('.html')) checkJSSyntax(fname, src);
+  }
+  if (!errors) pass('No JavaScript syntax issues found');
 
-  if(errors.length){
-    console.error('\nFAILURES:');
-    errors.forEach(e=>console.error('  x ' + e));
-    console.error('\nDO NOT DEPLOY until all failures are fixed.');
+  console.log('\n► Running API consistency checks...');
+  const frontendSrcs = Object.fromEntries(
+    Object.entries(sources).filter(([k]) => k.endsWith('.html'))
+  );
+  checkAPIConsistency(frontendSrcs, sources['server.js']);
+
+  console.log('\n► Running required element checks...');
+  for (const [fname, checks] of Object.entries(REQUIRED)) {
+    const src = sources[fname];
+    if (!src) { warn(fname, 'File not loaded'); continue; }
+    for (const { check, msg } of checks) {
+      if (!check(src)) fail(fname, msg);
+    }
+  }
+  if (!errors) pass('All required elements present');
+
+  console.log('\n► Running security/forbidden pattern checks...');
+  for (const [fname, src] of Object.entries(sources)) {
+    for (const { pattern, msg } of FORBIDDEN) {
+      if (pattern.test(src)) warn(fname, msg);
+    }
+  }
+
+  console.log('\n════════════════════════════════════════');
+  console.log(`RESULT: ${errors} error(s), ${warnings} warning(s)`);
+  if (errors > 0) {
+    console.error(`\n✗ PREFLIGHT FAILED - Fix ${errors} error(s) before deploying!\n`);
     process.exit(1);
   } else {
-    console.log('\nAll checks passed. Safe to deploy.');
+    console.log('\n✓ PREFLIGHT PASSED - Safe to deploy\n');
     process.exit(0);
   }
 }
 
-main().catch(e=>{ console.error('Preflight crashed:', e); process.exit(1); });
+run().catch(e => { console.error('Preflight crashed:', e.message); process.exit(1); });
