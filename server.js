@@ -376,11 +376,13 @@ function streamVideo(req, res, filePath) {
 
 function requireAdmin(req, res, next) {
   if (!req.session.userId) return res.status(401).json({ error: 'Not authenticated' });
-  if (req.session.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
+  // Check role from DB (most reliable, session.role may be stale)
+  const u = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (!u || u.role !== 'admin') return res.status(403).json({ error: 'Admin access required' });
   next();
 }
 
-// ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ ORG MEMBER MANAGEMENT ÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ORG MEMBER MANAGEMENT ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 // List all members in the org
 app.get('/api/org/members', requireAuth, (req, res) => {
   const members = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE org_id=? ORDER BY role DESC, created_at ASC').all(req.session.orgId);
@@ -395,7 +397,8 @@ app.get('/api/org/info', requireAuth, (req, res) => {
 
 // Change a member's role (admin only)
 app.patch('/api/org/members/:userId/role', requireAuth, (req, res) => {
-  if (req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const _adminUser = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (!_adminUser || _adminUser.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   const { role } = req.body;
   if (!['admin','recruiter'].includes(role)) return res.status(400).json({ error: 'Invalid role' });
   // Can't demote yourself if you're the only admin
@@ -411,7 +414,8 @@ app.patch('/api/org/members/:userId/role', requireAuth, (req, res) => {
 
 // Remove a member from the org (admin only)
 app.delete('/api/org/members/:userId', requireAuth, (req, res) => {
-  if (req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const _adminUser = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (!_adminUser || _adminUser.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   if (req.params.userId === req.session.userId) return res.status(400).json({ error: 'Cannot remove yourself' });
   const user = db.prepare('SELECT * FROM users WHERE id=? AND org_id=?').get(req.params.userId, req.session.orgId);
   if (!user) return res.status(404).json({ error: 'Member not found' });
@@ -421,7 +425,8 @@ app.delete('/api/org/members/:userId', requireAuth, (req, res) => {
 
 // Create an invite link token (admin only) - returns a one-time join token
 app.post('/api/org/invite', requireAuth, (req, res) => {
-  if (req.session.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
+  const _adminUser = db.prepare('SELECT role FROM users WHERE id=?').get(req.session.userId);
+  if (!_adminUser || _adminUser.role !== 'admin') return res.status(403).json({ error: 'Admin only' });
   // Return the org code - that IS the invite mechanism
   const org = db.prepare('SELECT name, code FROM orgs WHERE id=?').get(req.session.orgId);
   const inviteUrl = '/join-company/' + (org ? org.code : req.session.orgCode);
