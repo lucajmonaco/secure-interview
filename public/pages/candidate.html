@@ -101,6 +101,9 @@
       <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">Gaze Away</span>
     </div>
   </div>
+<audio id="remote-audio" autoplay playsinline style="display:none"></audio>
+<div style="position:fixed;top:10px;right:60px;z-index:300;display:flex;align-items:center;gap:6px;background:rgba(15,34,65,.85);border-radius:8px;padding:4px 10px;backdrop-filter:blur(10px)"><span style="font-size:13px;color:rgba(255,255,255,.7)">&#128266;</span><input type="range" id="vol-slider" min="0" max="1" step="0.05" value="1" style="width:70px;height:3px;cursor:pointer;accent-color:#3b82f6" oninput="setVolume(this.value)"></div>
+
   <div class="video-grid">
     <div class="video-box">
       <video id="remote-vid" autoplay playsinline></video>
@@ -523,7 +526,7 @@ function connectSocket(){
 async function createPC(){
   pc=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
   if(localStream)localStream.getTracks().forEach(function(t){pc.addTrack(t,localStream);});
-  pc.ontrack=function(e){$('remote-vid').srcObject=e.streams[0];};
+  pc.ontrack=function(e){if(!e.streams||!e.streams[0])return;$('remote-vid').srcObject=e.streams[0];var ra=document.getElementById('remote-audio');if(ra){ra.srcObject=e.streams[0];ra.play().catch(function(){});}};
   pc.onicecandidate=function(e){if(e.candidate)socket.emit('webrtc-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
 }
 async function startWebRTC(isInit){
