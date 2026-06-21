@@ -203,7 +203,7 @@ async function loadSessions(){
     else if(s.scheduled_at){
       var sd = new Date(s.scheduled_at*1000);
       var sds = sd.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+sd.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
-      statusBadge = '<span class="badge" style="background:rgba(124,58,237,.12);color:var(--purple);border-color:rgba(124,58,237,.3)">&#128197; '+sds+'</span>';
+      statusBadge = '<span class="badge" style="background:rgba(124,58,237,.12);color:var(--purple);border-color:rgba(124,58,237,.3)">Scheduled: '+sds+'</span>';
     } else {
       statusBadge = '<span class="badge badge-amber">Waiting</span>';
     }
@@ -212,8 +212,8 @@ async function loadSessions(){
     var copyBtn = s.status!=='ended' ? '<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:4px 10px">Copy Link</button>' : '';
     // Show "Start Now" for scheduled sessions
     var startNowBtn = '';
-    // Show Start button for ALL waiting sessions
-    if(s.status==='waiting'){
+    // For unscheduled waiting sessions - always show Start button
+    if(s.status==='waiting' && !s.scheduled_at){
       startNowBtn = '<button class="btn btn-blue btn-sm" data-start-sess="'+s.id+'" style="font-size:11px;padding:4px 10px">Start</button>';
     }
     if(s.status==='waiting' && s.scheduled_at){
@@ -243,181 +243,187 @@ async function loadCompanyPanel(){
   var panel = document.getElementById('company-panel');
   if(!panel) return;
   var me = currentMe;
-  if(!me){
-    var d = document.createElement('div');
-    d.style.cssText = 'text-align:center;padding:24px;color:var(--text4)';
-    d.textContent = 'Please sign in to view company info.';
-    panel.innerHTML = '';
-    panel.appendChild(d);
-    return;
-  }
-  panel.innerHTML = '<div style="text-align:center;padding:20px;color:var(--text4)">Loading...</div>';
+  if(!me){ panel.innerHTML=''; var d=document.createElement('div'); d.style.cssText='text-align:center;padding:24px;color:var(--text4)'; d.textContent='Please sign in.'; panel.appendChild(d); return; }
+  panel.innerHTML='<div style="text-align:center;padding:20px;color:var(--text4)">Loading...</div>';
   var orgInfo = await get('/api/org/info');
   var members = await get('/api/org/members');
-  if(!orgInfo || !Array.isArray(members)){
-    panel.innerHTML = '';
-    var e = document.createElement('div');
-    e.style.cssText = 'text-align:center;padding:24px;color:var(--red)';
-    e.textContent = 'Could not load company info.';
-    panel.appendChild(e);
-    return;
-  }
-  var isAdmin = me.role === 'admin';
-  var code = orgInfo.code || me.orgCode || '';
-  var orgName = orgInfo.name || me.orgName || '';
-  var inviteUrl = location.origin + '/join-company/' + code;
-  panel.innerHTML = '';
+  if(!orgInfo||!Array.isArray(members)){ panel.innerHTML=''; var e=document.createElement('div'); e.style.cssText='text-align:center;padding:24px;color:var(--red)'; e.textContent='Could not load.'; panel.appendChild(e); return; }
+  var isAdmin = me.role==='admin';
+  var code = orgInfo.code||me.orgCode||'';
+  var orgName = orgInfo.name||me.orgName||'';
+  var inviteUrl = location.origin+'/join-company/'+code;
+  panel.innerHTML='';
 
-  // -- Code card
-  var card = document.createElement('div');
-  card.style.cssText = 'background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap';
-  var cardLeft = document.createElement('div');
-  var labelEl = document.createElement('div');
-  labelEl.style.cssText = 'font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px';
-  labelEl.textContent = 'Company Invite Code';
-  var codeEl = document.createElement('div');
-  codeEl.style.cssText = 'font-size:28px;font-weight:900;color:#fff;letter-spacing:6px;font-family:monospace';
-  codeEl.textContent = code;
-  var nameEl = document.createElement('div');
-  nameEl.style.cssText = 'font-size:13px;color:rgba(255,255,255,.6);margin-top:4px';
-  nameEl.textContent = orgName;
-  cardLeft.appendChild(labelEl);
-  cardLeft.appendChild(codeEl);
-  cardLeft.appendChild(nameEl);
-  var cardBtns = document.createElement('div');
-  cardBtns.style.cssText = 'display:flex;gap:8px;flex-wrap:wrap';
-  var cpBtn = document.createElement('button');
-  cpBtn.className = 'btn btn-blue btn-sm';
-  cpBtn.textContent = 'Copy Code';
-  cpBtn.setAttribute('data-copy-val', code);
-  cpBtn.setAttribute('data-toast', 'Code copied!');
-  var ciBtn = document.createElement('button');
-  ciBtn.className = 'btn btn-outline btn-sm';
-  ciBtn.style.cssText = 'background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)';
-  ciBtn.textContent = 'Copy Invite Link';
-  ciBtn.setAttribute('data-copy-val', inviteUrl);
-  ciBtn.setAttribute('data-toast', 'Invite link copied!');
-  cardBtns.appendChild(cpBtn);
-  cardBtns.appendChild(ciBtn);
-  card.appendChild(cardLeft);
-  card.appendChild(cardBtns);
-  panel.appendChild(card);
+  // Code card
+  var card=document.createElement('div'); card.style.cssText='background:linear-gradient(135deg,var(--navy),var(--navy-mid));border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap';
+  var cLeft=document.createElement('div');
+  var cLabel=document.createElement('div'); cLabel.style.cssText='font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px'; cLabel.textContent='Company Invite Code';
+  var cCode=document.createElement('div'); cCode.style.cssText='font-size:28px;font-weight:900;color:#fff;letter-spacing:6px;font-family:monospace'; cCode.textContent=code;
+  var cName=document.createElement('div'); cName.style.cssText='font-size:13px;color:rgba(255,255,255,.6);margin-top:4px'; cName.textContent=orgName;
+  cLeft.appendChild(cLabel); cLeft.appendChild(cCode); cLeft.appendChild(cName);
+  var cBtns=document.createElement('div'); cBtns.style.cssText='display:flex;gap:8px;flex-wrap:wrap';
+  var cpBtn=document.createElement('button'); cpBtn.className='btn btn-blue btn-sm'; cpBtn.textContent='Copy Code'; cpBtn.setAttribute('data-copy-val',code); cpBtn.setAttribute('data-toast','Code copied!');
+  var ciBtn=document.createElement('button'); ciBtn.className='btn btn-outline btn-sm'; ciBtn.style.cssText='background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)'; ciBtn.textContent='Copy Invite'; ciBtn.setAttribute('data-copy-val',inviteUrl); ciBtn.setAttribute('data-toast','Invite copied!');
+  cBtns.appendChild(cpBtn); cBtns.appendChild(ciBtn); card.appendChild(cLeft); card.appendChild(cBtns); panel.appendChild(card);
 
-  // -- Invite box (admin only)
+  // Invite box (admin only)
   if(isAdmin){
-    var ibox = document.createElement('div');
-    ibox.style.cssText = 'background:var(--sky);border:1.5px solid var(--sky-deep);border-radius:var(--r);padding:16px 18px;margin-bottom:20px';
-    var iboxTitle = document.createElement('div');
-    iboxTitle.style.cssText = 'font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px';
-    iboxTitle.textContent = 'Share Invite Link';
-    var iboxSub = document.createElement('div');
-    iboxSub.style.cssText = 'font-size:12px;color:var(--text4);margin-bottom:10px;line-height:1.5';
-    iboxSub.textContent = 'Send this link to new team members. They can create an account and join instantly. After joining, they sign in with email and password only.';
-    var iboxRow = document.createElement('div');
-    iboxRow.style.cssText = 'display:flex;gap:8px;align-items:center';
-    var iboxInput = document.createElement('input');
-    iboxInput.style.cssText = 'flex:1;padding:7px 11px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--navy);font-family:monospace;outline:none';
-    iboxInput.readOnly = true;
-    iboxInput.value = inviteUrl;
-    var iboxCopy = document.createElement('button');
-    iboxCopy.className = 'btn btn-blue btn-sm';
-    iboxCopy.textContent = 'Copy';
-    iboxCopy.setAttribute('data-copy-val', inviteUrl);
-    iboxCopy.setAttribute('data-toast', 'Copied!');
-    iboxRow.appendChild(iboxInput);
-    iboxRow.appendChild(iboxCopy);
-    ibox.appendChild(iboxTitle);
-    ibox.appendChild(iboxSub);
-    ibox.appendChild(iboxRow);
-    panel.appendChild(ibox);
+    var ibox=document.createElement('div'); ibox.style.cssText='background:var(--sky);border:1.5px solid var(--sky-deep);border-radius:var(--r);padding:16px 18px;margin-bottom:20px';
+    var iTitle=document.createElement('div'); iTitle.style.cssText='font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px'; iTitle.textContent='Share Invite Link';
+    var iSub=document.createElement('div'); iSub.style.cssText='font-size:12px;color:var(--text4);margin-bottom:10px;line-height:1.5'; iSub.textContent='Send this to new team members. After joining they sign in with email and password only.';
+    var iRow=document.createElement('div'); iRow.style.cssText='display:flex;gap:8px;align-items:center';
+    var iInput=document.createElement('input'); iInput.style.cssText='flex:1;padding:7px 11px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--navy);font-family:monospace;outline:none'; iInput.readOnly=true; iInput.value=inviteUrl;
+    var iCopy=document.createElement('button'); iCopy.className='btn btn-blue btn-sm'; iCopy.textContent='Copy'; iCopy.setAttribute('data-copy-val',inviteUrl); iCopy.setAttribute('data-toast','Copied!');
+    iRow.appendChild(iInput); iRow.appendChild(iCopy); ibox.appendChild(iTitle); ibox.appendChild(iSub); ibox.appendChild(iRow); panel.appendChild(ibox);
   }
 
-  // -- Members heading
-  var mHead = document.createElement('div');
-  mHead.style.cssText = 'font-size:13px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px';
-  var mHeadText = document.createElement('span');
-  mHeadText.textContent = 'Team Members';
-  var mCount = document.createElement('span');
-  mCount.style.cssText = 'color:var(--blue);font-size:12px;font-weight:700;background:var(--sky);padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0';
-  mCount.textContent = String(members.length);
-  mHead.appendChild(mHeadText);
-  mHead.appendChild(mCount);
-  panel.appendChild(mHead);
+  // Members heading
+  var mHead=document.createElement('div'); mHead.style.cssText='font-size:13px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px';
+  var mHT=document.createElement('span'); mHT.textContent='Team Members';
+  var mCnt=document.createElement('span'); mCnt.style.cssText='color:var(--blue);font-size:12px;font-weight:700;background:var(--sky);padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0'; mCnt.textContent=String(members.length);
+  mHead.appendChild(mHT); mHead.appendChild(mCnt); panel.appendChild(mHead);
 
-  // -- Member cards
+  // Member cards
   members.forEach(function(m){
-    var isYou = me && m.id === me.userId;
-    var initials = (m.name||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
-    var isAdm = m.role === 'admin';
-    var joined = m.created_at ? new Date(m.created_at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
-
-    var mcard = document.createElement('div');
-    mcard.style.cssText = 'background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px;transition:border-color .15s';
-    mcard.id = 'mcard-' + m.id;
-
-    var avatar = document.createElement('div');
-    avatar.style.cssText = 'width:40px;height:40px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;' + (isAdm ? 'background:linear-gradient(135deg,var(--navy),var(--navy-mid))' : 'background:linear-gradient(135deg,var(--blue-mid),var(--blue))');
-    avatar.textContent = initials;
-
-    var info = document.createElement('div');
-    info.style.cssText = 'flex:1;min-width:0';
-    var nameDiv = document.createElement('div');
-    nameDiv.style.cssText = 'font-size:14px;font-weight:700;color:var(--navy)';
-    nameDiv.textContent = (m.name||'Unknown') + (isYou ? ' (you)' : '');
-    var emailDiv = document.createElement('div');
-    emailDiv.style.cssText = 'font-size:12px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap';
-    emailDiv.textContent = m.email||'';
-    var joinedDiv = document.createElement('div');
-    joinedDiv.style.cssText = 'font-size:11px;color:var(--text4);margin-top:1px';
-    joinedDiv.textContent = 'Joined ' + joined;
-    info.appendChild(nameDiv);
-    info.appendChild(emailDiv);
-    info.appendChild(joinedDiv);
-
-    var badge = document.createElement('span');
-    badge.style.cssText = 'border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;flex-shrink:0;' + (isAdm ? 'background:rgba(124,58,237,.12);color:var(--purple);border:1px solid rgba(124,58,237,.3)' : 'background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep)');
-    badge.textContent = isAdm ? 'Admin' : 'Recruiter';
-
-    mcard.appendChild(avatar);
-    mcard.appendChild(info);
-    mcard.appendChild(badge);
-
-    if(isAdmin && !isYou){
-      var acts = document.createElement('div');
-      acts.style.cssText = 'display:flex;gap:6px;flex-shrink:0';
-      var roleBtn = document.createElement('button');
-      roleBtn.className = 'btn btn-outline btn-sm';
-      roleBtn.style.fontSize = '11px';
-      roleBtn.textContent = isAdm ? 'Make Recruiter' : 'Make Admin';
-      roleBtn.setAttribute('data-member-id', m.id);
-      roleBtn.setAttribute('data-new-role', isAdm ? 'recruiter' : 'admin');
-      var delBtn = document.createElement('button');
-      delBtn.className = 'btn btn-danger btn-sm';
-      delBtn.style.fontSize = '11px';
-      delBtn.textContent = 'Remove';
-      delBtn.setAttribute('data-remove-id', m.id);
-      delBtn.setAttribute('data-member-name', m.name||'Member');
-      acts.appendChild(roleBtn);
-      acts.appendChild(delBtn);
-      mcard.appendChild(acts);
+    var isYou=me&&m.id===me.userId;
+    var initials=(m.name||'?').split(' ').map(function(w){return w[0]||'';}).join('').slice(0,2).toUpperCase();
+    var isAdm=m.role==='admin';
+    var joined=m.created_at?new Date(m.created_at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';
+    var mc=document.createElement('div'); mc.style.cssText='background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px';
+    mc.id='mcard-'+m.id;
+    var av=document.createElement('div'); av.style.cssText='width:40px;height:40px;border-radius:10px;color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;'+(isAdm?'background:linear-gradient(135deg,var(--navy),var(--navy-mid))':'background:linear-gradient(135deg,var(--blue-mid),var(--blue))'); av.textContent=initials;
+    var info=document.createElement('div'); info.style.cssText='flex:1;min-width:0';
+    var nDiv=document.createElement('div'); nDiv.style.cssText='font-size:14px;font-weight:700;color:var(--navy)'; nDiv.textContent=(m.name||'Unknown')+(isYou?' (you)':'');
+    var eDiv=document.createElement('div'); eDiv.style.cssText='font-size:12px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap'; eDiv.textContent=m.email||'';
+    var jDiv=document.createElement('div'); jDiv.style.cssText='font-size:11px;color:var(--text4);margin-top:1px'; jDiv.textContent='Joined '+joined;
+    info.appendChild(nDiv); info.appendChild(eDiv); info.appendChild(jDiv);
+    var badge=document.createElement('span'); badge.style.cssText='border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;flex-shrink:0;'+(isAdm?'background:rgba(124,58,237,.12);color:var(--purple);border:1px solid rgba(124,58,237,.3)':'background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep)'); badge.textContent=isAdm?'Admin':'Recruiter';
+    mc.appendChild(av); mc.appendChild(info); mc.appendChild(badge);
+    if(isAdmin&&!isYou){
+      var acts=document.createElement('div'); acts.style.cssText='display:flex;gap:6px;flex-shrink:0';
+      var rBtn=document.createElement('button'); rBtn.className='btn btn-outline btn-sm'; rBtn.style.fontSize='11px'; rBtn.textContent=isAdm?'Make Recruiter':'Make Admin'; rBtn.setAttribute('data-member-id',m.id); rBtn.setAttribute('data-new-role',isAdm?'recruiter':'admin');
+      var dBtn=document.createElement('button'); dBtn.className='btn btn-danger btn-sm'; dBtn.style.fontSize='11px'; dBtn.textContent='Remove'; dBtn.setAttribute('data-remove-id',m.id); dBtn.setAttribute('data-member-name',m.name||'Member');
+      acts.appendChild(rBtn); acts.appendChild(dBtn); mc.appendChild(acts);
     }
-    panel.appendChild(mcard);
+    panel.appendChild(mc);
   });
 
-  // Wire copy buttons on this panel via event delegation
-  panel.addEventListener('click', function cpHandler(e){
-    var cBtn = e.target.closest('[data-copy-val]');
-    if(cBtn){
-      var val = cBtn.getAttribute('data-copy-val');
-      var msg = cBtn.getAttribute('data-toast') || 'Copied!';
-      navigator.clipboard.writeText(val).then(function(){ toast(msg,'green'); });
-      return;
-    }
-    var rBtn = e.target.closest('[data-new-role]');
-    if(rBtn){ changeMemberRole(rBtn.getAttribute('data-member-id'), rBtn.getAttribute('data-new-role')); return; }
-    var dBtn = e.target.closest('[data-remove-id]');
-    if(dBtn){ removeMember(dBtn.getAttribute('data-remove-id'), dBtn.getAttribute('data-member-name')); }
+  // Event delegation for all panel actions
+  panel.addEventListener('click', function(e){
+    var cBtn=e.target.closest('[data-copy-val]');
+    if(cBtn){ navigator.clipboard.writeText(cBtn.getAttribute('data-copy-val')).then(function(){toast(cBtn.getAttribute('data-toast')||'Copied!','green');}); return; }
+    var rBtn=e.target.closest('[data-new-role]');
+    if(rBtn){ changeMemberRole(rBtn.getAttribute('data-member-id'),rBtn.getAttribute('data-new-role')); return; }
+    var dBtn=e.target.closest('[data-remove-id]');
+    if(dBtn){ removeMember(dBtn.getAttribute('data-remove-id'),dBtn.getAttribute('data-member-name')); }
   });
 }
 
->
+async function changeMemberRole(userId, newRole){
+  if(!confirm('Change this member to '+newRole+'?')) return;
+  var res = await fetch('/api/org/members/'+userId+'/role',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:newRole})}).then(function(r){return r.json();});
+  if(res.ok){ toast('Role updated','green'); loadCompanyPanel(); }
+  else toast(res.error||'Failed','red');
+}
+async function removeMember(userId, name){
+  if(!confirm('Remove '+name+' from the company?')) return;
+  var res = await fetch('/api/org/members/'+userId,{method:'DELETE'}).then(function(r){return r.json();});
+  if(res.ok){ toast(name+' removed','green'); loadCompanyPanel(); }
+  else toast(res.error||'Failed','red');
+}
+
+async function doLogout(){
+  await post('/api/auth/logout');
+  window.location.href = '/';
+}
+
+//  INIT 
+async function init(){
+  // Burger
+  var burgerBtn = document.getElementById('burger-btn');
+  var drawerBg = document.getElementById('drawer-bg');
+  var drawerClose = document.getElementById('drawer-close');
+  if(burgerBtn) burgerBtn.onclick = function(){ drawerOpen ? closeDrawer() : openDrawer(); };
+  if(drawerBg) drawerBg.onclick = closeDrawer;
+  if(drawerClose) drawerClose.onclick = closeDrawer;
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&drawerOpen) closeDrawer(); });
+
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ switchTab(btn.getAttribute('data-tab')); });
+  });
+
+  // New session button
+  var newSessBtn = document.getElementById('new-sess-btn');
+  if(newSessBtn) newSessBtn.onclick = showNSModal;
+
+  // Modal close buttons
+  var nsClose = document.getElementById('ns-close-btn');
+  var nsCancel = document.getElementById('ns-cancel-btn');
+  var nsCreate = document.getElementById('ns-create-btn');
+  if(nsClose) nsClose.onclick = hideNSModal;
+  if(nsCancel) nsCancel.onclick = hideNSModal;
+  if(nsCreate) nsCreate.onclick = doCreateSession;
+  // Click outside modal to close
+  document.getElementById('ov-new-session').addEventListener('click',function(e){
+    if(e.target === this) hideNSModal();
+  });
+
+  // Session row click + copy delegation
+  document.getElementById('sessions-list').addEventListener('click',function(e){
+    var startBtn = e.target.closest('[data-start-sess]');
+    if(startBtn){ window.location.href='/session/'+startBtn.getAttribute('data-start-sess'); return; }
+    var copyBtn = e.target.closest('.sr-copy-btn');
+    if(copyBtn && copyBtn.dataset.code){ copyInviteCode(copyBtn.dataset.code); return; }
+    var row = e.target.closest('.session-row');
+    if(row && row.getAttribute('data-sid')) window.location.href='/session/'+row.getAttribute('data-sid');
+  });
+
+  // Company panel delegation
+  document.getElementById('company-panel').addEventListener('click',function(e){
+    var roleBtn = e.target.closest('[data-new-role]');
+    if(roleBtn){ changeMemberRole(roleBtn.getAttribute('data-member-id'), roleBtn.getAttribute('data-new-role')); return; }
+    var removeBtn = e.target.closest('[data-remove-id]');
+    if(removeBtn){ removeMember(removeBtn.getAttribute('data-remove-id'), removeBtn.getAttribute('data-member-name')); }
+  });
+
+  // Sign out
+  var signoutBtn = document.getElementById('drawer-signout-btn');
+  if(signoutBtn) signoutBtn.onclick = doLogout;
+
+  // Load user
+  var me = await get('/api/auth/me');
+  if(!me || !me.loggedIn){ window.location.href = '/'; return; }
+  currentMe = me;
+  var chip = document.getElementById('user-chip');
+  if(chip) chip.textContent = me.name + ' (' + (me.orgCode||'') + ')';
+  var titleEl = document.getElementById('welcome-title');
+  if(titleEl) titleEl.textContent = 'Welcome back, ' + me.name.split(' ')[0];
+  // Show role badge
+  var roleEl = document.getElementById('org-name');
+  if(roleEl){
+    // Set org name text
+    roleEl.textContent = me.orgName||'';
+    // Add role badge as separate span element
+    var badgeSpan = document.createElement('span');
+    badgeSpan.textContent = me.role==='admin' ? 'Admin' : 'Recruiter';
+    badgeSpan.style.cssText = me.role==='admin'
+      ? 'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px'
+      : 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px';
+    roleEl.appendChild(badgeSpan);
+  }
+  var orgEl = document.getElementById('org-name');
+  if(orgEl) orgEl.textContent = me.orgName || '';
+  var drawerName = document.getElementById('drawer-user-name');
+  var drawerOrg = document.getElementById('drawer-user-org');
+  if(drawerName) drawerName.textContent = me.name;
+  if(drawerOrg) drawerOrg.textContent = me.orgName || me.orgCode || '';
+  document.getElementById('drawer-user').style.display = 'block';
+
+  await loadSessions();
+}
+
+init();
+</script>
+</body>
+</html>
