@@ -71,7 +71,8 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
 <div class="nav-drawer" id="nav-drawer"><div class="nav-drawer-bg" id="drawer-bg"></div><div class="nav-drawer-panel"><div class="nav-drawer-header"><span class="nav-drawer-title">Navigation</span><button class="nav-drawer-close" id="drawer-close">X</button></div><nav class="nav-drawer-links"><a href="/" class="nav-drawer-link"><span class="nav-drawer-link-icon"></span>Home</a><a href="/dashboard" class="nav-drawer-link active"><span class="nav-drawer-link-icon"></span>Dashboard</a><a href="/recordings" class="nav-drawer-link"><span class="nav-drawer-link-icon"></span>Recordings</a></nav></div></div>
 <div class="session-layout">
   <div class="video-pane" id="video-pane" style="position:relative">
-    <video id="remote-vid" autoplay playsinline></video>
+    <audio id="remote-audio" autoplay playsinline style="display:none"></audio>
+    <div style="position:relative;width:100%;height:100%"><video id="remote-vid" autoplay playsinline style="width:100%;height:100%;object-fit:cover"></div><div id="cand-lockout-ov" style="display:none;position:absolute;inset:0;background:#060e1f;z-index:20;flex-direction:column;align-items:center;justify-content:center;text-align:center"><div style="font-size:40px;margin-bottom:12px">&#9940;</div><div style="color:#fff;font-size:18px;font-weight:700">Candidate Left Tab</div><div style="color:rgba(255,255,255,.6);font-size:13px;margin-top:6px" id="cand-lockout-timer">Lockout in progress...</div></div><video id="remote-vid-dummy" style="display:none"></video>
     <div class="pip"><video id="local-vid" autoplay playsinline muted></video></div>
     <div class="video-overlay-tl">
       <span id="timer-chip" class="video-chip" style="display:none">00:00</span>
@@ -136,9 +137,17 @@ body{display:flex;flex-direction:column;height:100vh;overflow:hidden}
     <div id="sbp-flags" class="sb-panel active" style="padding:8px;gap:6px">
     </div>
 
+    <div style="padding:8px 10px;border-top:1px solid var(--border);background:var(--off);display:flex;align-items:center;gap:8px">
+      <span style="font-size:12px;color:var(--text4)">&#128266; Volume</span>
+      <input type="range" id="vol-slider-sess" min="0" max="1" step="0.05" value="1"
+        style="flex:1;height:3px;cursor:pointer;accent-color:var(--blue);outline:none"
+        oninput="setSessVolume(this.value)">
+    </div>
     <div class="sb-foot">
       <button class="btn btn-danger btn-sm" onclick="endSession()" style="flex:1">End Session</button>
+      <button class="btn btn-outline btn-sm" onclick="leaveSession()" title="Leave without ending - session stays active">Leave</button>
       <button class="btn btn-outline btn-sm" onclick="copyInvite()">Copy Invite</button>
+      <button class="btn btn-outline btn-sm" onclick="emailInvite()" title="Send email invite">&#128231; Email</button>
       <a href="/recordings" class="btn btn-outline btn-sm">Recordings</a>
     </div>
   </div>
@@ -515,7 +524,16 @@ async function startWebRTC(isInit){
   if(isInit){var o=await pc.createOffer();await pc.setLocalDescription(o);socket.emit('webrtc-offer',{sessionId:sessionId,offer:o});}
 }
 
-async function endSession(){
+async function setSessVolume(v){
+  var ra=document.getElementById('remote-audio');if(ra)ra.volume=parseFloat(v);
+  var rv=document.getElementById('remote-vid');if(rv)rv.volume=parseFloat(v);
+}
+function leaveSession(){
+  // Leave without ending - candidate can still be in session
+  if(localStream) localStream.getTracks().forEach(function(t){t.stop();});
+  window.location.href = '/dashboard';
+}
+function endSession(){
   if(!confirm('End this session?'))return;
   if(isRec)stopRec();
   if(timerInterval)clearInterval(timerInterval);
@@ -525,6 +543,12 @@ async function endSession(){
   setTimeout(function(){location.href='/dashboard';},600);
 }
 
+function emailInvite(){
+  fetch('/api/sessions/'+sessionId+'/invite-email').then(function(r){return r.json();}).then(function(data){
+    if(data.mailto) window.open(data.mailto,'_blank');
+    else toast('Could not generate invite','red');
+  }).catch(function(){ toast('Email invite failed','red'); });
+}
 function copyInvite(){
   navigator.clipboard.writeText(location.origin+'/join/'+(sessionData&&sessionData.code||'')).then(function(){toast('Invite link copied!','green');});
 }
