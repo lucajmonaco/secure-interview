@@ -395,17 +395,6 @@ async function init(){
   var me = await get('/api/auth/me');
   if(!me || !me.loggedIn){ window.location.href = '/'; return; }
   currentMe = me;
-  // Set org name + role badge
-  var _orgEl = document.getElementById('org-name');
-  if(_orgEl){
-    _orgEl.textContent = me.orgName || '';
-    var _bs = document.createElement('span');
-    _bs.textContent = me.role === 'admin' ? 'Admin' : 'Recruiter';
-    _bs.style.cssText = me.role === 'admin'
-      ? 'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px;display:inline-block'
-      : 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px;display:inline-block';
-    _orgEl.appendChild(_bs);
-  }
   var chip = document.getElementById('user-chip');
   if(chip) chip.textContent = me.name + ' (' + (me.orgCode||'') + ')';
   var titleEl = document.getElementById('welcome-title');
@@ -413,12 +402,7 @@ async function init(){
   // Show role badge
   var roleEl = document.getElementById('org-name');
   if(roleEl){
-    // Set org name text
-    roleEl.textContent = me.orgName||'';
-    // Add role badge as separate span element
-    var badgeSpan = document.createElement('span');
-    badgeSpan.textContent = me.role==='admin' ? 'Admin' : 'Recruiter';
-    badgeSpan.style.cssText = me.role==='admin'
+    // badgeSpan_removed
       ? 'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px'
       : 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px';
     roleEl.appendChild(badgeSpan);
@@ -432,6 +416,27 @@ async function init(){
   document.getElementById('drawer-user').style.display = 'block';
 
   await loadSessions();
+  // Role badge - runs LAST so nothing overwrites it
+  (function(){
+    var ob = document.getElementById('org-name');
+    if(ob && currentMe){
+      ob.textContent = currentMe.orgName || '';
+      var sp = document.createElement('span');
+      sp.textContent = currentMe.role === 'admin' ? 'Admin' : 'Recruiter';
+      var adm = currentMe.role === 'admin';
+      sp.style.background = adm ? 'rgba(124,58,237,.15)' : '#eff6ff';
+      sp.style.color = adm ? '#7c3aed' : '#2563eb';
+      sp.style.border = adm ? '1px solid rgba(124,58,237,.3)' : '1px solid #bfdbfe';
+      sp.style.borderRadius = '99px';
+      sp.style.padding = '1px 8px';
+      sp.style.fontSize = '10px';
+      sp.style.fontWeight = '700';
+      sp.style.verticalAlign = 'middle';
+      sp.style.marginLeft = '6px';
+      sp.style.display = 'inline-block';
+      ob.appendChild(sp);
+    }
+  })();
 }
 
 init();
