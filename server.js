@@ -121,7 +121,7 @@ function generateSessionCode() {
   return generateCode(3) + '-' + generateCode(3);
 }
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ORG AUTH ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ ORG AUTH ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 // Create a new organization (company signup)
 app.post('/api/auth/org/create', async (req, res) => {
   const { orgName, email, password, name } = req.body;
@@ -193,7 +193,7 @@ app.get('/api/auth/me', (req, res) => {
   res.json({ loggedIn: true, ...user, orgName: org?.name, orgCode: org?.code });
 });
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ SESSIONS ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ SESSIONS ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 app.post('/api/sessions', requireAuth, (req, res) => {
   const { title, candidateName, questions } = req.body;
   const id = uuidv4();
@@ -238,14 +238,14 @@ app.post('/api/sessions/:id/flags', (req, res) => {
   res.json({ ok: true, id });
 });
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ RECORDINGS ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ RECORDINGS ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 app.post('/api/recordings/upload', requireAuth, upload.single('recording'), async (req, res) => {
   try {
     const { sessionId, durationSecs } = req.body;
     if (!req.file) return res.json({ error: 'No file uploaded' });
     const sess = db.prepare('SELECT * FROM sessions WHERE id=?').get(sessionId);
     if (!sess) return res.json({ error: 'Session not found' });
-    // Always use LIVE values from DB ÃÂÃÂ¢ÃÂÃÂÃÂÃÂ trust_score is updated in real-time as flags come in
+    // Always use LIVE values from DB ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ trust_score is updated in real-time as flags come in
     const freshSess = db.prepare('SELECT trust_score FROM sessions WHERE id=?').get(sessionId);
     const flagCount = db.prepare('SELECT COUNT(*) as cnt FROM flags WHERE session_id=?').get(sessionId);
     const shareToken = uuidv4().replace(/-/g, '');
@@ -322,7 +322,45 @@ function streamVideo(req, res, filePath) {
   }
 }
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ TEAMS ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ TEAMS ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+
+// JOB POSITIONS API
+app.post('/api/positions', requireAuth, (req, res) => {
+  const { title, description } = req.body;
+  if (!title) return res.json({ error: 'Position title required' });
+  const id = uuidv4();
+  db.prepare('INSERT INTO job_positions (id,org_id,title,description,created_by) VALUES (?,?,?,?,?)').run(id, req.session.orgId, title, description||'', req.session.userId);
+  res.json({ ok:true, id, title });
+});
+app.get('/api/positions', requireAuth, (req, res) => {
+  const rows = db.prepare('SELECT p.*, u.name as created_by_name, (SELECT COUNT(*) FROM recordings r WHERE r.job_position_id=p.id) as recording_count FROM job_positions p LEFT JOIN users u ON p.created_by=u.id WHERE p.org_id=? ORDER BY p.created_at DESC').all(req.session.orgId);
+  res.json(rows);
+});
+app.get('/api/positions/:id/recordings', requireAuth, (req, res) => {
+  const pos = db.prepare('SELECT * FROM job_positions WHERE id=? AND org_id=?').get(req.params.id, req.session.orgId);
+  if (!pos) return res.status(404).json({ error: 'Position not found' });
+  const recs = db.prepare('SELECT r.*, u.name as interviewer_name, s.title as session_title, s.candidate_name FROM recordings r LEFT JOIN users u ON r.interviewer_id=u.id LEFT JOIN sessions s ON r.session_id=s.id WHERE r.job_position_id=? ORDER BY r.created_at DESC').all(req.params.id);
+  res.json({ position: pos, recordings: recs });
+});
+app.patch('/api/recordings/:id/position', requireAuth, (req, res) => {
+  const { positionId } = req.body;
+  const rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
+  if (!rec) return res.status(404).json({ error: 'Recording not found' });
+  if (positionId) {
+    const pos = db.prepare('SELECT id FROM job_positions WHERE id=? AND org_id=?').get(positionId, req.session.orgId);
+    if (!pos) return res.json({ error: 'Position not found in your org' });
+  }
+  db.prepare('UPDATE recordings SET job_position_id=? WHERE id=?').run(positionId||null, req.params.id);
+  res.json({ ok:true });
+});
+app.delete('/api/positions/:id', requireAuth, (req, res) => {
+  const pos = db.prepare('SELECT * FROM job_positions WHERE id=? AND org_id=?').get(req.params.id, req.session.orgId);
+  if (!pos) return res.status(404).json({ error: 'Not found' });
+  db.prepare('UPDATE recordings SET job_position_id=NULL WHERE job_position_id=?').run(req.params.id);
+  db.prepare('DELETE FROM job_positions WHERE id=?').run(req.params.id);
+  res.json({ ok:true });
+});
+
 app.post('/api/teams', requireAuth, (req, res) => {
   const { name } = req.body;
   if (!name) return res.json({ error: 'Team name required' });
@@ -348,7 +386,7 @@ app.post('/api/teams/join', requireAuth, (req, res) => {
   res.json({ ok: true, teamName: team.name });
 });
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ PAGE ROUTES ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ PAGE ROUTES ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'index.html')));
 app.get('/dashboard', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'dashboard.html')));
 app.get('/session/:id', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'session.html')));
@@ -357,7 +395,7 @@ app.get('/recordings', (req, res) => res.sendFile(path.join(__dirname, 'public',
 app.get('/positions', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'recordings.html')));
 app.get('/share/:token', (req, res) => res.sendFile(path.join(__dirname, 'public', 'pages', 'share.html')));
 
-// ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ SOCKET.IO ÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
+// ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ SOCKET.IO ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ¢ÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂÃÂ
 const rooms = {};
 io.on('connection', (socket) => {
   socket.on('join-room', ({ sessionId, role }) => {
