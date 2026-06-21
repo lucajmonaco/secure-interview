@@ -189,7 +189,7 @@ async function loadSessions(){
   var avgScore = null;
   if(endedSessions.length > 0){
     var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB Ã¢ÂÂ use it as-is, only default if genuinely null/undefined
+      // trust_score is an integer from DB ÃÃÃ use it as-is, only default if genuinely null/undefined
       var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
       return acc + score;
     }, 0);
