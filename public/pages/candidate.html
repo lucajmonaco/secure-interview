@@ -455,6 +455,8 @@ async function startPreview(){
 }
 
 function setVolume(v){
+  var ra = document.getElementById('remote-audio');
+  if(ra) ra.volume = parseFloat(v);
   var remAudio = document.getElementById('remote-audio');
   if(remAudio) remAudio.volume = parseFloat(v);
   // Also adjust any interviewer video element volume
