@@ -212,6 +212,10 @@ async function loadSessions(){
     var copyBtn = s.status!=='ended' ? '<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:4px 10px">Copy Link</button>' : '';
     // Show "Start Now" for scheduled sessions
     var startNowBtn = '';
+    // For unscheduled waiting sessions - always show Start button
+    if(s.status==='waiting' && !s.scheduled_at){
+      startNowBtn = '<button class="btn btn-blue btn-sm" data-start-sess="'+s.id+'" style="font-size:11px;padding:4px 10px">Start</button>';
+    }
     if(s.status==='waiting' && s.scheduled_at){
       var now = Math.floor(Date.now()/1000);
       var minsUntil = Math.round((s.scheduled_at - now)/60);
@@ -411,8 +415,15 @@ async function init(){
   // Show role badge
   var roleEl = document.getElementById('org-name');
   if(roleEl){
-    var roleBadge = me.role==='admin' ? ' <span style="background:rgba(124,58,237,.15);color:var(--purple);border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle">Admin</span>' : ' <span style="background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle">Recruiter</span>';
-    roleEl.innerHTML = (me.orgName||'') + roleBadge;
+    // Set org name text
+    roleEl.textContent = me.orgName||'';
+    // Add role badge as separate span element
+    var badgeSpan = document.createElement('span');
+    badgeSpan.textContent = me.role==='admin' ? 'Admin' : 'Recruiter';
+    badgeSpan.style.cssText = me.role==='admin'
+      ? 'background:rgba(124,58,237,.15);color:#7c3aed;border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px'
+      : 'background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle;margin-left:6px';
+    roleEl.appendChild(badgeSpan);
   }
   var orgEl = document.getElementById('org-name');
   if(orgEl) orgEl.textContent = me.orgName || '';
