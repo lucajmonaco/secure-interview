@@ -221,6 +221,17 @@ async function doLogout(){await post('/api/auth/logout');window.location.reload(
 async function init(){
   // Always start with empty join code
   var jcEl=document.getElementById('join-code');if(jcEl)jcEl.value='';
+  // Handle invite links: /join-company/ORGCODE -> open join modal pre-filled
+  var urlPath=window.location.pathname;
+  var joinMatch=urlPath.match(/^\/join-company\/([A-Z0-9]{4,8})$/i);
+  if(joinMatch){
+    var inviteCode=joinMatch[1].toUpperCase();
+    var joCodeEl=document.getElementById('jo-code');
+    if(joCodeEl) joCodeEl.value=inviteCode;
+    showModal('ov-join');
+    // Replace URL so back button works cleanly
+    history.replaceState(null,'','/');
+  }
   // Clear stale join code from previous session
   var jc=document.getElementById('join-code');
   if(jc && jc.value && jc.value.trim()!=='') jc.value='';
