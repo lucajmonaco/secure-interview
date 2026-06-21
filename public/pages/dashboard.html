@@ -210,6 +210,17 @@ async function loadSessions(){
     var scoreHtml = score!==null ? '<span class="sr-score" style="color:'+scoreColor(score)+'">'+score+'%</span>' : '';
     var metaLine = (s.candidate_name||'Candidate')+' &middot; '+fmtDate(s.created_at)+(s.interviewer_name?' &middot; by '+s.interviewer_name:'');
     var copyBtn = s.status!=='ended' ? '<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:4px 10px">Copy Link</button>' : '';
+    // Show "Start Now" for scheduled sessions
+    var startNowBtn = '';
+    if(s.status==='waiting' && s.scheduled_at){
+      var now = Math.floor(Date.now()/1000);
+      var minsUntil = Math.round((s.scheduled_at - now)/60);
+      if(minsUntil <= 60){ // within 1 hour - show start button
+        var label = minsUntil <= 0 ? 'Start Now' : 'Start in '+minsUntil+'m';
+        var color = minsUntil <= 5 ? 'btn-blue' : 'btn-outline';
+        startNowBtn = '<button class="btn '+color+' btn-sm" data-start-sess="'+s.id+'" style="font-size:11px;padding:4px 10px">'+label+'</button>';
+      }
+    }
     var row = document.createElement('div');
     row.className = 'session-row';
     row.setAttribute('data-sid', s.id);
@@ -369,6 +380,8 @@ async function init(){
 
   // Session row click + copy delegation
   document.getElementById('sessions-list').addEventListener('click',function(e){
+    var startBtn = e.target.closest('[data-start-sess]');
+    if(startBtn){ window.location.href='/session/'+startBtn.getAttribute('data-start-sess'); return; }
     var copyBtn = e.target.closest('.sr-copy-btn');
     if(copyBtn && copyBtn.dataset.code){ copyInviteCode(copyBtn.dataset.code); return; }
     var row = e.target.closest('.session-row');
@@ -395,6 +408,12 @@ async function init(){
   if(chip) chip.textContent = me.name + ' (' + (me.orgCode||'') + ')';
   var titleEl = document.getElementById('welcome-title');
   if(titleEl) titleEl.textContent = 'Welcome back, ' + me.name.split(' ')[0];
+  // Show role badge
+  var roleEl = document.getElementById('org-name');
+  if(roleEl){
+    var roleBadge = me.role==='admin' ? ' <span style="background:rgba(124,58,237,.15);color:var(--purple);border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle">Admin</span>' : ' <span style="background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep);border-radius:99px;padding:1px 8px;font-size:10px;font-weight:700;vertical-align:middle">Recruiter</span>';
+    roleEl.innerHTML = (me.orgName||'') + roleBadge;
+  }
   var orgEl = document.getElementById('org-name');
   if(orgEl) orgEl.textContent = me.orgName || '';
   var drawerName = document.getElementById('drawer-user-name');
