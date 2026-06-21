@@ -218,7 +218,7 @@ async function loadSessions(){
   var avgScore = null;
   if(endedSessions.length > 0){
     var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB ÃÃÃ use it as-is, only default if genuinely null/undefined
+      // trust_score is an integer from DB  use it as-is, only default if genuinely null/undefined
       var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
       return acc + score;
     }, 0);
@@ -293,16 +293,22 @@ document.addEventListener('click',function(e){
 });
 
 
-// ââ BURGER NAV ââ
+//  BURGER NAV 
 var drawerOpen=false;
-function openDrawer(){drawerOpen=true;$('nav-drawer').classList.add('open');$('burger-btn').classList.add('open');$('burger-btn').setAttribute('aria-expanded','true');document.body.style.overflow='hidden';}
-function closeDrawer(){drawerOpen=false;$('nav-drawer').classList.remove('open');$('burger-btn').classList.remove('open');$('burger-btn').setAttribute('aria-expanded','false');document.body.style.overflow='';}
-$('burger-btn').onclick=function(){drawerOpen?closeDrawer():openDrawer();};
-$('drawer-close').onclick=closeDrawer;
-$('drawer-bg').onclick=closeDrawer;
-document.addEventListener('keydown',function(e){if(e.key==='Escape'&&drawerOpen)closeDrawer();});
+function openDrawer(){drawerOpen=true;var d=document.getElementById('nav-drawer'),b=document.getElementById('burger-btn');if(!d||!b)return;d.classList.add('open');b.classList.add('open');b.setAttribute('aria-expanded','true');document.body.style.overflow='hidden';}
+function closeDrawer(){drawerOpen=false;var d=document.getElementById('nav-drawer'),b=document.getElementById('burger-btn');if(!d||!b)return;d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');document.body.style.overflow='';}
+// Burger wired in initBurger() below
 async function doLogout(){await post('/api/auth/logout');window.location.href='/';}
-async function init(){
+function initBurger(){
+  var btn=document.getElementById('burger-btn');
+  var close=document.getElementById('drawer-close');
+  var bg=document.getElementById('drawer-bg');
+  if(btn) btn.onclick=function(){drawerOpen?closeDrawer():openDrawer();};
+  if(close) close.onclick=closeDrawer;
+  if(bg) bg.onclick=closeDrawer;
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&drawerOpen)closeDrawer();});
+}
+async function init(){initBurger();
   var me = await requireLogin('/'); if(!me) return;
   $('user-chip').textContent = me.name + ' (' + (me.orgCode||'') + ')';
   $('welcome-msg').textContent = 'Welcome back, ' + me.name.split(' ')[0];
