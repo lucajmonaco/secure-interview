@@ -378,7 +378,7 @@ function requireAdmin(req, res, next) {
   next();
 }
 
-// Ã¢ÂÂÃ¢ÂÂ ORG MEMBER MANAGEMENT Ã¢ÂÂÃ¢ÂÂ
+// ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ ORG MEMBER MANAGEMENT ÃÂ¢ÃÂÃÂÃÂ¢ÃÂÃÂ
 // List all members in the org
 app.get('/api/org/members', requireAuth, (req, res) => {
   const members = db.prepare('SELECT id, name, email, role, created_at FROM users WHERE org_id=? ORDER BY role DESC, created_at ASC').all(req.session.orgId);
