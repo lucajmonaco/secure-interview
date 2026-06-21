@@ -4,44 +4,14 @@
 <meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Dashboard - InterviewMyCandidate</title>
 <link rel="stylesheet" href="/css/main.css">
-
-<style>
-.company-panel{max-width:700px;margin:0 auto;}
-.company-code-card{background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap;}
-.company-code-label{font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px;}
-.company-code-value{font-size:28px;font-weight:900;color:var(--white);letter-spacing:6px;font-family:monospace;}
-.company-code-name{font-size:13px;color:rgba(255,255,255,.6);margin-top:4px;}
-.company-code-actions{display:flex;gap:8px;flex-wrap:wrap;}
-.member-list{display:flex;flex-direction:column;gap:8px;margin-bottom:24px;}
-.member-card{background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;transition:all var(--transition);}
-.member-card:hover{border-color:var(--border2);box-shadow:var(--shadow-sm);}
-.member-avatar{width:40px;height:40px;border-radius:10px;background:linear-gradient(135deg,var(--navy),var(--navy-mid));color:var(--white);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0;}
-.member-avatar.recruiter{background:linear-gradient(135deg,var(--blue-mid),var(--blue));}
-.member-info{flex:1;min-width:0;}
-.member-name{font-size:14px;font-weight:700;color:var(--navy);margin-bottom:1px;}
-.member-email{font-size:12px;color:var(--text4);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-.member-meta{font-size:11px;color:var(--text4);margin-top:1px;}
-.member-badge-admin{background:rgba(124,58,237,.12);color:var(--purple);border:1px solid rgba(124,58,237,.3);border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;flex-shrink:0;}
-.member-badge-recruiter{background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep);border-radius:99px;padding:2px 10px;font-size:11px;font-weight:700;flex-shrink:0;}
-.member-you{font-size:10px;color:var(--text4);font-style:italic;margin-left:4px;}
-.member-actions{display:flex;gap:6px;flex-shrink:0;}
-.company-section-title{font-size:13px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
-.company-section-title::after{content:'';flex:1;height:1px;background:var(--border);}
-.invite-box{background:var(--sky);border:1.5px solid var(--sky-deep);border-radius:var(--r);padding:16px 18px;margin-bottom:20px;}
-.invite-box-title{font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px;}
-.invite-box-sub{font-size:12px;color:var(--text4);margin-bottom:12px;line-height:1.5;}
-.invite-link-row{display:flex;gap:8px;align-items:center;}
-.invite-link-input{flex:1;padding:8px 12px;background:var(--white);border:1.5px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--navy);font-family:monospace;outline:none;}
-</style></head>
+</head>
 <body>
 <nav class="nav">
-  <a href="/" class="nav-logo" aria-label="Home">
-    <span class="logo-interview">Interview</span><span class="logo-my">My</span><span class="logo-candidate">Candidate</span>
-  </a>
+  <a href="/" class="nav-logo"><span class="logo-interview">Interview</span><span class="logo-my">My</span><span class="logo-candidate">Candidate</span></a>
   <div class="nav-right">
-    <span id="user-chip" style="font-size:12px;color:rgba(255,255,255,.5)"></span>
+    <span id="user-chip" style="font-size:12px;color:rgba(255,255,255,.55)"></span>
     <div class="topbar-sep"></div>
-    <button class="burger-btn" id="burger-btn" aria-label="Open menu" aria-expanded="false">
+    <button class="burger-btn" id="burger-btn" aria-label="Menu">
       <span class="burger-line"></span><span class="burger-line"></span><span class="burger-line"></span>
     </button>
   </div>
@@ -49,10 +19,7 @@
 <div class="nav-drawer" id="nav-drawer">
   <div class="nav-drawer-bg" id="drawer-bg"></div>
   <div class="nav-drawer-panel">
-    <div class="nav-drawer-header">
-      <span class="nav-drawer-title">Navigation</span>
-      <button class="nav-drawer-close" id="drawer-close">X</button>
-    </div>
+    <div class="nav-drawer-header"><span class="nav-drawer-title">Navigation</span><button class="nav-drawer-close" id="drawer-close">&#x2715;</button></div>
     <nav class="nav-drawer-links">
       <a href="/" class="nav-drawer-link"><span class="nav-drawer-link-icon">&#127968;</span>Home</a>
       <a href="/dashboard" class="nav-drawer-link active"><span class="nav-drawer-link-icon">&#128203;</span>Dashboard</a>
@@ -61,99 +28,71 @@
     <div class="nav-drawer-user" id="drawer-user">
       <div class="nav-drawer-user-name" id="drawer-user-name"></div>
       <div class="nav-drawer-user-org" id="drawer-user-org"></div>
-      <button class="nav-drawer-signout" onclick="doLogout()">Sign Out</button>
+      <button class="nav-drawer-signout" id="drawer-signout-btn">Sign Out</button>
     </div>
-  </div>
-</div>
-  <div class="topbar-right">
-    <a href="/recordings" class="btn btn-outline btn-sm">Recordings</a>
-    <div class="topbar-sep"></div>
-    
-    
   </div>
 </div>
 
 <div class="page-wrap">
   <div class="page-hdr">
     <div class="page-hdr-left">
-      <h1 id="welcome-msg">Dashboard</h1>
-      <p id="org-name" style="font-size:13px;color:var(--text2);margin-top:3px"></p>
+      <h1 id="welcome-title">Dashboard</h1>
+      <p id="org-name" style="font-size:13px;color:var(--text4);margin-top:2px"></p>
     </div>
     <button class="btn btn-primary" id="new-sess-btn">+ New Session</button>
   </div>
 
-  <div id="stats-row" class="stats-row" style="display:none">
+  <div class="stats-row" id="stats-row" style="display:none">
     <div class="stat-card"><div class="stat-val" id="stat-total">0</div><div class="stat-label">Total Sessions</div></div>
-    <div class="stat-card"><div class="stat-val trust-hi" id="stat-active">0</div><div class="stat-label">Active Now</div></div>
-    <div class="stat-card"><div class="stat-val" id="stat-avg">N/A</div><div class="stat-label">Avg Trust Score (Ended)</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-active" style="color:var(--green)">0</div><div class="stat-label">Active Now</div></div>
+    <div class="stat-card"><div class="stat-val" id="stat-trust" style="color:var(--green)">N/A</div><div class="stat-label">Avg Trust Score (Ended)</div></div>
   </div>
 
   <div class="tabs-bar">
-    <button class="tab-btn active" onclick="switchTab('sessions',this)">Sessions</button>
-    <button class="tab-btn" onclick="switchTab('team',this)">Team</button>
+    <button class="tab-btn active" id="tab-sessions-btn" data-tab="sessions">Sessions</button>
+    <button class="tab-btn" id="tab-team-btn" data-tab="team">Company</button>
   </div>
 
-  <div id="tab-sessions" class="tab-panel active"><div id="sessions-list"></div></div>
-  <div class="tab-panel" id="tab-team">
-  <div class="company-panel" id="company-panel">
-    <div style="text-align:center;padding:32px;color:var(--text4)">Loading company info...</div>
+  <div class="tab-panel active" id="tab-sessions">
+    <div id="sessions-list">
+      <div class="sessions-empty" style="text-align:center;padding:40px 20px;color:var(--text4)">
+        <div style="font-size:40px;margin-bottom:12px">&#127908;</div>
+        <h3 style="font-size:16px;font-weight:700;color:var(--text3);margin-bottom:6px">No sessions yet</h3>
+        <p style="font-size:13px;line-height:1.7">Create your first interview session by clicking<br><strong>+ New Session</strong> above.</p>
+      </div>
+    </div>
   </div>
-</div>
-    <div id="teams-list"></div>
+
+  <div class="tab-panel" id="tab-team">
+    <div id="company-panel" style="max-width:700px;margin:0 auto">
+      <div style="text-align:center;padding:32px;color:var(--text4)">Loading...</div>
+    </div>
   </div>
 </div>
 
 <!-- NEW SESSION MODAL -->
 <div id="ov-new-session" style="display:none">
-  <div class="modal-inner" style="width:480px">
-    <button class="modal-x" onclick="hideModal('ov-new-session')">X</button>
-    <h3>New Interview Session</h3>
+  <div class="modal-inner" style="max-width:560px">
+    <button class="modal-x" id="ns-close-btn">&#x2715;</button>
+    <h2>New Interview Session</h2>
     <p class="modal-sub">Create a session and share the invite link with your candidate.</p>
-    <div class="field"><label class="label">Session Title *</label><input class="input" id="ns-title" placeholder="e.g. Senior Engineer Round 2"></div>
-    <div class="field"><label class="label">Candidate Name</label><input class="input" id="ns-candidate" placeholder="e.g. Jane Smith"></div>
-    <div class="field">
-      <label class="label">Interview Questions <span style="color:var(--text3);font-weight:400">(one per line)</span></label>
-      <textarea class="input" id="ns-questions" rows="5" placeholder="Tell me about yourself.&#10;What is your biggest strength?&#10;Describe a challenging project.&#10;How do you handle conflict?&#10;Where do you see yourself in 5 years?"></textarea>
-    </div>
-    <div class="field">
-      <label class="label">Schedule Interview <span style="color:var(--text3);font-weight:400">(optional - leave blank to start now)</span></label>
-      <input class="input" type="datetime-local" id="ns-scheduled" style="color-scheme:dark">
-      <div style="font-size:11px;color:var(--text3);margin-top:4px">Candidate will not be able to join until 5 minutes before this time. The code and link are generated immediately so you can send them now.</div>
-    </div>
+    <label class="label">Session Title *</label>
+    <input type="text" id="ns-title" class="input" placeholder="e.g. Senior Engineer Round 2" maxlength="80">
+    <label class="label">Candidate Name</label>
+    <input type="text" id="ns-candidate" class="input" placeholder="e.g. Jane Smith">
+    <label class="label">Interview Questions <span style="font-weight:400;color:var(--text4);font-size:11px">(one per line)</span></label>
+    <textarea id="ns-questions" class="input" rows="5" placeholder="Tell me about yourself.
+What is your biggest strength?
+Describe a challenging project.
+How do you handle conflict?
+Where do you see yourself in 5 years?"></textarea>
+    <label class="label">Schedule Interview <span style="font-weight:400;color:var(--text4);font-size:11px">(optional - leave blank to start now)</span></label>
+    <input type="datetime-local" id="ns-scheduled" class="input" style="color-scheme:light">
+    <div style="font-size:11px;color:var(--text4);margin-top:5px;padding:6px 10px;background:var(--sky);border-radius:6px;border-left:3px solid var(--blue-light)">Leave blank to start immediately. Candidate cannot join until 5 min before scheduled time.</div>
     <div id="ns-err" class="err" style="display:none"></div>
     <div class="modal-footer">
-      <button class="btn btn-outline" onclick="hideModal('ov-new-session')">Cancel</button>
-      <button class="btn btn-primary" id="ns-btn" onclick="createSession()">Create and Open Session</button>
-    </div>
-  </div>
-</div>
-
-<!-- CREATE TEAM MODAL -->
-<div id="ov-create-team" style="display:none">
-  <div class="modal-inner">
-    <button class="modal-x" onclick="hideModal('ov-create-team')">X</button>
-    <h3>Create Team</h3>
-    <p class="modal-sub">Teams let you organize sessions and members within your company.</p>
-    <div class="field"><label class="label">Team Name</label><input class="input" id="ct-name" placeholder="e.g. Engineering Hiring"></div>
-    <div id="ct-err" class="err" style="display:none"></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="hideModal('ov-create-team')">Cancel</button>
-      <button class="btn btn-primary" onclick="createTeam()">Create Team</button>
-    </div>
-  </div>
-</div>
-
-<!-- JOIN TEAM MODAL -->
-<div id="ov-join-team" style="display:none">
-  <div class="modal-inner">
-    <button class="modal-x" onclick="hideModal('ov-join-team')">X</button>
-    <h3>Join Team</h3>
-    <p class="modal-sub">Enter the invite code from your team admin.</p>
-    <div class="field"><label class="label">Invite Code</label><input class="input" id="jt-code" placeholder="ABCD1234" style="font-family:monospace;letter-spacing:2px;text-transform:uppercase"></div>
-    <div id="jt-err" class="err" style="display:none"></div>
-    <div class="modal-footer">
-      <button class="btn btn-outline" onclick="hideModal('ov-join-team')">Cancel</button>
-      <button class="btn btn-primary" onclick="joinTeam()">Join Team</button>
+      <button class="btn btn-outline" id="ns-cancel-btn">Cancel</button>
+      <button class="btn btn-primary" id="ns-create-btn">Create and Open Session</button>
     </div>
   </div>
 </div>
@@ -161,312 +100,278 @@
 <div id="toast-container"></div>
 <script src="/js/utils.js"></script>
 <script>
-document.getElementById('new-sess-btn').onclick = function(){ 
-    // Set min datetime to now for the scheduler
-    var now = new Date(); now.setMinutes(now.getMinutes()-now.getTimezoneOffset());
-    var nsEl = document.getElementById('ns-scheduled'); 
-    if(nsEl) nsEl.min = now.toISOString().slice(0,16);
-    showModal("ov-new-session"); 
-  };
-document.getElementById('create-team-btn').onclick = function(){ showModal("ov-create-team"); };
-document.getElementById('join-team-btn').onclick = function(){ showModal("ov-join-team"); };
-['ov-new-session','ov-create-team','ov-join-team'].forEach(function(id){
-  document.getElementById(id).addEventListener('click',function(e){if(e.target===this)hideModal(id);});
-});
+// All state
+var currentMe = null;
+var drawerOpen = false;
 
-function switchTab(name,btn){
-  document.querySelectorAll('.tab-panel').forEach(function(p){p.classList.remove('active');});
-  document.querySelectorAll('.tab-btn').forEach(function(b){b.classList.remove('active');});
-  document.getElementById('tab-'+name).classList.add('active');
-  btn.classList.add('active');
+// ── BURGER ──
+function openDrawer(){
+  drawerOpen = true;
+  document.getElementById('nav-drawer').classList.add('open');
+  document.getElementById('burger-btn').classList.add('open');
+}
+function closeDrawer(){
+  drawerOpen = false;
+  document.getElementById('nav-drawer').classList.remove('open');
+  document.getElementById('burger-btn').classList.remove('open');
 }
 
-function buildSessionRow(s){
-  var score = s.trust_score != null ? s.trust_score : 100;
-  var scoreColor = score >= 80 ? 'var(--green)' : score >= 60 ? 'var(--amber)' : 'var(--red)';
-  var flagCount = (s.flags||[]).length;
-  var statusBadge;
-  if(s.status === 'active') statusBadge = '<span class="badge badge-green">Live</span>';
-  else if(s.status === 'ended') statusBadge = '<span class="badge badge-default">Ended</span>';
-  else if(s.scheduled_at) {
-    var schedD = new Date(s.scheduled_at*1000);
-    var schedStr = schedD.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    statusBadge = '<span class="badge" style="background:rgba(139,92,246,.15);color:#a78bfa;border-color:#7c3aed">Scheduled: '+schedStr+'</span>';
-  } else if(s.scheduled_at){
-    var sd=new Date(s.scheduled_at*1000);
-    var sds=sd.toLocaleString('en-US',{month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
-    statusBadge='<span class="badge badge-scheduled">Scheduled: '+sds+'</span>';
-  }else statusBadge='<span class="badge badge-amber">Waiting</span>';
-  var div = document.createElement('div');
-  div.className = 'session-row';
-  div.innerHTML = '<div class="session-avatar">S</div>'
-    +'<div style="flex:1;min-width:0">'
-    +'<div class="sr-title">'+s.title+'</div>'
-    +'<div class="sr-meta">'+(s.candidate_name||'Candidate')+' - '+fmtDate(s.created_at)
-    +(flagCount ? ' - <span style="color:var(--amber)">'+flagCount+' flag'+(flagCount!==1?'s':'')+'</span>' : '')
-    +'</div></div>'
-    +'<div class="sr-right" style="display:flex;align-items:center;gap:6px">'
-    +(s.status!=='ended'?'<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:3px 8px">Copy Link</button>':'')
-    +'<span class="sr-score" style="color:'+scoreColor+'">'+score+'%</span>'
-    +statusBadge
-    +'</div>';
-  div.onclick = function(e){ if(!e.target.closest('.sr-copy-btn')) window.location.href = '/session/'+s.id; };
-  return div;
+// ── TABS ──
+function switchTab(name){
+  document.querySelectorAll('.tab-btn').forEach(function(b){ b.classList.remove('active'); });
+  document.querySelectorAll('.tab-panel').forEach(function(p){ p.classList.remove('active'); });
+  var btn = document.getElementById('tab-'+name+'-btn');
+  var panel = document.getElementById('tab-'+name);
+  if(btn) btn.classList.add('active');
+  if(panel) panel.classList.add('active');
+  if(name === 'team') loadCompanyPanel();
 }
 
-function buildTeamCard(t){
-  var card = document.createElement('div'); card.className = 'team-card';
-  var hdr = document.createElement('div'); hdr.className = 'team-hdr';
-  hdr.innerHTML = '<div><div class="team-name">'+t.name+'</div>'
-    +'<div class="team-meta">'+(t.members||[]).length+' member'+(((t.members||[]).length)!==1?'s':'')+'</div></div>';
-  var code = document.createElement('span'); code.className = 'invite-code'; code.title = 'Click to copy';
-  code.textContent = t.invite_code;
-  code.onclick = function(){ navigator.clipboard.writeText(t.invite_code).then(function(){ toast('Team code copied!','green'); }); };
-  hdr.appendChild(code); card.appendChild(hdr);
-  (t.members||[]).forEach(function(m){
-    var row = document.createElement('div'); row.className = 'member-row';
-    row.innerHTML = '<div class="avatar">'+m.name.slice(0,2).toUpperCase()+'</div>'
-      +'<div style="flex:1"><div style="font-size:13px;font-weight:600">'+m.name+'</div>'
-      +'<div style="font-size:11px;color:var(--text2)">'+m.email+'</div></div>'
-      +'<span class="badge badge-default">'+m.role+'</span>';
-    card.appendChild(row);
-  });
-  return card;
+// ── MODALS ──
+function showNSModal(){
+  var nsEl = document.getElementById('ns-scheduled');
+  if(nsEl){
+    var now = new Date();
+    now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
+    nsEl.min = now.toISOString().slice(0,16);
+    nsEl.value = '';
+  }
+  document.getElementById('ns-title').value = '';
+  document.getElementById('ns-candidate').value = '';
+  document.getElementById('ns-err').style.display = 'none';
+  showModal('ov-new-session');
 }
+function hideNSModal(){
+  hideModal('ov-new-session');
+}
+
+// ── SESSION CREATION ──
+async function doCreateSession(){
+  var title = document.getElementById('ns-title').value.trim();
+  var candidate = document.getElementById('ns-candidate').value.trim();
+  var questionsRaw = document.getElementById('ns-questions').value;
+  var scheduledEl = document.getElementById('ns-scheduled');
+  var scheduled = scheduledEl ? scheduledEl.value : '';
+  var errEl = document.getElementById('ns-err');
+  errEl.style.display = 'none';
+  if(!title){ errEl.textContent = 'Session title is required'; errEl.style.display = 'block'; return; }
+  var btn = document.getElementById('ns-create-btn');
+  btn.disabled = true; btn.textContent = 'Creating...';
+  var questions = questionsRaw.split('\n').map(function(q){ return q.trim(); }).filter(function(q){ return q; });
+  var body = {title:title, candidateName:candidate||'Candidate', questions:questions, scheduledAt:scheduled||null};
+  var res = await post('/api/sessions', body);
+  btn.disabled = false; btn.textContent = 'Create and Open Session';
+  if(res.error){ errEl.textContent = res.error; errEl.style.display = 'block'; return; }
+  hideModal('ov-new-session');
+  window.location.href = '/session/' + res.id;
+}
+
+// ── SESSIONS LIST ──
+function fmtDate(ts){ return ts ? new Date(ts*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : ''; }
+function fmtScore(s){ if(s===null||s===undefined) return null; return Math.round(s); }
+function scoreColor(s){ return s>=80?'var(--green)':s>=60?'var(--amber)':'var(--red)'; }
 
 async function loadSessions(){
-  var sessions = await get('/api/sessions');
-  var el = $('sessions-list'); el.innerHTML = '';
-  if(!sessions || !sessions.length){
-    el.innerHTML = '<div class="empty"><div class="empty-icon">S</div><h3>No sessions yet</h3><p>Create your first session and share the invite link with a candidate.</p></div>';
+  var res = await get('/api/sessions');
+  if(!res || res.error) return;
+  var sessions = Array.isArray(res) ? res : [];
+
+  // Update stats
+  var ended = sessions.filter(function(s){ return s.status==='ended'; });
+  var active = sessions.filter(function(s){ return s.status==='active'; });
+  document.getElementById('stat-total').textContent = sessions.length;
+  document.getElementById('stat-active').textContent = active.length;
+  var scores = ended.map(function(s){ return fmtScore(s.trust_score); }).filter(function(v){ return v!==null; });
+  var avgScore = scores.length ? Math.round(scores.reduce(function(a,b){return a+b;},0)/scores.length) : null;
+  var statTrust = document.getElementById('stat-trust');
+  statTrust.textContent = avgScore!==null ? avgScore+'%' : 'N/A';
+  statTrust.style.color = avgScore!==null ? scoreColor(avgScore) : 'var(--green)';
+  document.getElementById('stats-row').style.display = sessions.length ? 'grid' : 'none';
+
+  var container = document.getElementById('sessions-list');
+  if(!sessions.length){
+    container.innerHTML = '<div style="text-align:center;padding:40px 20px;color:var(--text4)"><div style="font-size:40px;margin-bottom:12px">&#127908;</div><h3 style="font-size:16px;font-weight:700;color:var(--text3);margin-bottom:6px">No sessions yet</h3><p style="font-size:13px;line-height:1.7">Create your first interview session by clicking <strong>+ New Session</strong> above.</p></div>';
     return;
   }
 
-  // Stats calculation
-  var active = sessions.filter(function(s){ return s.status === 'active'; }).length;
-
-  // FIXED: only average ENDED sessions, use real trust_score value (never substitute 100)
-  var endedSessions = sessions.filter(function(s){ return s.status === 'ended'; });
-  var avgScore = null;
-  if(endedSessions.length > 0){
-    var total = endedSessions.reduce(function(acc, s){
-      // trust_score is an integer from DB  use it as-is, only default if genuinely null/undefined
-      var score = (s.trust_score !== null && s.trust_score !== undefined) ? s.trust_score : 100;
-      return acc + score;
-    }, 0);
-    avgScore = Math.round(total / endedSessions.length);
-  }
-
-  $('stat-total').textContent = sessions.length;
-  $('stat-active').textContent = active;
-
-  var avgEl = $('stat-avg');
-  if(avgScore !== null){
-    avgEl.textContent = avgScore + '%';
-    avgEl.className = 'stat-val ' + (avgScore >= 80 ? 'trust-hi' : avgScore >= 60 ? 'trust-mid' : 'trust-lo');
-  } else {
-    avgEl.textContent = 'N/A';
-    avgEl.className = 'stat-val';
-  }
-
-  $('stats-row').style.display = 'grid';
-  sessions.forEach(function(s){ el.appendChild(buildSessionRow(s)); });
+  container.innerHTML = '';
+  sessions.forEach(function(s){
+    var score = s.trust_score!==null&&s.trust_score!==undefined ? Math.round(s.trust_score) : null;
+    var statusBadge = '';
+    if(s.status==='active') statusBadge = '<span class="badge badge-green" style="animation:livePulse 2s infinite">&#9679; Live</span>';
+    else if(s.status==='ended') statusBadge = '<span class="badge badge-default">Ended</span>';
+    else if(s.scheduled_at){
+      var sd = new Date(s.scheduled_at*1000);
+      var sds = sd.toLocaleDateString('en-US',{month:'short',day:'numeric'})+' '+sd.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+      statusBadge = '<span class="badge" style="background:rgba(124,58,237,.12);color:var(--purple);border-color:rgba(124,58,237,.3)">Scheduled: '+sds+'</span>';
+    } else {
+      statusBadge = '<span class="badge badge-amber">Waiting</span>';
+    }
+    var scoreHtml = score!==null ? '<span class="sr-score" style="color:'+scoreColor(score)+'">'+score+'%</span>' : '';
+    var metaLine = (s.candidate_name||'Candidate')+' &middot; '+fmtDate(s.created_at)+(s.interviewer_name?' &middot; by '+s.interviewer_name:'');
+    var copyBtn = s.status!=='ended' ? '<button class="btn btn-outline btn-sm sr-copy-btn" data-code="'+s.code+'" style="font-size:11px;padding:4px 10px">Copy Link</button>' : '';
+    var row = document.createElement('div');
+    row.className = 'session-row';
+    row.setAttribute('data-sid', s.id);
+    row.innerHTML = '<div class="session-avatar">'+((s.candidate_name||'C').charAt(0).toUpperCase())+'</div><div style="flex:1;min-width:0"><div class="sr-title">'+s.title+'</div><div class="sr-meta">'+metaLine+'</div></div><div class="sr-right">'+copyBtn+scoreHtml+statusBadge+'</div>';
+    container.appendChild(row);
+  });
 }
 
-async function loadTeams(){
-  var teams = await get('/api/teams');
-  var el = $('teams-list'); el.innerHTML = '';
-  if(!teams || !teams.length){
-    el.innerHTML = '<div class="empty"><div class="empty-icon">T</div><h3>No teams yet</h3><p>Create a team and invite your colleagues with the team code.</p></div>';
-    return;
-  }
-  teams.forEach(function(t){ el.appendChild(buildTeamCard(t)); });
+// ── COPY INVITE ──
+function copyInviteCode(code){
+  navigator.clipboard.writeText(location.origin+'/join/'+code).then(function(){ toast('Invite link copied!','green'); });
 }
 
-async function createSession(){
-  var title = $('ns-title').value.trim();
-  var candidate = $('ns-candidate').value.trim();
-  var qText = $('ns-questions').value.trim();
-  var questions = qText ? qText.split('\n').map(function(q){ return q.trim(); }).filter(Boolean) : [];
-  var err = $('ns-err'); err.style.display = 'none';
-  if(!title){ err.textContent = 'Session title is required'; err.style.display = 'block'; return; }
-  var btn = $('ns-btn'); btn.disabled = true; btn.textContent = 'Creating...';
-  var res = await post('/api/sessions', {title:title, candidateName:candidate||'Candidate', questions:questions, scheduledAt:(document.getElementById('ns-scheduled')||{}).value||null});
-  if(res.error){ err.textContent = res.error; err.style.display = 'block'; btn.disabled = false; btn.textContent = 'Create and Open Session'; return; }
-  window.location.href = '/session/'+res.id;
-}
-
-async function createTeam(){
-  var name = $('ct-name').value.trim(), err = $('ct-err'); err.style.display = 'none';
-  if(!name){ err.textContent = 'Team name required'; err.style.display = 'block'; return; }
-  var res = await post('/api/teams', {name:name});
-  if(res.error){ err.textContent = res.error; err.style.display = 'block'; return; }
-  toast('Team created! Code: '+res.inviteCode, 'green', 5000);
-  hideModal('ov-create-team'); $('ct-name').value = '';
-  await loadTeams();
-}
-
-async function joinTeam(){
-  var code = $('jt-code').value.trim().toUpperCase(), err = $('jt-err'); err.style.display = 'none';
-  if(!code){ err.textContent = 'Enter an invite code'; err.style.display = 'block'; return; }
-  var res = await post('/api/teams/join', {inviteCode:code});
-  if(res.error){ err.textContent = res.error; err.style.display = 'block'; return; }
-  toast('Joined '+res.teamName+'!', 'green');
-  hideModal('ov-join-team'); $('jt-code').value = '';
-  await loadTeams();
-}
-
-
-
-//  COMPANY / TEAM TAB 
-var currentMe = null;
-
-async function loadCompanyPanel() {
+// ── COMPANY PANEL ──
+async function loadCompanyPanel(){
   var panel = document.getElementById('company-panel');
   if(!panel) return;
-
-  // Fetch org info and members in parallel
-  var [orgRes, membersRes] = await Promise.all([
-    fetch('/api/org/info').then(function(r){return r.json();}).catch(function(){return {};}),
-    fetch('/api/org/members').then(function(r){return r.json();}).catch(function(){return [];})
-  ]);
-
-  var orgCode = orgRes.code || currentMe.orgCode || '';
-  var orgName = orgRes.name || currentMe.orgName || '';
-  var isAdmin = currentMe && currentMe.role === 'admin';
-  var members = Array.isArray(membersRes) ? membersRes : [];
-  var inviteUrl = window.location.origin + '/join-company/' + orgCode;
-
+  var me = currentMe;
+  if(!me){ panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--text4)">Not logged in.</div>'; return; }
+  var orgInfo = await get('/api/org/info');
+  var members = await get('/api/org/members');
+  if(!orgInfo||!Array.isArray(members)){ panel.innerHTML = '<div style="text-align:center;padding:24px;color:var(--red)">Could not load company info.</div>'; return; }
+  var isAdmin = me.role === 'admin';
+  var code = orgInfo.code || me.orgCode || '';
+  var orgName = orgInfo.name || me.orgName || '';
+  var inviteUrl = location.origin + '/join-company/' + code;
   var html = '';
-
-  //  Company code card 
-  html += '<div class="company-code-card">';
-  html += '<div>';
-  html += '<div class="company-code-label">Company Invite Code</div>';
-  html += '<div class="company-code-value">' + orgCode + '</div>';
-  html += '<div class="company-code-name">' + orgName + '</div>';
-  html += '</div>';
-  html += '<div class="company-code-actions">';
-  html += '<button class="btn btn-blue btn-sm" onclick="copyOrgCode('' + orgCode + '')">&#128203; Copy Code</button>';
-  html += '<button class="btn btn-outline btn-sm" onclick="copyInviteLink('' + orgCode + '')">&#128279; Copy Invite Link</button>';
-  html += '</div>';
-  html += '</div>';
-
-  //  Invite box (admin only) 
-  if(isAdmin) {
-    html += '<div class="invite-box">';
-    html += '<div class="invite-box-title">&#128231; Invite New Members</div>';
-    html += '<div class="invite-box-sub">Share this invite link or company code with new team members. They can create an account and join instantly.</div>';
-    html += '<div class="invite-link-row">';
-    html += '<input class="invite-link-input" id="invite-link-val" readonly value="' + inviteUrl + '">';
-    html += '<button class="btn btn-blue btn-sm" onclick="copyInviteLink('' + orgCode + '')">Copy</button>';
-    html += '</div>';
-    html += '</div>';
+  // Code card
+  html += '<div style="background:linear-gradient(135deg,var(--navy) 0%,var(--navy-mid) 100%);border-radius:var(--r);padding:22px 26px;margin-bottom:20px;display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap">';
+  html += '<div><div style="font-size:11px;font-weight:700;color:rgba(255,255,255,.5);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:4px">Company Invite Code</div>';
+  html += '<div style="font-size:28px;font-weight:900;color:#fff;letter-spacing:6px;font-family:monospace">'+code+'</div>';
+  html += '<div style="font-size:13px;color:rgba(255,255,255,.6);margin-top:4px">'+orgName+'</div></div>';
+  html += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  html += '<button class="btn btn-blue btn-sm" onclick="navigator.clipboard.writeText(''+code+'').then(function(){toast('Code copied!','green');})">&#128203; Copy Code</button>';
+  html += '<button class="btn btn-outline btn-sm" style="background:transparent;color:rgba(255,255,255,.8);border-color:rgba(255,255,255,.25)" onclick="navigator.clipboard.writeText(''+inviteUrl+'').then(function(){toast('Invite link copied!','green');})">&#128279; Copy Invite</button>';
+  html += '</div></div>';
+  // Invite box (admin)
+  if(isAdmin){
+    html += '<div style="background:var(--sky);border:1.5px solid var(--sky-deep);border-radius:var(--r);padding:16px 18px;margin-bottom:20px">';
+    html += '<div style="font-size:13px;font-weight:700;color:var(--navy);margin-bottom:4px">&#128231; Share Invite Link</div>';
+    html += '<div style="font-size:12px;color:var(--text4);margin-bottom:10px;line-height:1.5">Send this link to new team members. They can create an account and join instantly.</div>';
+    html += '<div style="display:flex;gap:8px;align-items:center"><input style="flex:1;padding:7px 11px;background:#fff;border:1.5px solid var(--border2);border-radius:var(--rs);font-size:12px;color:var(--navy);font-family:monospace;outline:none" readonly value="'+inviteUrl+'">';
+    html += '<button class="btn btn-blue btn-sm" onclick="navigator.clipboard.writeText(''+inviteUrl+'').then(function(){toast('Copied!','green');})">Copy</button></div></div>';
   }
-
-  //  Members list 
-  html += '<div class="company-section-title">Team Members <span style="color:var(--blue);font-size:12px;font-weight:700;background:var(--sky);padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0">' + members.length + '</span></div>';
-  html += '<div class="member-list">';
-
-  members.forEach(function(m) {
-    var isYou = currentMe && m.id === currentMe.userId;
+  // Members
+  html += '<div style="font-size:13px;font-weight:700;color:var(--text3);letter-spacing:.5px;text-transform:uppercase;margin-bottom:12px;display:flex;align-items:center;gap:8px">Team Members <span style="color:var(--blue);font-size:12px;font-weight:700;background:var(--sky);padding:1px 8px;border-radius:99px;text-transform:none;letter-spacing:0">'+members.length+'</span></div>';
+  members.forEach(function(m){
+    var isYou = me && m.id === me.userId;
     var initials = (m.name||'?').split(' ').map(function(w){return w[0];}).join('').slice(0,2).toUpperCase();
-    var isAdminMember = m.role === 'admin';
-    
-    html += '<div class="member-card" id="mcard-' + m.id + '">';
-    html += '<div class="member-avatar ' + (isAdminMember?'':'recruiter') + '">' + initials + '</div>';
-    html += '<div class="member-info">';
-    html += '<div class="member-name">' + (m.name||'Unknown') + (isYou?'<span class="member-you">(you)</span>':'') + '</div>';
-    html += '<div class="member-email">' + (m.email||'') + '</div>';
-    html += '<div class="member-meta">Joined ' + new Date((m.created_at||0)*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) + '</div>';
-    html += '</div>';
-    html += '<span class="' + (isAdminMember?'member-badge-admin':'member-badge-recruiter') + '">' + (isAdminMember?'&#128081; Admin':'&#128203; Recruiter') + '</span>';
-    
-    // Admin controls (don't show controls for yourself)
-    if(isAdmin && !isYou) {
-      html += '<div class="member-actions">';
-      if(isAdminMember) {
-        html += '<button class="btn btn-outline btn-sm" onclick="changeMemberRole('' + m.id + '','recruiter')" title="Demote to Recruiter" style="font-size:11px">Make Recruiter</button>';
-      } else {
-        html += '<button class="btn btn-outline btn-sm" onclick="changeMemberRole('' + m.id + '','admin')" title="Promote to Admin" style="font-size:11px">Make Admin</button>';
-      }
-      html += '<button class="btn btn-danger btn-sm" onclick="removeMember('' + m.id + '','' + (m.name||'').replace(/'/g,'') + '')" style="font-size:11px">&#128465;</button>';
+    var isAdm = m.role === 'admin';
+    var badgeStyle = isAdm ? 'background:rgba(124,58,237,.12);color:var(--purple);border:1px solid rgba(124,58,237,.3)' : 'background:var(--sky);color:var(--blue);border:1px solid var(--sky-deep)';
+    var badgeText = isAdm ? '&#128081; Admin' : '&#128203; Recruiter';
+    var avatarBg = isAdm ? 'background:linear-gradient(135deg,var(--navy),var(--navy-mid))' : 'background:linear-gradient(135deg,var(--blue-mid),var(--blue))';
+    var joined = m.created_at ? new Date(m.created_at*1000).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '';
+    html += '<div class="member-card" id="mcard-'+m.id+'" style="background:var(--white);border:1.5px solid var(--border);border-radius:var(--r);padding:14px 16px;display:flex;align-items:center;gap:14px;margin-bottom:8px">';
+    html += '<div style="width:40px;height:40px;border-radius:10px;'+avatarBg+';color:#fff;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;flex-shrink:0">'+initials+'</div>';
+    html += '<div style="flex:1;min-width:0"><div style="font-size:14px;font-weight:700;color:var(--navy)">'+(m.name||'Unknown')+(isYou?'<span style="font-size:10px;color:var(--text4);font-style:italic;margin-left:6px">(you)</span>':'')+'</div>';
+    html += '<div style="font-size:12px;color:var(--text4);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+(m.email||'')+'</div>';
+    html += '<div style="font-size:11px;color:var(--text4);margin-top:1px">Joined '+joined+'</div></div>';
+    html += '<span style="'+badgeStyle+';border-radius:99px;padding:3px 10px;font-size:11px;font-weight:700;flex-shrink:0">'+badgeText+'</span>';
+    if(isAdmin && !isYou){
+      var newRole = isAdm ? 'recruiter' : 'admin';
+      var roleLabel = isAdm ? 'Make Recruiter' : 'Make Admin';
+      html += '<div style="display:flex;gap:6px;flex-shrink:0">';
+      html += '<button class="btn btn-outline btn-sm" style="font-size:11px" data-member-id="'+m.id+'" data-new-role="'+newRole+'">'+roleLabel+'</button>';
+      html += '<button class="btn btn-danger btn-sm" style="font-size:11px" data-remove-id="'+m.id+'" data-member-name="'+(m.name||'').replace(/"/g,'').replace(/'/g,'')+'">&#128465;</button>';
       html += '</div>';
     }
     html += '</div>';
   });
-
-  if(members.length === 0) {
-    html += '<div style="text-align:center;padding:32px;color:var(--text4);font-size:13px;">No members found.</div>';
-  }
-  html += '</div>';
-
-  //  Sessions by member (admin view) 
-  if(isAdmin) {
-    html += '<div class="company-section-title">Sessions by Member</div>';
-    html += '<div style="font-size:13px;color:var(--text4);padding:16px;background:var(--off);border-radius:var(--r);border:1.5px solid var(--border);text-align:center;">&#128203; Click any session on the Sessions tab to view details. All sessions from all team members are visible to admins.</div>';
-  }
-
   panel.innerHTML = html;
 }
 
-function copyOrgCode(code) {
-  navigator.clipboard.writeText(code).then(function(){toast('Company code copied!','green');});
+async function changeMemberRole(userId, newRole){
+  if(!confirm('Change this member to '+newRole+'?')) return;
+  var res = await fetch('/api/org/members/'+userId+'/role',{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({role:newRole})}).then(function(r){return r.json();});
+  if(res.ok){ toast('Role updated','green'); loadCompanyPanel(); }
+  else toast(res.error||'Failed','red');
 }
-function copyInviteLink(code) {
-  var url = window.location.origin + '/join-company/' + code;
-  navigator.clipboard.writeText(url).then(function(){toast('Invite link copied!','green');});
-}
-
-async function changeMemberRole(userId, newRole) {
-  var label = newRole === 'admin' ? 'promote to Admin' : 'demote to Recruiter';
-  if(!confirm('Are you sure you want to ' + label + ' this member?')) return;
-  var res = await fetch('/api/org/members/' + userId + '/role', {
-    method:'PATCH', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({role:newRole})
-  }).then(function(r){return r.json();});
-  if(res.ok) { toast('Role updated','green'); loadCompanyPanel(); }
+async function removeMember(userId, name){
+  if(!confirm('Remove '+name+' from the company?')) return;
+  var res = await fetch('/api/org/members/'+userId,{method:'DELETE'}).then(function(r){return r.json();});
+  if(res.ok){ toast(name+' removed','green'); loadCompanyPanel(); }
   else toast(res.error||'Failed','red');
 }
 
-async function removeMember(userId, name) {
-  if(!confirm('Remove ' + name + ' from the company? They will lose access to all sessions and recordings.')) return;
-  var res = await fetch('/api/org/members/' + userId, {method:'DELETE'}).then(function(r){return r.json();});
-  if(res.ok) { toast(name + ' removed','green'); loadCompanyPanel(); }
-  else toast(res.error||'Failed','red');
+async function doLogout(){
+  await post('/api/auth/logout');
+  window.location.href = '/';
 }
 
-async function doLogout(){ await post('/api/auth/logout'); window.location.href = '/'; }
-function copyInviteCode(code){ navigator.clipboard.writeText(location.origin+'/join/'+code).then(function(){ toast('Invite link copied!','green'); }); }
-// Handle copy button clicks via delegation (avoids inline onclick quote issues)
-document.addEventListener('click',function(e){
-  var btn=e.target.closest('.sr-copy-btn');
-  if(btn&&btn.dataset.code) copyInviteCode(btn.dataset.code);
-});
+// ── INIT ──
+async function init(){
+  // Burger
+  var burgerBtn = document.getElementById('burger-btn');
+  var drawerBg = document.getElementById('drawer-bg');
+  var drawerClose = document.getElementById('drawer-close');
+  if(burgerBtn) burgerBtn.onclick = function(){ drawerOpen ? closeDrawer() : openDrawer(); };
+  if(drawerBg) drawerBg.onclick = closeDrawer;
+  if(drawerClose) drawerClose.onclick = closeDrawer;
+  document.addEventListener('keydown',function(e){ if(e.key==='Escape'&&drawerOpen) closeDrawer(); });
 
+  // Tab switching
+  document.querySelectorAll('.tab-btn').forEach(function(btn){
+    btn.addEventListener('click',function(){ switchTab(btn.getAttribute('data-tab')); });
+  });
 
-//  BURGER NAV 
-var drawerOpen=false;
-function openDrawer(){drawerOpen=true;var d=document.getElementById('nav-drawer'),b=document.getElementById('burger-btn');if(!d||!b)return;d.classList.add('open');b.classList.add('open');b.setAttribute('aria-expanded','true');document.body.style.overflow='hidden';}
-function closeDrawer(){drawerOpen=false;var d=document.getElementById('nav-drawer'),b=document.getElementById('burger-btn');if(!d||!b)return;d.classList.remove('open');b.classList.remove('open');b.setAttribute('aria-expanded','false');document.body.style.overflow='';}
-// Burger wired in initBurger() below
-async function doLogout(){await post('/api/auth/logout');window.location.href='/';}
-function initBurger(){
-  var btn=document.getElementById('burger-btn');
-  var close=document.getElementById('drawer-close');
-  var bg=document.getElementById('drawer-bg');
-  if(btn) btn.onclick=function(){drawerOpen?closeDrawer():openDrawer();};
-  if(close) close.onclick=closeDrawer;
-  if(bg) bg.onclick=closeDrawer;
-  document.addEventListener('keydown',function(e){if(e.key==='Escape'&&drawerOpen)closeDrawer();});
+  // New session button
+  var newSessBtn = document.getElementById('new-sess-btn');
+  if(newSessBtn) newSessBtn.onclick = showNSModal;
+
+  // Modal close buttons
+  var nsClose = document.getElementById('ns-close-btn');
+  var nsCancel = document.getElementById('ns-cancel-btn');
+  var nsCreate = document.getElementById('ns-create-btn');
+  if(nsClose) nsClose.onclick = hideNSModal;
+  if(nsCancel) nsCancel.onclick = hideNSModal;
+  if(nsCreate) nsCreate.onclick = doCreateSession;
+  // Click outside modal to close
+  document.getElementById('ov-new-session').addEventListener('click',function(e){
+    if(e.target === this) hideNSModal();
+  });
+
+  // Session row click + copy delegation
+  document.getElementById('sessions-list').addEventListener('click',function(e){
+    var copyBtn = e.target.closest('.sr-copy-btn');
+    if(copyBtn && copyBtn.dataset.code){ copyInviteCode(copyBtn.dataset.code); return; }
+    var row = e.target.closest('.session-row');
+    if(row && row.getAttribute('data-sid')) window.location.href='/session/'+row.getAttribute('data-sid');
+  });
+
+  // Company panel delegation
+  document.getElementById('company-panel').addEventListener('click',function(e){
+    var roleBtn = e.target.closest('[data-new-role]');
+    if(roleBtn){ changeMemberRole(roleBtn.getAttribute('data-member-id'), roleBtn.getAttribute('data-new-role')); return; }
+    var removeBtn = e.target.closest('[data-remove-id]');
+    if(removeBtn){ removeMember(removeBtn.getAttribute('data-remove-id'), removeBtn.getAttribute('data-member-name')); }
+  });
+
+  // Sign out
+  var signoutBtn = document.getElementById('drawer-signout-btn');
+  if(signoutBtn) signoutBtn.onclick = doLogout;
+
+  // Load user
+  var me = await get('/api/auth/me');
+  if(!me || !me.loggedIn){ window.location.href = '/'; return; }
+  currentMe = me;
+  var chip = document.getElementById('user-chip');
+  if(chip) chip.textContent = me.name + ' (' + (me.orgCode||'') + ')';
+  var titleEl = document.getElementById('welcome-title');
+  if(titleEl) titleEl.textContent = 'Welcome back, ' + me.name.split(' ')[0];
+  var orgEl = document.getElementById('org-name');
+  if(orgEl) orgEl.textContent = me.orgName || '';
+  var drawerName = document.getElementById('drawer-user-name');
+  var drawerOrg = document.getElementById('drawer-user-org');
+  if(drawerName) drawerName.textContent = me.name;
+  if(drawerOrg) drawerOrg.textContent = me.orgName || me.orgCode || '';
+  document.getElementById('drawer-user').style.display = 'block';
+
+  await loadSessions();
 }
-async function init(){initBurger();
-  var me = await requireLogin('/'); if(!me) return;
-  $('user-chip').textContent = me.name + ' (' + (me.orgCode||'') + ')';
-  $('welcome-msg').textContent = 'Welcome back, ' + me.name.split(' ')[0];
-  $('org-name').textContent = me.orgName || '';
-  await Promise.all([loadSessions(), loadTeams()]);
-}
+
 init();
 </script>
 </body>
