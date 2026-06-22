@@ -408,6 +408,20 @@ app.delete('/api/recordings/:id', requireAuth, (req, res) => {
   res.json({ ok: true });
 });
 
+app.delete('/api/sessions/:id', requireAuth, (req, res) => {
+  const sess = db.prepare('SELECT * FROM sessions WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
+  if (!sess) return res.status(404).json({ error: 'Not found' });
+  // Remove any recordings tied to this session (files + rows)
+  try {
+    const recs = db.prepare('SELECT * FROM recordings WHERE session_id=?').all(req.params.id);
+    recs.forEach(function(rc){ try { if (rc.file_path && fs.existsSync(rc.file_path)) fs.unlinkSync(rc.file_path); } catch(e) {} });
+    db.prepare('DELETE FROM recordings WHERE session_id=?').run(req.params.id);
+  } catch(e) {}
+  try { db.prepare('DELETE FROM flags WHERE session_id=?').run(req.params.id); } catch(e) {}
+  db.prepare('DELETE FROM sessions WHERE id=?').run(req.params.id);
+  res.json({ ok: true });
+});
+
 function streamVideo(req, res, filePath) {
   const stat = fs.statSync(filePath);
   const total = stat.size;
