@@ -222,6 +222,26 @@ async function loadSessions(){
           whenEl.style.cssText = 'font-size:12px;font-weight:600;color:var(--purple);white-space:nowrap';
           whenEl.textContent = when;
           row.appendChild(left); row.appendChild(whenEl);
+          var upResch = document.createElement('button');
+          upResch.textContent = 'Reschedule'; upResch.title = 'Change date/time';
+          upResch.style.cssText = 'flex:none;background:transparent;border:1px solid var(--border);color:var(--text2);font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer';
+          upResch.onclick = function(ev){
+            ev.stopPropagation();
+            var cur = new Date(s.scheduled_at*1000);
+            var pad = function(n){ return (n<10?'0':'')+n; };
+            var def = cur.getFullYear()+'-'+pad(cur.getMonth()+1)+'-'+pad(cur.getDate())+' '+pad(cur.getHours())+':'+pad(cur.getMinutes());
+            var input = prompt('Enter the new date and time for this interview (YYYY-MM-DD HH:MM, your local time):', def);
+            if(!input) return;
+            var parsed = new Date(input.replace(' ','T'));
+            if(isNaN(parsed.getTime())){ if(typeof toast==='function')toast('Could not read that date - use YYYY-MM-DD HH:MM','red'); return; }
+            var newTs = Math.floor(parsed.getTime()/1000);
+            upResch.disabled = true; upResch.textContent = 'Saving...';
+            fetch('/api/sessions/'+s.id,{method:'PATCH',headers:{'Content-Type':'application/json'},body:JSON.stringify({scheduledAt:newTs})}).then(function(res){return res.json();}).then(function(dd){
+              if(dd&&dd.ok){ if(typeof toast==='function')toast('Interview rescheduled','green'); if(typeof loadSessions==='function')loadSessions(); }
+              else { if(typeof toast==='function')toast('Reschedule failed: '+((dd&&dd.error)||'?'),'red'); upResch.disabled=false; upResch.textContent='Reschedule'; }
+            }).catch(function(){ if(typeof toast==='function')toast('Reschedule failed','red'); upResch.disabled=false; upResch.textContent='Reschedule'; });
+          };
+          row.appendChild(upResch);
           var upDel = document.createElement('button');
           upDel.textContent = 'Delete'; upDel.title = 'Delete upcoming interview';
           upDel.style.cssText = 'flex:none;background:transparent;border:1px solid #fecaca;color:#dc2626;font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer';
