@@ -275,7 +275,8 @@ app.get('/api/join/:code', (req, res) => {
 });
 
 app.patch('/api/sessions/:id', requireAuth, (req, res) => {
-  const { status, trustScore } = req.body;
+  const { status, trustScore, scheduledAt } = req.body;
+  if (scheduledAt !== undefined) db.prepare('UPDATE sessions SET scheduled_at=? WHERE id=? AND interviewer_id=?').run(scheduledAt || null, req.params.id, req.session.userId);
   if (status) db.prepare('UPDATE sessions SET status=? WHERE id=?').run(status, req.params.id);
   if (trustScore !== undefined) db.prepare('UPDATE sessions SET trust_score=? WHERE id=?').run(trustScore, req.params.id);
   if (status === 'ended') db.prepare('UPDATE sessions SET ended_at=? WHERE id=?').run(Math.floor(Date.now() / 1000), req.params.id);
