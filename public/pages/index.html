@@ -110,8 +110,8 @@
   <div class="modal-inner">
     <button class="modal-x" onclick="hideModal('ov-signin')">X</button>
     <h2>Welcome back</h2><p class="modal-sub">Sign in to your company account.</p>
-    <label class="label">Company Code <span style="font-weight:400;color:var(--text4);font-size:11px">(optional - leave blank to sign in by email)</span></label>
-    <input type="text" id="si-code" class="input" placeholder="Leave blank to sign in by email only" style="font-family:monospace;font-size:16px;letter-spacing:3px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
+    <label class="label">Company Code <span style="font-weight:400;color:var(--text4);font-size:11px">(optional)</span></label>
+    <input type="text" id="si-code" class="input" placeholder="Company code (optional)" style="font-family:monospace;font-size:16px;letter-spacing:3px;text-transform:uppercase" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'').slice(0,6)">
     <label class="label">Work Email</label><input type="email" id="si-email" class="input" placeholder="you@company.com">
     <label class="label">Password</label><input type="password" id="si-pass" class="input" placeholder="Password" onkeydown="if(event.key==='Enter')doSignIn()">
     <div id="si-err" class="err" style="display:none"></div>
