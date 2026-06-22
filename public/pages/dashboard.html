@@ -427,7 +427,7 @@ async function init(){
     var copyBtn = e.target.closest('.sr-copy-btn');
     if(copyBtn && copyBtn.dataset.code){ copyInviteCode(copyBtn.dataset.code); return; }
     var row = e.target.closest('.session-row');
-    if(row && row.getAttribute('data-sid')){ var rsid=row.getAttribute('data-sid'); if(row.getAttribute('data-status')==='ended'){ window.location.href='/recordings?session='+rsid; } else { window.location.href='/session/'+rsid; } }
+    if(row && row.getAttribute('data-sid')){ var rsid=row.getAttribute('data-sid'); if(row.getAttribute('data-status')==='ended'){ window.location.href='/recordings'; } else { window.location.href='/session/'+rsid; } }
   });
 
   // Company panel delegation
