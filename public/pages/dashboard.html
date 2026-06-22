@@ -222,6 +222,19 @@ async function loadSessions(){
           whenEl.style.cssText = 'font-size:12px;font-weight:600;color:var(--purple);white-space:nowrap';
           whenEl.textContent = when;
           row.appendChild(left); row.appendChild(whenEl);
+          var upDel = document.createElement('button');
+          upDel.textContent = 'Delete'; upDel.title = 'Delete upcoming interview';
+          upDel.style.cssText = 'flex:none;background:transparent;border:1px solid #fecaca;color:#dc2626;font-size:11px;font-weight:600;padding:4px 9px;border-radius:6px;cursor:pointer';
+          upDel.onclick = function(ev){
+            ev.stopPropagation();
+            if(!confirm('Delete this upcoming interview? This cannot be undone.')) return;
+            upDel.disabled = true; upDel.textContent = 'Deleting...';
+            fetch('/api/sessions/'+s.id,{method:'DELETE'}).then(function(res){return res.json();}).then(function(dd){
+              if(dd&&dd.ok){ if(typeof toast==='function')toast('Interview deleted','green'); if(typeof loadSessions==='function')loadSessions(); }
+              else { if(typeof toast==='function')toast('Delete failed: '+((dd&&dd.error)||'?'),'red'); upDel.disabled=false; upDel.textContent='Delete'; }
+            }).catch(function(){ if(typeof toast==='function')toast('Delete failed','red'); upDel.disabled=false; upDel.textContent='Delete'; });
+          };
+          row.appendChild(upDel);
           upList.appendChild(row);
         });
       }
