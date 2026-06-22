@@ -167,9 +167,9 @@ function startLockout(reason){
 
   // Flag the violation
   var severity = lockoutViolations >= 3 ? 'high' : 'medium';
-  sendFlagCooldown('tab-switch-'+lockoutViolations,
-    'Left Interview Screen #'+lockoutViolations,
-    reason + ' (violation #'+lockoutViolations+')',
+  sendFlagCooldown('left-screen',
+    'Left Interview Screen',
+    reason,
     severity, 2000);
 
   // Mute mic
@@ -554,7 +554,7 @@ function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionData&&sessionData.id,role:'candidate'});
   socket.on('recording-request',function(){ var m=document.getElementById('cand-consent-modal'); if(m) m.style.display='flex'; });
-  socket.on('recording-started',function(){ var b=document.getElementById('cand-rec-banner'); if(b) b.style.display='block'; var m=document.getElementById('cand-consent-modal'); if(m) m.style.display='none'; });
+  socket.on('recording-started',function(){ var m=document.getElementById('cand-consent-modal'); if(m) m.style.display='none'; });
   socket.on('recording-stopped',function(){ var b=document.getElementById('cand-rec-banner'); if(b) b.style.display='none'; });
   socket.on('peer-joined',function(d){if(d.role==='interviewer'){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);}});
   socket.on('peer-already-present',function(){$('i-status').textContent='Connected';$('i-status').className='badge badge-green';startWebRTC(false);});
