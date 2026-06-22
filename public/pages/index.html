@@ -47,7 +47,10 @@
     <div class="nav-drawer-user" id="drawer-user" style="display:none">
       <div class="nav-drawer-user-name" id="drawer-user-name"></div>
       <div class="nav-drawer-user-org" id="drawer-user-org"></div>
-      <button class="nav-drawer-signout" onclick="doLogout()">Sign Out</button>
+      <button class="nav-drawer-link" id="drawer-settings-btn" onclick="openSettingsModal()" style="width:100%;text-align:left;background:rgba(255,255,255,.06);border:none;border-radius:8px;padding:9px 12px;font-size:14px;color:rgba(255,255,255,.85);font-weight:500;cursor:pointer;display:flex;align-items:center;gap:10px;margin-bottom:6px">
+      <span style="font-size:16px">&#9881;&#65039;</span>Account Settings
+    </button>
+    <button class="nav-drawer-signout" onclick="doLogout()">Sign Out</button>
     </div>
   </div>
 </div>
