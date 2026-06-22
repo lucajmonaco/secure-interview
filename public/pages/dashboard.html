@@ -57,6 +57,7 @@
   </div>
 
   <div class="tab-panel active" id="tab-sessions">
+    <div id="upcoming-section" style="display:none;margin-bottom:18px"><div style="font-size:14px;font-weight:700;color:var(--text2);margin-bottom:10px">Upcoming Interviews</div><div id="upcoming-list"></div></div>
     <div id="sessions-list">
       <div class="sessions-empty" style="text-align:center;padding:40px 20px;color:var(--text4)">
         <div style="font-size:40px;margin-bottom:12px">&#127908;</div>
@@ -83,6 +84,8 @@
     <input type="text" id="ns-title" class="input" placeholder="e.g. Senior Engineer Round 2" maxlength="80">
     <label class="label">Candidate Name</label>
     <input type="text" id="ns-candidate" class="input" placeholder="e.g. Jane Smith">
+    <label class="label">Candidate Email <span style="font-weight:400;color:var(--text4);font-size:11px">(optional)</span></label>
+    <input type="email" id="ns-candidate-email" class="input" placeholder="e.g. jane@example.com">
     <label class="label">Interview Questions <span style="font-weight:400;color:var(--text4);font-size:11px">(one per line)</span></label>
     <textarea id="ns-questions" class="input" rows="5" placeholder="Tell me about yourself.
 What is your biggest strength?
@@ -140,6 +143,7 @@ function showNSModal(){
     nsEl.value = '';
   }
   document.getElementById('ns-title').value = '';
+  var _ce = document.getElementById('ns-candidate-email'); if(_ce) _ce.value = '';
   document.getElementById('ns-candidate').value = '';
   document.getElementById('ns-err').style.display = 'none';
   showModal('ov-new-session');
@@ -152,6 +156,7 @@ function hideNSModal(){
 async function doCreateSession(){
   var title = document.getElementById('ns-title').value.trim();
   var candidate = document.getElementById('ns-candidate').value.trim();
+  var candidateEmail = document.getElementById('ns-candidate-email').value.trim();
   var questionsRaw = document.getElementById('ns-questions').value;
   var scheduledEl = document.getElementById('ns-scheduled');
   var scheduled = scheduledEl ? scheduledEl.value : '';
@@ -161,7 +166,7 @@ async function doCreateSession(){
   var btn = document.getElementById('ns-create-btn');
   btn.disabled = true; btn.textContent = 'Creating...';
   var questions = questionsRaw.split('\n').map(function(q){ return q.trim(); }).filter(function(q){ return q; });
-  var body = {title:title, candidateName:candidate||'Candidate', questions:questions, scheduledAt:scheduled||null};
+  var body = {title:title, candidateName:candidate||'Candidate', candidateEmail:candidateEmail||null, questions:questions, scheduledAt:scheduled?Math.floor(new Date(scheduled).getTime()/1000):null};
   var res = await post('/api/sessions', body);
   btn.disabled = false; btn.textContent = 'Create and Open Session';
   if(res.error){ errEl.textContent = res.error; errEl.style.display = 'block'; return; }
@@ -178,6 +183,39 @@ async function loadSessions(){
   var res = await get('/api/sessions');
   if(!res || res.error) return;
   var sessions = Array.isArray(res) ? res : [];
+  (function(){
+    var upWrap = document.getElementById('upcoming-section');
+    var upList = document.getElementById('upcoming-list');
+    if(upWrap && upList){
+      var nowMs = Date.now();
+      var up = sessions.filter(function(s){ return s.scheduled_at && (s.scheduled_at*1000) > nowMs && s.status !== 'ended'; });
+      up.sort(function(a,b){ return a.scheduled_at - b.scheduled_at; });
+      if(!up.length){ upWrap.style.display = 'none'; upList.innerHTML = ''; }
+      else {
+        upWrap.style.display = 'block';
+        upList.innerHTML = '';
+        up.forEach(function(s){
+          var d = new Date(s.scheduled_at*1000);
+          var when = d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}) + ' at ' + d.toLocaleTimeString('en-US',{hour:'2-digit',minute:'2-digit'});
+          var row = document.createElement('div');
+          row.style.cssText = 'display:flex;justify-content:space-between;align-items:center;gap:12px;padding:10px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px;background:var(--card)';
+          var left = document.createElement('div');
+          var t = document.createElement('div');
+          t.style.cssText = 'font-weight:700;font-size:14px;color:var(--text1)';
+          t.textContent = s.title || 'Interview';
+          var sub = document.createElement('div');
+          sub.style.cssText = 'font-size:12px;color:var(--text4);margin-top:3px';
+          sub.textContent = (s.candidate_name || 'Candidate') + (s.candidate_email ? ' \u00b7 ' + s.candidate_email : '');
+          left.appendChild(t); left.appendChild(sub);
+          var whenEl = document.createElement('div');
+          whenEl.style.cssText = 'font-size:12px;font-weight:600;color:var(--purple);white-space:nowrap';
+          whenEl.textContent = when;
+          row.appendChild(left); row.appendChild(whenEl);
+          upList.appendChild(row);
+        });
+      }
+    }
+  })();
 
   // Update stats
   var ended = sessions.filter(function(s){ return s.status==='ended'; });
