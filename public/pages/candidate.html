@@ -491,6 +491,81 @@ function showGoodbye(){
   $('goodbye-screen').style.display='flex';
 }
 
+function captureIdentity(){
+  return new Promise(function(resolve){
+    try{
+      var sid = (sessionData && sessionData.id) ? sessionData.id : null;
+      if(!sid){ resolve(); return; }
+      var ov = document.createElement('div');
+      ov.id = 'cand-id-modal';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:4500;background:rgba(15,23,42,.7);display:flex;align-items:center;justify-content:center;padding:18px';
+      var card = document.createElement('div');
+      card.style.cssText = 'background:#fff;max-width:460px;width:100%;border-radius:14px;padding:22px;box-shadow:0 20px 60px rgba(0,0,0,.3);max-height:94vh;overflow:auto';
+      var h = document.createElement('h3'); h.style.cssText='margin:0 0 6px;font-size:18px;color:#0f172a'; h.textContent='Identity verification';
+      var p = document.createElement('div'); p.style.cssText='font-size:13px;color:#475569;margin-bottom:14px;line-height:1.45';
+      p.textContent='Before you begin, please take a quick selfie and a photo of a government-issued photo ID. Your interviewer will use these to confirm your identity. Images are stored securely with your interview record.';
+      var selfieWrap = document.createElement('div'); selfieWrap.style.cssText='margin-bottom:14px';
+      var selfieLabel = document.createElement('div'); selfieLabel.style.cssText='font-size:12px;font-weight:600;color:#0f172a;margin-bottom:6px'; selfieLabel.textContent='1. Selfie';
+      var vid = document.createElement('video'); vid.autoplay=true; vid.muted=true; vid.playsInline=true;
+      vid.style.cssText='width:100%;max-height:180px;background:#000;border-radius:10px;object-fit:cover;transform:scaleX(-1)';
+      var selfieCanvas = document.createElement('canvas'); selfieCanvas.style.display='none';
+      var selfieImg = document.createElement('img'); selfieImg.style.cssText='width:100%;max-height:180px;border-radius:10px;object-fit:cover;display:none;transform:scaleX(-1)';
+      var snapBtn = document.createElement('button'); snapBtn.type='button'; snapBtn.textContent='Capture selfie';
+      snapBtn.style.cssText='margin-top:8px;width:100%;padding:9px;border:1px solid #cbd5e1;background:#f8fafc;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;color:#0f172a';
+      var selfieBlob = { v: null };
+      try{ if(typeof localStream!=='undefined' && localStream){ vid.srcObject = localStream; } }catch(e){}
+      snapBtn.onclick = function(){
+        try{
+          var w = vid.videoWidth||640, hh = vid.videoHeight||480;
+          selfieCanvas.width=w; selfieCanvas.height=hh;
+          selfieCanvas.getContext('2d').drawImage(vid, 0, 0, w, hh);
+          selfieCanvas.toBlob(function(b){ selfieBlob.v=b; }, 'image/jpeg', 0.85);
+          selfieImg.src = selfieCanvas.toDataURL('image/jpeg', 0.85);
+          vid.style.display='none'; selfieImg.style.display='block'; snapBtn.textContent='Retake selfie';
+          vid.style.display='none';
+        }catch(e){}
+      };
+      selfieWrap.appendChild(selfieLabel); selfieWrap.appendChild(vid); selfieWrap.appendChild(selfieImg); selfieWrap.appendChild(snapBtn);
+      var idWrap = document.createElement('div'); idWrap.style.cssText='margin-bottom:14px';
+      var idLabel = document.createElement('div'); idLabel.style.cssText='font-size:12px;font-weight:600;color:#0f172a;margin-bottom:6px'; idLabel.textContent='2. Photo ID';
+      var idInput = document.createElement('input'); idInput.type='file'; idInput.accept='image/*'; idInput.setAttribute('capture','environment');
+      idInput.style.cssText='width:100%;font-size:13px';
+      var idPreview = document.createElement('img'); idPreview.style.cssText='width:100%;max-height:160px;object-fit:contain;border-radius:8px;margin-top:8px;display:none;background:#f1f5f9';
+      var idFile = { v: null };
+      idInput.onchange = function(){ var f=idInput.files && idInput.files[0]; if(f){ idFile.v=f; var rd=new FileReader(); rd.onload=function(){ idPreview.src=rd.result; idPreview.style.display='block'; }; rd.readAsDataURL(f); } };
+      idWrap.appendChild(idLabel); idWrap.appendChild(idInput); idWrap.appendChild(idPreview);
+      var consentRow = document.createElement('label'); consentRow.style.cssText='display:flex;align-items:flex-start;gap:8px;font-size:12px;color:#334155;margin-bottom:14px;cursor:pointer';
+      var consentBox = document.createElement('input'); consentBox.type='checkbox';
+      var consentTxt = document.createElement('span'); consentTxt.textContent='I consent to providing my photo and ID for identity verification, and to these images being stored with my interview record.';
+      consentRow.appendChild(consentBox); consentRow.appendChild(consentTxt);
+      var err = document.createElement('div'); err.style.cssText='font-size:12px;color:#dc2626;margin-bottom:10px;display:none';
+      var submit = document.createElement('button'); submit.type='button'; submit.textContent='Submit & continue';
+      submit.style.cssText='width:100%;padding:11px;border:none;background:#1e3a8a;color:#fff;border-radius:8px;font-weight:700;font-size:14px;cursor:pointer';
+      var skip = document.createElement('button'); skip.type='button'; skip.textContent='Continue without verification';
+      skip.style.cssText='width:100%;padding:8px;margin-top:8px;border:none;background:transparent;color:#94a3b8;font-size:12px;cursor:pointer;text-decoration:underline';
+      function finish(){ try{ if(ov.parentNode) ov.parentNode.removeChild(ov); }catch(e){} resolve(); }
+      submit.onclick = function(){
+        err.style.display='none';
+        if(!consentBox.checked){ err.textContent='Please check the consent box to continue.'; err.style.display='block'; return; }
+        if(!selfieBlob.v){ err.textContent='Please capture a selfie first.'; err.style.display='block'; return; }
+        if(!idFile.v){ err.textContent='Please add a photo of your ID.'; err.style.display='block'; return; }
+        submit.disabled=true; submit.textContent='Uploading...';
+        var fd = new FormData();
+        fd.append('selfie', selfieBlob.v, 'selfie.jpg');
+        fd.append('idphoto', idFile.v, idFile.v.name||'id.jpg');
+        fd.append('consented', '1');
+        fetch('/api/sessions/'+sid+'/identity', { method:'POST', body: fd })
+          .then(function(res){ return res.json().catch(function(){ return {}; }); })
+          .then(function(){ finish(); })
+          .catch(function(){ finish(); });
+      };
+      skip.onclick = function(){ finish(); };
+      card.appendChild(h); card.appendChild(p); card.appendChild(selfieWrap); card.appendChild(idWrap); card.appendChild(consentRow); card.appendChild(err); card.appendChild(submit); card.appendChild(skip);
+      ov.appendChild(card); document.body.appendChild(ov);
+    }catch(e){ resolve(); }
+  });
+}
+
 async function doJoin(){
   var btn=$('join-btn');btn.disabled=true;btn.textContent='Starting camera...';
   try{
@@ -513,6 +588,7 @@ async function doJoin(){
     var pv=document.getElementById('preview-vid');if(pv)pv.srcObject=null;
     if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();});previewStream=null;}
   }catch(e){$('join-info').textContent='Camera/mic required: '+e.message;btn.disabled=false;btn.textContent='Join Interview';return;}
+  try{ await captureIdentity(); }catch(e){}
   $('join-screen').style.display='none';
   var is=$('interview-screen');is.style.display='flex';is.style.flexDirection='column';
   $('i-title').textContent=sessionData&&sessionData.title||'Interview';
