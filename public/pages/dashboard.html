@@ -277,7 +277,7 @@ async function loadSessions(){
     row.className = 'session-row';
     row.setAttribute('data-sid', s.id);
     row.setAttribute('data-status', s.status||'');
-    row.innerHTML = '<div class="session-avatar">'+((s.candidate_name||'C').charAt(0).toUpperCase())+'</div><div style="flex:1;min-width:0"><div class="sr-title">'+s.title+'</div><div class="sr-meta">'+metaLine+'</div></div><div class="sr-right">'+startNowBtn+copyBtn+scoreHtml+statusBadge+'</div>';
+    row.innerHTML = '<div class="session-avatar">'+((s.candidate_name||'C').charAt(0).toUpperCase())+'</div><div style="flex:1;min-width:0"><div class="sr-title">'+s.title+'</div><div class="sr-meta">'+metaLine+'</div></div><div class="sr-right">'+startNowBtn+copyBtn+scoreHtml+statusBadge+'<button class="btn btn-outline btn-sm" data-del-sess="'+s.id+'" title="Delete interview" style="font-size:11px;padding:4px 9px;color:#dc2626;border-color:#fecaca">Delete</button></div>';
     container.appendChild(row);
   });
 }
@@ -422,6 +422,18 @@ async function init(){
 
   // Session row click + copy delegation
   document.getElementById('sessions-list').addEventListener('click',function(e){
+    var delBtn = e.target.closest('[data-del-sess]');
+    if(delBtn){
+      e.stopPropagation();
+      var did = delBtn.getAttribute('data-del-sess');
+      if(!confirm('Delete this interview? This permanently removes the interview and any recording for it. This cannot be undone.')) return;
+      delBtn.disabled=true; delBtn.textContent='Deleting...';
+      fetch('/api/sessions/'+did,{method:'DELETE'}).then(function(res){return res.json();}).then(function(dd){
+        if(dd&&dd.ok){ if(typeof toast==='function')toast('Interview deleted','green'); if(typeof loadSessions==='function')loadSessions(); }
+        else { if(typeof toast==='function')toast('Delete failed: '+((dd&&dd.error)||'?'),'red'); delBtn.disabled=false; delBtn.textContent='Delete'; }
+      }).catch(function(){ if(typeof toast==='function')toast('Delete failed','red'); delBtn.disabled=false; delBtn.textContent='Delete'; });
+      return;
+    }
     var startBtn = e.target.closest('[data-start-sess]');
     if(startBtn){ window.location.href='/session/'+startBtn.getAttribute('data-start-sess'); return; }
     var copyBtn = e.target.closest('.sr-copy-btn');
