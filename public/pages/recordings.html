@@ -250,6 +250,16 @@ async function deletePosition(id, title){
   else toast('Failed to delete','red');
 }
 
+async function deleteRecording(id, title){
+  if(!confirm('Delete this recording? This permanently removes the video and its record from your library. This cannot be undone.'))return;
+  var res=await fetch('/api/recordings/'+id,{method:'DELETE'});
+  if(res.ok){
+    toast('Recording deleted','amber');
+    var card=document.getElementById('card-'+id); if(card&&card.parentNode)card.parentNode.removeChild(card);
+    try{ if(typeof loadAllRecordings==='function' && $('container')) loadAllRecordings(); }catch(e){}
+  } else { toast('Failed to delete recording','red'); }
+}
+
 //  ALL RECORDINGS VIEW 
 async function loadAllRecordings(){
   $('new-pos-btn').style.display='none';
@@ -300,6 +310,7 @@ function buildRecCard(rec, inPositionView){
   var title=document.createElement('div');title.className='rec-title';title.style.margin='0';
   title.textContent=(rec.session_title||'Interview')+(rec.interviewer_name?' - by '+rec.interviewer_name:'');
   header.appendChild(title);
+  var delBtn=document.createElement('button');delBtn.className='rec-del-btn';delBtn.title='Delete recording';delBtn.textContent='Delete';delBtn.style.cssText='flex:none;background:transparent;border:1px solid #fecaca;color:#dc2626;font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;cursor:pointer';delBtn.onclick=function(e){e.stopPropagation();deleteRecording(rec.id, rec.session_title||'Interview');};header.appendChild(delBtn);
 
   // Position assign dropdown (only in "All Recordings" view)
   if(!inPositionView && allPositions.length>0){
