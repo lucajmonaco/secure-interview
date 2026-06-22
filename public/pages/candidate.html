@@ -98,7 +98,7 @@
     <div style="margin-left:auto;display:flex;gap:8px;align-items:center;flex-wrap:wrap">
       <span id="i-title" style="font-size:12px;color:#475569"></span>
       <span id="i-status" class="badge badge-amber">Connecting...</span>
-      <button id="leave-btn" type="button" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Leave Interview</button>
+      <button id="share-screen-btn" type="button" onclick="startScreen()" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer;margin-right:8px">Share Screen</button><button id="leave-btn" type="button" style="background:#dc2626;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;font-weight:700;cursor:pointer">Leave Interview</button>
       <span id="gaze-chip" class="badge" style="display:none;background:rgba(245,158,11,.15);color:#f59e0b;border-color:#f59e0b">Gaze Away</span>
     </div>
   </div>
@@ -546,6 +546,32 @@ function connectSocket(){
   socket.on('webrtc-offer',async function(d){if(!pc)await createPC();await pc.setRemoteDescription(d.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionData&&sessionData.id,answer:a});});
   socket.on('webrtc-answer',async function(d){if(pc)await pc.setRemoteDescription(d.answer);});
   socket.on('webrtc-ice',async function(d){if(pc)await pc.addIceCandidate(d.candidate);});
+  var pcScreen=null, screenStream=null;
+  function createScreenPC(){
+    pcScreen=new RTCPeerConnection({iceServers:[{urls:'stun:stun.l.google.com:19302'},{urls:'stun:stun1.l.google.com:19302'}]});
+    pcScreen.onicecandidate=function(e){if(e.candidate)socket.emit('screen-ice',{sessionId:sessionData&&sessionData.id,candidate:e.candidate});};
+  }
+  window.startScreen=async function(){
+    try{ screenStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor'},audio:false}); }
+    catch(err){ warn('Screen share is required - please share your ENTIRE screen.'); sendFlagOnce('screen-declined','Screen Share Declined','Candidate declined to share their screen','high'); return; }
+    var vt=screenStream.getVideoTracks()[0];
+    var surf=(vt&&vt.getSettings)?vt.getSettings().displaySurface:null;
+    if(surf&&surf!=='monitor'){ sendFlagCooldown('screen-partial','Partial Screen Share','Candidate shared only a '+surf+' instead of the whole screen','medium',3000); }
+    createScreenPC();
+    screenStream.getTracks().forEach(function(t){pcScreen.addTrack(t,screenStream);});
+    var off=await pcScreen.createOffer(); await pcScreen.setLocalDescription(off);
+    socket.emit('screen-offer',{sessionId:sessionData&&sessionData.id,offer:off});
+    socket.emit('screen-state',{sessionId:sessionData&&sessionData.id,sharing:true});
+    var btn=document.getElementById('share-screen-btn'); if(btn){btn.textContent='Screen Shared';btn.disabled=true;btn.style.background='#16a34a';}
+    if(vt)vt.addEventListener('ended',function(){
+      sendFlagCooldown('screen-stopped','Screen Share Stopped','Candidate stopped sharing their screen','high',3000);
+      socket.emit('screen-state',{sessionId:sessionData&&sessionData.id,sharing:false});
+      try{if(pcScreen)pcScreen.close();}catch(e){} pcScreen=null;
+      var b2=document.getElementById('share-screen-btn'); if(b2){b2.textContent='Share Screen';b2.disabled=false;b2.style.background='#2563eb';}
+    });
+  };
+  socket.on('screen-answer',async function(d){if(pcScreen)await pcScreen.setRemoteDescription(d.answer);});
+  socket.on('screen-ice',async function(d){if(pcScreen){try{await pcScreen.addIceCandidate(d.candidate);}catch(e){}}});
   socket.on('next-question',function(d){var qs=sessionData&&sessionData.questions||[];if(qs[d.qIdx]){var tk=$('q-ticker');tk.style.display='flex';$('q-text').textContent='Q'+(d.qIdx+1)+': '+qs[d.qIdx];}});
   socket.on('session-ended',function(){showGoodbye();});
   socket.on('peer-left',function(){$('i-status').textContent='Interviewer disconnected';$('i-status').className='badge badge-red';});
