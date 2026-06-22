@@ -627,6 +627,10 @@ io.on('connection', (socket) => {
   socket.on('candidate-lockout-end', ({ sessionId }) => {
     socket.to(sessionId).emit('candidate-lockout-end');
   });
+  socket.on('recording-request', ({ sessionId }) => socket.to(sessionId).emit('recording-request'));
+  socket.on('recording-consent', ({ sessionId, agreed }) => socket.to(sessionId).emit('recording-consent', { agreed: agreed }));
+  socket.on('recording-started', ({ sessionId }) => socket.to(sessionId).emit('recording-started'));
+  socket.on('recording-stopped', ({ sessionId }) => socket.to(sessionId).emit('recording-stopped'));
 
   socket.on('disconnect', () => {
     const { sessionId, role } = socket.data;
