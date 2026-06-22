@@ -267,6 +267,21 @@ async function loadAllRecordings(){
   var grid=document.createElement('div');grid.className='rec-grid';
   recs.forEach(function(rec){grid.appendChild(buildRecCard(rec,false));});
   c.appendChild(grid);
+  focusSessionFromUrl();
+}
+
+function focusSessionFromUrl(){
+  var m = location.search.match(/[?&]session=([^&]+)/);
+  if(!m) return;
+  var sid = decodeURIComponent(m[1]);
+  var card = document.querySelector('.rec-card[data-session="'+sid+'"]');
+  if(!card) return;
+  card.scrollIntoView({behavior:'smooth', block:'center'});
+  card.style.outline='2px solid var(--amber)';
+  card.style.outlineOffset='2px';
+  setTimeout(function(){ card.style.outline=''; }, 2600);
+  var ft = card.querySelector('.flag-toggle');
+  if(ft) ft.click();
 }
 
 //  RECORDING CARD 
@@ -278,7 +293,7 @@ function buildRecCard(rec, inPositionView){
   var streamUrl = inPositionView
     ? '/api/recordings/'+rec.id+'/org-stream'
     : '/api/recordings/'+rec.id+'/stream';
-  var card=document.createElement('div');card.className='rec-card';card.id='card-'+rec.id;
+  var card=document.createElement('div');card.className='rec-card';card.id='card-'+rec.id;card.setAttribute('data-session', rec.session_id||'');
   var body=document.createElement('div');body.className='rec-card-body';
 
   var header=document.createElement('div');header.style.cssText='display:flex;align-items:flex-start;justify-content:space-between;gap:8px;margin-bottom:8px';
@@ -320,6 +335,34 @@ function buildRecCard(rec, inPositionView){
     +'<span class="rec-meta-sep"></span><span style="color:'+(rec.flag_count>0?'var(--amber)':'var(--text3)')+'">'+( rec.flag_count||0)+' flags</span>'
     +(rec.file_size?'<span class="pill" style="margin-left:auto">'+fmtSize(rec.file_size)+'</span>':'');
   body.appendChild(meta);
+  if(rec.flag_count>0){
+    var fWrap=document.createElement('div');fWrap.style.cssText='margin-top:8px';
+    var fBtn=document.createElement('button');fBtn.type='button';fBtn.className='flag-toggle';
+    fBtn.style.cssText='width:100%;text-align:left;background:rgba(245,158,11,.10);border:1px solid rgba(245,158,11,.35);border-radius:8px;padding:7px 10px;font-size:12px;color:var(--amber);cursor:pointer;display:flex;align-items:center;justify-content:space-between;font-weight:600;gap:8px';
+    var fLbl=document.createElement('span');fLbl.textContent=rec.flag_count+' flagged behaviors';
+    var fCaret=document.createElement('span');fCaret.style.cssText='flex:0 0 auto;width:0;height:0;border-left:5px solid transparent;border-right:5px solid transparent;border-top:6px solid currentColor;transition:transform .15s';
+    fBtn.appendChild(fLbl);fBtn.appendChild(fCaret);
+    var fPanel=document.createElement('div');fPanel.style.cssText='display:none;margin-top:6px;border:1px solid var(--border);border-radius:8px;overflow:hidden';
+    var fLoaded=false;
+    fBtn.onclick=function(){
+      if(fPanel.style.display!=='none'){ fPanel.style.display='none';fCaret.style.transform='';return; }
+      fPanel.style.display='block';fCaret.style.transform='rotate(180deg)';
+      if(fLoaded) return; fLoaded=true;
+      var ld=document.createElement('div');ld.style.cssText='padding:8px 10px;font-size:12px;color:var(--text3)';ld.textContent='Loading...';fPanel.appendChild(ld);
+      get('/api/recordings/'+rec.id+'/flags').then(function(d){
+        fPanel.innerHTML='';
+        if(!d||!d.breakdown||!d.breakdown.length){ var n=document.createElement('div');n.style.cssText='padding:8px 10px;font-size:12px;color:var(--text3)';n.textContent='No detailed flags recorded.';fPanel.appendChild(n);return; }
+        d.breakdown.forEach(function(b,ix){
+          var row=document.createElement('div');row.style.cssText='display:flex;align-items:center;justify-content:space-between;padding:7px 10px;font-size:12px;'+(ix?'border-top:1px solid var(--border);':'');
+          var nm=document.createElement('span');nm.style.color='var(--text2)';nm.textContent=b.text||'Flag';
+          var qt=document.createElement('span');qt.style.cssText='font-weight:700;color:var(--amber);background:rgba(245,158,11,.14);border-radius:10px;padding:1px 9px;margin-left:8px';qt.textContent=b.count;
+          row.appendChild(nm);row.appendChild(qt);fPanel.appendChild(row);
+        });
+      });
+    };
+    fWrap.appendChild(fBtn);fWrap.appendChild(fPanel);body.appendChild(fWrap);
+  }
+
 
   var actions=document.createElement('div');actions.className='rec-actions';
   function btn(cls,html,cb){var b=document.createElement('button');b.className='btn btn-sm '+cls;b.innerHTML=html;b.onclick=cb;actions.appendChild(b);return b;}
