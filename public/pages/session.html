@@ -305,7 +305,38 @@ function startTimer(){
   },1000);
 }
 
-function toggleRec(){ if(isRec)stopRec(); else startRec(); }
+function toggleRec(){ if(isRec)stopRec(); else requestRecording(); }
+var __recConsentPending=false;
+function requestRecording(){
+  if(isRec){ toast('Already recording','amber'); return; }
+  var rv=document.getElementById('remote-vid');
+  if(!remoteStream && !(rv && rv.srcObject)){ toast('Wait for the candidate to connect before recording','amber'); return; }
+  var sm=document.getElementById('rec-startup-modal'); if(sm) sm.style.display='none';
+  if(__recConsentPending){ toast('Waiting for candidate consent...','amber'); return; }
+  __recConsentPending=true;
+  var rb=document.getElementById('rec-btn'); if(rb) rb.textContent='Awaiting consent';
+  toast('Asked the candidate for consent to record','blue');
+  try{ if(socket) socket.emit('recording-request',{sessionId:sessionId}); }catch(e){}
+}
+function beginRecordingWhenReady(tries){
+  if(isRec) return;
+  var rv=document.getElementById('remote-vid');
+  var ready = remoteStream || (rv && rv.srcObject);
+  if(ready){ startRec(); if(isRec){ try{ if(socket) socket.emit('recording-started',{sessionId:sessionId}); }catch(e){} } return; }
+  if(tries>20){ toast('Recording could not start: candidate video not ready','red'); var rb2=document.getElementById('rec-btn'); if(rb2) rb2.textContent='Record'; return; }
+  setTimeout(function(){ beginRecordingWhenReady(tries+1); }, 500);
+}
+function showRecStartupModal(){ if(isRec || __recConsentPending) return; var sm=document.getElementById('rec-startup-modal'); if(sm) sm.style.display='flex'; }
+(function(){
+  function inject(){
+    if(document.getElementById('rec-startup-modal')) return;
+    var html='<div id="rec-startup-modal" style="display:none;position:fixed;inset:0;z-index:4000;background:rgba(15,23,42,.55);align-items:center;justify-content:center;padding:20px"><div style="background:#fff;max-width:440px;width:100%;border-radius:14px;padding:24px;box-shadow:0 20px 60px rgba(0,0,0,.3)"><h3 style="margin:0 0 8px;font-size:18px;color:#0f172a">Record this interview?</h3><p style="margin:0 0 16px;font-size:14px;color:#475569;line-height:1.5">The candidate has joined. You can record this session (video and audio). Recording will start only after the candidate consents, in line with all-party consent laws.</p><div style="display:flex;gap:10px;justify-content:flex-end"><button id="rec-startup-skip" type="button" style="background:#e2e8f0;color:#0f172a;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:600;cursor:pointer">Not now</button><button id="rec-startup-request" type="button" style="background:#2563eb;color:#fff;border:none;border-radius:8px;padding:9px 16px;font-size:14px;font-weight:700;cursor:pointer">Request to Record</button></div></div></div>';
+    document.body.insertAdjacentHTML('beforeend', html);
+    var sk=document.getElementById('rec-startup-skip'); if(sk) sk.onclick=function(){ var m=document.getElementById('rec-startup-modal'); if(m) m.style.display='none'; };
+    var rq=document.getElementById('rec-startup-request'); if(rq) rq.onclick=function(){ requestRecording(); };
+  }
+  if(document.readyState!=='loading'){ inject(); } else { document.addEventListener('DOMContentLoaded', inject); }
+})();
 
 // DUAL RECORDING: side-by-side canvas of both interviewer + candidate
 function startRec(){
@@ -365,7 +396,7 @@ function startRec(){
 }
 
 function stopRec(){
-  if(!mediaRecorder)return; isRec=false;
+  if(!mediaRecorder)return; try{ if(socket) socket.emit('recording-stopped',{sessionId:sessionId}); }catch(e){} isRec=false;
   var dur=Math.floor((Date.now()-recStart)/1000);
   mediaRecorder.stop();
   if(audioCtxRec){audioCtxRec.close().catch(function(){}); audioCtxRec=null;}
@@ -468,7 +499,8 @@ async function startMedia(){
 async function connectSocket(){
   socket=io();
   socket.emit('join-room',{sessionId:sessionId,role:'interviewer'});
-  socket.on('peer-joined',function(d){if(d.role==='candidate'){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);}});
+  socket.on('recording-consent',function(d){ __recConsentPending=false; if(d && d.agreed){ toast('Candidate consented. Starting recording...','green'); beginRecordingWhenReady(0); } else { toast('Candidate declined recording. Continuing without recording.','amber'); var rb=document.getElementById('rec-btn'); if(rb) rb.textContent='Record'; } });
+  socket.on('peer-joined',function(d){if(d.role==='candidate'){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);showRecStartupModal();}});
   socket.on('peer-already-present',function(){$('s-status').textContent='Live';$('s-status').className='badge badge-green';startWebRTC(true);});
   socket.on('webrtc-offer',async function(d){if(!pc)await startWebRTC(false);await pc.setRemoteDescription(d.offer);var a=await pc.createAnswer();await pc.setLocalDescription(a);socket.emit('webrtc-answer',{sessionId:sessionId,answer:a});});
   socket.on('webrtc-answer',async function(d){if(pc)await pc.setRemoteDescription(d.answer);});
