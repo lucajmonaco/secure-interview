@@ -371,8 +371,8 @@ app.get('/api/recordings/:id/org-stream', requireAuth, (req, res) => {
   // Check recording is in a position folder within user's org
   const rec = db.prepare('SELECT r.* FROM recordings r LEFT JOIN job_positions p ON r.job_position_id=p.id WHERE r.id=? AND (r.interviewer_id=? OR p.org_id=?)').get(req.params.id, req.session.userId, req.session.orgId);
   if (!rec) return res.status(403).json({ error: 'Access denied' });
-  const filePath = path.join(DATA_DIR, 'recordings', rec.filename);
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
+  const filePath = rec.file_path || path.join(DATA_DIR, 'recordings', rec.filename || '');
+  if (!filePath || !fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
   const stat = fs.statSync(filePath);
   const range = req.headers.range;
   if (range) {
