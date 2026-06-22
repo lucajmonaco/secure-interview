@@ -235,7 +235,7 @@ async function loadSessions(){
   }
 
   container.innerHTML = '';
-  sessions.forEach(function(s){
+  sessions.filter(function(fs){ return !(fs.scheduled_at && (fs.scheduled_at*1000) > Date.now() && fs.status !== 'ended'); }).forEach(function(s){
     var score = s.trust_score!==null&&s.trust_score!==undefined ? Math.round(s.trust_score) : null;
     var statusBadge = '';
     if(s.status==='active') statusBadge = '<span class="badge badge-green" style="animation:livePulse 2s infinite">&#9679; Live</span>';
