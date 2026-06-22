@@ -156,7 +156,7 @@ const REQUIRED = {
     { check: src => !src.includes("showModal('ov-"), msg: "Has unescaped showModal('ov-...' in JS string" },
     { check: src => src.includes('trust_score!==null'), msg: 'Missing null-safe trust score check' },
     { check: src => src.includes('/api/positions'), msg: 'Missing positions API calls' },
-    { check: src => src.includes('saveNotes'), msg: 'Missing notes save function' },
+    { check: src => src.includes('doSaveNotes'), msg: 'Missing notes save function' },
   ],
   'server.js': [
     { check: src => src.includes("app.post('/api/auth/login'"), msg: 'Missing auth login route' },
@@ -164,6 +164,7 @@ const REQUIRED = {
     { check: src => src.includes("app.post('/api/positions'"), msg: 'Missing positions create route' },
     { check: src => src.includes("app.get('/api/positions'"), msg: 'Missing positions list route' },
     { check: src => src.includes("app.patch('/api/recordings/:id/notes'"), msg: 'Missing notes endpoint' },
+    { check: src => src.includes("app.get('/api/recordings/:id/flags'"), msg: 'Missing recording flags endpoint' },
     { check: src => src.includes("SESSION_SCHEDULED"), msg: 'Missing scheduled session gate' },
     { check: src => src.includes('job_positions'), msg: 'Missing job_positions table' },
     { check: src => src.includes('requireAuth'), msg: 'Missing requireAuth middleware' },
