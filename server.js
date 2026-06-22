@@ -8,13 +8,15 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const multer = require('multer');
+const DATA_DIR = process.env.DATA_DIR || __dirname;
+try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server, { cors: { origin: '*' } });
 const PORT = process.env.PORT || 8080;
 
-const db = new Database(path.join(__dirname, 'proctor.db'));
+const db = new Database(path.join(DATA_DIR, 'proctor.db'));
 db.exec(`
   CREATE TABLE IF NOT EXISTS orgs (
     id TEXT PRIMARY KEY,
@@ -91,7 +93,7 @@ try { db.prepare('ALTER TABLE recordings ADD COLUMN share_token TEXT').run(); } 
 // Migrate users: add org_id column if missing (old schema had 'org' text column)
 try { db.prepare('ALTER TABLE users ADD COLUMN org_id TEXT').run(); } catch(e){}
 
-const RECORDINGS_DIR = path.join(__dirname, 'recordings');
+const RECORDINGS_DIR = path.join(DATA_DIR, 'recordings');
 if (!fs.existsSync(RECORDINGS_DIR)) fs.mkdirSync(RECORDINGS_DIR, { recursive: true });
 
 const storage = multer.diskStorage({
@@ -368,7 +370,7 @@ app.get('/api/recordings/:id/org-stream', requireAuth, (req, res) => {
   // Check recording is in a position folder within user's org
   const rec = db.prepare('SELECT r.* FROM recordings r LEFT JOIN job_positions p ON r.job_position_id=p.id WHERE r.id=? AND (r.interviewer_id=? OR p.org_id=?)').get(req.params.id, req.session.userId, req.session.orgId);
   if (!rec) return res.status(403).json({ error: 'Access denied' });
-  const filePath = path.join(__dirname, 'recordings', rec.filename);
+  const filePath = path.join(DATA_DIR, 'recordings', rec.filename);
   if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'File not found' });
   const stat = fs.statSync(filePath);
   const range = req.headers.range;
