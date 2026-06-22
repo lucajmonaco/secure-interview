@@ -371,7 +371,11 @@ async function attemptJoin(){
 //  DISPLAY 
 function checkDisplays(){
   if(flaggedOnce['multi-display'])return;
+  // Authoritative: Window Management API screen count
+  try{ if(window._screenDetails && window._screenDetails.screens && window._screenDetails.screens.length>1){ sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high'); warn('Multiple displays detected - flagged'); return; } }catch(e){}
+  // Fallback 1: screen.isExtended
   if(typeof window.screen.isExtended!=='undefined'&&window.screen.isExtended){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high');warn('Multiple displays detected - flagged');return;}
+  // Fallback 2: window dragged outside the primary screen bounds
   var x=window.screenX||0,y=window.screenY||0;
   if(x<-100||y<-100||x>window.screen.width+100||y>window.screen.height+100){sendFlagOnce('multi-display','Multiple Displays Detected','Candidate has multiple displays','high');}
 }
@@ -496,6 +500,16 @@ async function doJoin(){
       localStream=await navigator.mediaDevices.getUserMedia({video:cId?{deviceId:{exact:cId},width:{ideal:1280},height:{ideal:720}}:{width:{ideal:1280},height:{ideal:720}},audio:mId?{deviceId:{exact:mId}}:true});
     }
     $('local-vid').srcObject=localStream;
+    // Window Management API: authoritative multi-monitor detection (best-effort, needs permission)
+    try{
+      if(window.getScreenDetails && !window._screenDetails){
+        window.getScreenDetails().then(function(sd){
+          window._screenDetails=sd;
+          try{ sd.addEventListener('screenschange',function(){ if(typeof checkDisplays==='function') checkDisplays(); }); }catch(e){}
+          if(typeof checkDisplays==='function') checkDisplays();
+        }).catch(function(){});
+      }
+    }catch(e){}
     var pv=document.getElementById('preview-vid');if(pv)pv.srcObject=null;
     if(previewStream&&previewStream!==localStream){previewStream.getTracks().forEach(function(t){t.stop();});previewStream=null;}
   }catch(e){$('join-info').textContent='Camera/mic required: '+e.message;btn.disabled=false;btn.textContent='Join Interview';return;}
@@ -566,6 +580,7 @@ function connectSocket(){
     socket.emit('screen-state',{sessionId:sessionData&&sessionData.id,sharing:true});
     var btn=document.getElementById('share-screen-btn'); if(btn){btn.textContent='Screen Shared';btn.disabled=true;btn.style.background='#16a34a';}
     if(vt)vt.addEventListener('ended',function(){
+      window._screenGrace=Date.now(); // stopping one's own share shifts focus - don't treat it as leaving the interview
       sendFlagCooldown('screen-stopped','Screen Share Stopped','Candidate stopped sharing their screen','high',3000);
       socket.emit('screen-state',{sessionId:sessionData&&sessionData.id,sharing:false});
       try{if(pcScreen)pcScreen.close();}catch(e){} pcScreen=null;
