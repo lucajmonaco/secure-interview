@@ -554,8 +554,25 @@ async function connectSocket(){
   });
   function showConcluded(subMsg){
     var ov=document.getElementById('concluded-overlay');
-    if(ov){ ov.style.display='flex'; var sub=document.getElementById('concluded-sub'); if(sub&&subMsg)sub.textContent=subMsg; }
-    var rv=$('remote-vid'); if(rv) rv.style.visibility='hidden';
+    if(ov){
+      // Promote overlay to a full-screen takeover so no frozen video frame shows through
+      ov.style.position='fixed'; ov.style.inset='0'; ov.style.zIndex='99998'; ov.style.display='flex';
+      var sub=document.getElementById('concluded-sub'); if(sub&&subMsg)sub.textContent=subMsg;
+      // Add action buttons once
+      if(!document.getElementById('concluded-actions')){
+        var acts=document.createElement('div'); acts.id='concluded-actions';
+        acts.style.cssText='margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center';
+        var lib=document.createElement('a'); lib.id='concluded-lib-btn'; lib.href='/recordings'; lib.textContent='View recording in library';
+        lib.style.cssText='background:#38bdf8;color:#08263a;font-weight:700;font-size:14px;padding:11px 18px;border-radius:9px;text-decoration:none;display:inline-block';
+        var dash=document.createElement('a'); dash.href='/dashboard'; dash.textContent='Back to dashboard';
+        dash.style.cssText='background:transparent;color:rgba(255,255,255,.7);font-weight:600;font-size:14px;padding:11px 18px;border:1px solid rgba(255,255,255,.25);border-radius:9px;text-decoration:none;display:inline-block';
+        acts.appendChild(lib); acts.appendChild(dash);
+        var box=ov.querySelector('div'); if(ov.lastElementChild){ ov.appendChild(acts); }
+      }
+    }
+    // Hide ALL live media so no last frame is visible
+    var rv=$('remote-vid'); if(rv){ rv.style.visibility='hidden'; try{rv.pause();}catch(e){} }
+    var lv=document.getElementById('local-vid'); if(lv){ lv.style.visibility='hidden'; try{lv.pause();}catch(e){} }
     var st=document.getElementById('screen-tile'); if(st) st.style.display='none';
     if(window._lockTick){clearInterval(window._lockTick);window._lockTick=null;}
     var co=$('candidate-lockout-overlay'); if(co)co.classList.remove('active');
@@ -602,7 +619,12 @@ async function confirmEndSession(){
   }
   await patch('/api/sessions/'+sessionId,{status:'ended'});
   try{await post('/api/recordings/session/'+sessionId+'/sync',{});}catch(e){}
-  setTimeout(function(){location.href='/dashboard';},600);
+  (function(){
+    var sub=document.getElementById('concluded-sub'); if(sub) sub.textContent='Recording saved to your library.';
+    var lib=document.getElementById('concluded-lib-btn'); if(lib) lib.textContent='View recording in library';
+    // Gentle auto-redirect to the library as a fallback; the button lets them go immediately.
+    setTimeout(function(){location.href='/recordings';},3500);
+  })();
 }
 
 function emailInvite(){
