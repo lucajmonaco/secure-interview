@@ -100,6 +100,13 @@ Where do you see yourself in 5 years?"></textarea>
     <label class="label">Schedule Interview <span style="font-weight:400;color:var(--text4);font-size:11px">(optional - leave blank to start now)</span></label>
     <input type="datetime-local" id="ns-scheduled" class="input" style="color-scheme:light">
     <div style="font-size:11px;color:var(--text4);margin-top:5px;padding:6px 10px;background:var(--sky);border-radius:6px;border-left:3px solid var(--blue-light)">Leave blank to start immediately. Candidate cannot join until 5 min before scheduled time.</div>
+    <label class="label" style="display:flex;align-items:flex-start;gap:9px;margin-top:14px;cursor:pointer;font-weight:500">
+      <input type="checkbox" id="ns-require-screen" style="margin-top:2px;width:16px;height:16px;cursor:pointer;flex:none">
+      <span>
+        Require screen-monitoring access to join
+        <span style="display:block;font-size:11px;color:var(--text4);font-weight:400;margin-top:3px">Candidate must grant their browser's display-access permission before they can enter. Stricter, but adds friction - leave off for most interviews.</span>
+      </span>
+    </label>
     <div id="ns-err" class="err" style="display:none"></div>
     <div class="modal-footer">
       <button class="btn btn-outline" id="ns-cancel-btn">Cancel</button>
@@ -148,6 +155,7 @@ function showNSModal(){
     nsEl.value = '';
   }
   document.getElementById('ns-title').value = '';
+  var _rsEl=document.getElementById('ns-require-screen'); if(_rsEl) _rsEl.checked=false;
   var _ce = document.getElementById('ns-candidate-email'); if(_ce) _ce.value = '';
   document.getElementById('ns-candidate').value = '';
   document.getElementById('ns-err').style.display = 'none';
@@ -171,7 +179,9 @@ async function doCreateSession(){
   var btn = document.getElementById('ns-create-btn');
   btn.disabled = true; btn.textContent = 'Creating...';
   var questions = questionsRaw.split('\n').map(function(q){ return q.trim(); }).filter(function(q){ return q; });
-  var body = {title:title, candidateName:candidate||'Candidate', candidateEmail:candidateEmail||null, questions:questions, scheduledAt:scheduled?Math.floor(new Date(scheduled).getTime()/1000):null};
+  var _reqScreenEl = document.getElementById('ns-require-screen');
+  var requireScreen = _reqScreenEl ? _reqScreenEl.checked : false;
+  var body = {title:title, candidateName:candidate||'Candidate', candidateEmail:candidateEmail||null, questions:questions, scheduledAt:scheduled?Math.floor(new Date(scheduled).getTime()/1000):null, requireScreen:requireScreen};
   var res = await post('/api/sessions', body);
   btn.disabled = false; btn.textContent = 'Create and Open Session';
   if(res.error){ errEl.textContent = res.error; errEl.style.display = 'block'; return; }
