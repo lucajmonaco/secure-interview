@@ -266,6 +266,18 @@ function processDeletionWarnings() {
 function purgeOldRecordings() {
   try {
     var cutoff = Math.floor(Date.now() / 1000) - (RETENTION_DAYS * 24 * 60 * 60);
+    // Purge identity captures (selfie + ID photos) on the same retention schedule.
+    try {
+      var staleIds = db.prepare('SELECT id, selfie_path, id_path FROM id_captures WHERE created_at IS NOT NULL AND created_at < ?').all(cutoff);
+      if (staleIds && staleIds.length) {
+        staleIds.forEach(function(rec){
+          try { if (rec.selfie_path && fs.existsSync(rec.selfie_path)) fs.unlinkSync(rec.selfie_path); } catch (e) {}
+          try { if (rec.id_path && fs.existsSync(rec.id_path)) fs.unlinkSync(rec.id_path); } catch (e) {}
+          try { db.prepare('DELETE FROM id_captures WHERE id=?').run(rec.id); } catch (e) {}
+        });
+        try { console.log('[retention] purged ' + staleIds.length + ' identity capture(s) older than ' + RETENTION_DAYS + ' days'); } catch (e) {}
+      }
+    } catch (e) {}
     var stale = db.prepare('SELECT id, org_id, file_path, session_title FROM recordings WHERE created_at IS NOT NULL AND created_at < ?').all(cutoff);
     if (!stale || stale.length === 0) return;
     var removed = 0; var byOrg = {};
