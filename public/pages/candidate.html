@@ -172,8 +172,9 @@ function startLockout(reason){
     reason,
     severity, 2000);
 
-  // Mute mic
-  if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=false;});
+  // Two-way audio stays LIVE during lockout so the candidate and interviewer can talk
+  // (e.g. the interviewer can tell them to close their other tabs). Mic is intentionally NOT muted.
+  if(localStream) localStream.getAudioTracks().forEach(function(t){t.enabled=true;});
 
   // Notify interviewer that candidate is locked out
   if(socket) socket.emit('candidate-lockout', {sessionId:sessionData&&sessionData.id, secondsLeft:BASE_LOCKOUT_SECONDS, violation:lockoutViolations});
@@ -343,7 +344,13 @@ function setupProtection(){
 
   // Display detection
   checkDisplays();
-  setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},5000);
+  // Run more frequently so a display connected mid-interview is caught quickly.
+  setInterval(function(){if(!flaggedOnce['multi-display'])checkDisplays();},3000);
+  // Re-check whenever the OS reports a display/resolution change or window regains focus.
+  try{ if(window.matchMedia){ window.matchMedia('(min-resolution: 2dppx)').addEventListener('change',function(){ if(!flaggedOnce['multi-display'])checkDisplays(); }); } }catch(e){}
+  try{ window.addEventListener('focus',function(){ if(!flaggedOnce['multi-display'])checkDisplays(); }); }catch(e){}
+  // Keep _screenDetails fresh for the authoritative multi-screen count when available.
+  try{ if(window.getScreenDetails && !window._screenDetails){ window.getScreenDetails().then(function(sd){ window._screenDetails=sd; try{ sd.addEventListener('screenschange',function(){ if(!flaggedOnce['multi-display'])checkDisplays(); }); }catch(e){} if(!flaggedOnce['multi-display'])checkDisplays(); }).catch(function(){}); } }catch(e){}
   if(window.screen&&window.screen.addEventListener) window.screen.addEventListener('change',function(){sendFlagOnce('screen-change','Screen Config Changed','Candidate changed display config','high');});
 
   // Resize (split screen)
