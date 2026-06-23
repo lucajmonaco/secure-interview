@@ -354,27 +354,48 @@ function startRec(){
   var remVid = $('remote-vid');
   if(!remVid.srcObject && !remoteStream){ toast('No candidate video yet','red'); return; }
 
-  // Canvas: side by side  left=candidate (remote), right=interviewer (local)
-  var W = 1280, H = 360; // 720p split into two 640x360 halves
+  // Canvas always 720p. Layout adapts each frame:
+  //  - No screen-share: two faces side-by-side, large.
+  //  - Screen-share active: shared screen fills the top, two faces in a bottom strip.
+  var W = 1280, H = 720;
   var canvas = document.createElement('canvas'); canvas.width=W; canvas.height=H;
   var ctx = canvas.getContext('2d');
   isRec=true; recStart=Date.now();
 
+  function drawLabel(text, x, y, w){
+    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(x, y-22, w, 22);
+    ctx.fillStyle='#fff'; ctx.font='bold 13px Arial'; ctx.fillText(text, x+8, y-7);
+  }
+  function vidReady(v){ return v && v.srcObject && v.readyState>=2 && v.videoWidth>0; }
+
   (function draw(){
     if(!isRec) return;
-    // Black background
-    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
-    // Left half: candidate (remote)
-    if(remVid.readyState>=2) ctx.drawImage(remVid,0,0,W/2,H);
-    // Right half: interviewer (local)
     var lv=$('local-vid');
-    if(lv&&lv.srcObject&&lv.readyState>=2) ctx.drawImage(lv,W/2,0,W/2,H);
-    // Labels
-    ctx.fillStyle='rgba(0,0,0,0.55)'; ctx.fillRect(0,H-22,W/2,22); ctx.fillRect(W/2,H-22,W/2,22);
-    ctx.fillStyle='#fff'; ctx.font='bold 12px Arial';
-    ctx.fillText('Candidate',8,H-7);
-    ctx.fillText('Interviewer',W/2+8,H-7);
-    // REC indicator
+    var sv=document.getElementById('screen-vid');
+    var screenLive = vidReady(sv);
+    ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
+
+    if(screenLive){
+      // Top: shared screen (most of the frame, readable). Bottom strip: the two faces.
+      var stripH = 200;
+      var screenH = H - stripH; // 520
+      // screen fills top area (contain to avoid distortion)
+      ctx.drawImage(sv, 0, 0, W, screenH);
+      drawLabel('Shared Screen', 0, screenH, W);
+      // bottom strip: candidate left, interviewer right
+      if(vidReady(remVid)) ctx.drawImage(remVid, 0, screenH, W/2, stripH);
+      if(vidReady(lv)) ctx.drawImage(lv, W/2, screenH, W/2, stripH);
+      drawLabel('Candidate', 0, H, W/2);
+      drawLabel('Interviewer', W/2, H, W/2);
+    } else {
+      // No screen-share: two faces side-by-side, full height.
+      if(vidReady(remVid)) ctx.drawImage(remVid, 0, 0, W/2, H);
+      if(vidReady(lv)) ctx.drawImage(lv, W/2, 0, W/2, H);
+      drawLabel('Candidate', 0, H, W/2);
+      drawLabel('Interviewer', W/2, H, W/2);
+    }
+
+    // REC indicator (top-left)
     ctx.fillStyle='rgba(239,68,68,.9)'; ctx.fillRect(10,10,52,22);
     ctx.fillStyle='#fff'; ctx.font='bold 11px Arial'; ctx.fillText('REC',16,26);
     requestAnimationFrame(draw);
