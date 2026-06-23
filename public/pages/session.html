@@ -169,9 +169,8 @@ var FLAG_TYPES = [
   {key:'focus-loss', text:'Lost Interview Focus',        detail:'Switched tabs/windows, opened a new tab, or left the interview screen', severity:'high'},
   {key:'presence',   text:'Candidate Not Present',       detail:'Candidate absent, face not visible, or looking away from screen',       severity:'high'},
   {key:'audio',      text:'Background Audio Detected',   detail:'Additional voice or audio detected - possible coaching',               severity:'high'},
-  {key:'displays',   text:'Multiple Displays Detected',  detail:'A secondary monitor or extended display was detected',                 severity:'high'},
   {key:'input',      text:'Prohibited Input Activity',   detail:'Copy/paste, blocked shortcuts, developer tools, or page refresh',      severity:'medium'},
-  {key:'other',      text:'Other Suspicious Activity',   detail:'Other activity flagged during the interview',                          severity:'low'},
+  {key:'other',      text:'Other Suspicious Activity',   detail:'Multiple displays or other activity flagged during the interview',      severity:'low'},
 ];
 
 var flagRegistry = {};  // key  {count, cardEl, lastTime}
@@ -219,11 +218,10 @@ function resolveKey(flagText){
   if(t.includes('extended absence')||t.includes('absence')||t.includes('face not')||t.includes('no face')||t.includes('gaze')||t.includes('eye movement')||t.includes('looking away')) return 'presence';
   // 3) Background audio: other voices, possible coaching.
   if(t.includes('background voice')||t.includes('voice')||t.includes('coaching')||t.includes('audio')) return 'audio';
-  // 4) Multiple displays / external monitors.
-  if(t.includes('display')||t.includes('monitor')||t.includes('screen config')||t.includes('secondary')) return 'displays';
   // 5) Prohibited input: copy/paste/cut, shortcuts, devtools, F12, refresh, right-click.
   if(t.includes('copy')||t.includes('paste')||t.includes('cut')||t.includes('shortcut')||t.includes('devtools')||t.includes('f12')||t.includes('refresh')||t.includes('right-click')||t.includes('right click')||t.includes('inspect')) return 'input';
-  // 6) Everything else.
+  // Multiple displays / external monitors (detected when the browser allows it) and anything
+  // else folds into 'Other Suspicious Activity' - it still flags, just without its own box.
   return 'other';
 }
 
@@ -232,7 +230,6 @@ var flagLabels = {
   'focus-loss': 'Lost Interview Focus',
   'presence': 'Candidate Not Present',
   'audio': 'Background Audio Detected',
-  'displays': 'Multiple Displays Detected',
   'input': 'Prohibited Input Activity',
   'other': 'Other Suspicious Activity'
 };
@@ -394,30 +391,47 @@ function startRec(){
     var screenLive = vidReady(sv);
     ctx.fillStyle='#000'; ctx.fillRect(0,0,W,H);
 
-    if(screenLive){
-      // TOP: the two faces side-by-side (kept as the primary subjects).
+    // Each participant's shared screen (if any) is drawn DIRECTLY BELOW that person.
+    //  - Candidate's shared screen  -> under the candidate (left column).
+    //  - Interviewer's shared screen -> under the interviewer (right column).
+    // Today only the candidate can share, so only the left screen appears; the right
+    // slot is ready for if interviewer screen-sharing is ever added (no rework needed).
+    var candScreen = sv;                                        // candidate's shared screen (received)
+    var intScreen  = document.getElementById('local-screen-vid'); // interviewer's own shared screen (future)
+    var candScreenLive = vidReady(candScreen);
+    var intScreenLive  = vidReady(intScreen);
+    var anyScreen = candScreenLive || intScreenLive;
+
+    if(anyScreen){
+      // Faces on top (each takes its half), screens in a strip directly below each face.
       var faceH = 400;
-      if(vidReady(remVid)) ctx.drawImage(remVid, 0, 0, W/2, faceH);
-      if(vidReady(lv)) ctx.drawImage(lv, W/2, 0, W/2, faceH);
-      drawLabel('Candidate', 0, faceH, W/2);
-      drawLabel('Interviewer', W/2, faceH, W/2);
-      // BOTTOM: shared screen, smaller and centered (not full width).
-      var areaY = faceH, areaH = H - faceH; // 320
-      var boxW = 560, boxH = areaH - 30;     // centered box, leaves room for a label
-      var boxX = (W - boxW)/2, boxY = areaY + 6;
-      ctx.fillStyle='#0b0b0b'; ctx.fillRect(boxX, boxY, boxW, boxH);
-      drawContain(sv, boxX, boxY, boxW, boxH);
-      ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.strokeRect(boxX+0.5, boxY+0.5, boxW-1, boxH-1);
-      // Label centered under the screen box, naming who is sharing.
-      var who = (window._screenSharedBy || 'Candidate');
-      var lbl = who + "'s Shared Screen";
-      ctx.font='bold 13px Arial';
-      var tw=ctx.measureText(lbl).width;
-      var lx=(W - (tw+16))/2;
-      ctx.fillStyle='rgba(0,0,0,0.6)'; ctx.fillRect(lx, H-24, tw+16, 22);
-      ctx.fillStyle='#fff'; ctx.fillText(lbl, lx+8, H-9);
+      var areaY = faceH, areaH = H - faceH; // 320 for the screen row
+      var colW = W/2;
+      // Top: faces
+      if(vidReady(remVid)) ctx.drawImage(remVid, 0, 0, colW, faceH);
+      if(vidReady(lv)) ctx.drawImage(lv, colW, 0, colW, faceH);
+      drawLabel('Candidate', 0, faceH, colW);
+      drawLabel('Interviewer', colW, faceH, colW);
+      // Bottom-left: candidate's screen (under the candidate), centered in its column.
+      var padX = 20, boxH = areaH - 30, boxY = areaY + 6;
+      var boxW = colW - padX*2;
+      if(candScreenLive){
+        var lX = padX;
+        ctx.fillStyle='#0b0b0b'; ctx.fillRect(lX, boxY, boxW, boxH);
+        drawContain(candScreen, lX, boxY, boxW, boxH);
+        ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.strokeRect(lX+0.5, boxY+0.5, boxW-1, boxH-1);
+        drawLabel("Candidate's Screen", 0, H, colW);
+      }
+      // Bottom-right: interviewer's screen (under the interviewer), centered in its column.
+      if(intScreenLive){
+        var rX = colW + padX;
+        ctx.fillStyle='#0b0b0b'; ctx.fillRect(rX, boxY, boxW, boxH);
+        drawContain(intScreen, rX, boxY, boxW, boxH);
+        ctx.strokeStyle='rgba(255,255,255,0.25)'; ctx.lineWidth=1; ctx.strokeRect(rX+0.5, boxY+0.5, boxW-1, boxH-1);
+        drawLabel("Interviewer's Screen", colW, H, colW);
+      }
     } else {
-      // No screen-share: two faces side-by-side, full height (main focus restored).
+      // No screen-share: two faces side-by-side, full height (main focus).
       if(vidReady(remVid)) ctx.drawImage(remVid, 0, 0, W/2, H);
       if(vidReady(lv)) ctx.drawImage(lv, W/2, 0, W/2, H);
       drawLabel('Candidate', 0, H, W/2);
@@ -733,7 +747,7 @@ function sendChat(){
 function chatKey(e){ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); sendChat(); } }
 init();
 </script>
-<div id="chat-panel" style="position:fixed;left:16px;bottom:16px;width:300px;max-height:380px;display:flex;flex-direction:column;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:8000;overflow:hidden">
+<div id="chat-panel" style="position:fixed;left:16px;top:50%;transform:translateY(-50%);width:300px;max-height:380px;display:flex;flex-direction:column;background:#fff;border:1px solid #cbd5e1;border-radius:12px;box-shadow:0 10px 30px rgba(0,0,0,.18);z-index:8000;overflow:hidden">
   <div style="padding:8px 12px;background:#0f172a;color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:space-between">
     <span>Chat</span>
   </div>
