@@ -216,7 +216,7 @@ function buildFlagCard(key, text, detail, severity, count){
 function resolveKey(flagText){
   var t = (flagText||'').toLowerCase();
   // Consolidated groups
-  if(t.includes('tab switch')||t.includes('window switch')||t.includes('window blur')||t.includes('window switch')) return 'tab-switch';
+  if(t.includes('tab switch')||t.includes('window switch')||t.includes('window blur')||t.includes('left interview')||t.includes('left screen')||t.includes('switched to another')||t.includes('application or window')) return 'tab-switch';
   if(t.includes('extended absence')) return 'absence';
   if(t.includes('face not')||t.includes('gaze')||t.includes('eye movement')) return 'face-gaze';
   if(t.includes('background voice')||t.includes('coaching')) return 'bg-voice';
@@ -265,10 +265,23 @@ function hitFlag(flag){
     if(panel.firstChild !== card) panel.insertBefore(card, panel.firstChild);
 
   } else {
+    // Unknown flag type. Use a STABLE key derived from the flag text so identical
+    // flags stack as a quantity instead of creating a new card each time.
+    var stableKey = 'txt-' + (flag.text||'flag').toLowerCase().replace(/[^a-z0-9]+/g,'-').slice(0,40);
+    if(flagRegistry[stableKey]){
+      var ent = flagRegistry[stableKey];
+      ent.count++;
+      ent.lastTime = flag.time_offset || flag.time || elapsed();
+      var b2 = document.getElementById('fb-'+stableKey);
+      if(b2){ b2.textContent = 'x'+ent.count; b2.classList.remove('bump'); void b2.offsetWidth; b2.classList.add('bump'); }
+      var l2 = document.getElementById('fl-'+stableKey);
+      if(l2) l2.textContent = 'Last: ' + ent.lastTime;
+      return;
+    }
     // Unknown flag type - append a new card dynamically
     var panel = $('sbp-flags');
     var sev = flag.severity || 'medium';
-    var newKey = 'dynamic-'+totalFlagCount;
+    var newKey = stableKey;
     var card = buildFlagCard(newKey, flag.text, flag.detail||'', sev, 1);
     flagRegistry[newKey] = {count:1, cardEl:card, lastTime:flag.time_offset||'', text:flag.text, severity:sev};
     var badge = card.querySelector('.flag-count-badge');
@@ -565,11 +578,9 @@ async function connectSocket(){
       if(!document.getElementById('concluded-actions')){
         var acts=document.createElement('div'); acts.id='concluded-actions';
         acts.style.cssText='margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center';
-        var lib=document.createElement('a'); lib.id='concluded-lib-btn'; lib.href='/recordings'; lib.textContent='View recording in library';
-        lib.style.cssText='background:#38bdf8;color:#08263a;font-weight:700;font-size:14px;padding:11px 18px;border-radius:9px;text-decoration:none;display:inline-block';
         var dash=document.createElement('a'); dash.href='/dashboard'; dash.textContent='Back to dashboard';
         dash.style.cssText='background:transparent;color:rgba(255,255,255,.7);font-weight:600;font-size:14px;padding:11px 18px;border:1px solid rgba(255,255,255,.25);border-radius:9px;text-decoration:none;display:inline-block';
-        acts.appendChild(lib); acts.appendChild(dash);
+        acts.appendChild(dash);
         var box=ov.querySelector('div'); if(ov.lastElementChild){ ov.appendChild(acts); }
       }
     }
@@ -624,19 +635,17 @@ async function confirmEndSession(){
   if(isRec)stopRec();
   if(timerInterval)clearInterval(timerInterval);
   if(socket)socket.emit('session-ended',{sessionId:sessionId});
-  if(typeof showConcluded==='function') showConcluded('You ended this interview. Saving recording...');
+  // Interviewer ended: no full-screen 'concluded' takeover for the interviewer - just save quietly and return them to their library.
+  if(typeof toast==='function') toast('Saving recording to your library...','amber',4000);
   // Wait for the recording upload to finish saving to the library before leaving (max 60s).
   if(wasRec && window._recSavePromise){
     try{ await Promise.race([window._recSavePromise, new Promise(function(rs){ setTimeout(rs,60000); })]); }catch(e){}
   }
   await patch('/api/sessions/'+sessionId,{status:'ended'});
   try{await post('/api/recordings/session/'+sessionId+'/sync',{});}catch(e){}
-  (function(){
-    var sub=document.getElementById('concluded-sub'); if(sub) sub.textContent='Recording saved to your library.';
-    var lib=document.getElementById('concluded-lib-btn'); if(lib) lib.textContent='View recording in library';
-    // Gentle auto-redirect to the library as a fallback; the button lets them go immediately.
-    setTimeout(function(){location.href='/recordings';},3500);
-  })();
+  // Recording saved - send the interviewer straight to their library.
+  if(typeof toast==='function') toast('Recording saved to your library.','green',2500);
+  setTimeout(function(){location.href='/recordings';},900);
 }
 
 function emailInvite(){
