@@ -8,6 +8,7 @@ const path = require('path');
 const fs = require('fs');
 const Database = require('better-sqlite3');
 const multer = require('multer');
+const { execFile } = require('child_process');
 const DATA_DIR = process.env.DATA_DIR || __dirname;
 try { fs.mkdirSync(DATA_DIR, { recursive: true }); } catch (e) {}
 
@@ -553,6 +554,25 @@ app.get('/api/recordings/:id/stream', requireAuth, (req, res) => {
   }
   if (!rec || !fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Not found' });
   streamVideo(req, res, rec.file_path);
+});
+
+// TEMPORARY verification endpoint (Step 2): convert one recording's WebM to MP4 and report.
+// This proves ffmpeg is installed and produces a good MP4 before wiring auto-conversion. Remove after.
+app.post('/api/recordings/:id/convert-test', requireAuth, function(req, res){
+  var rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
+  if(!rec) return res.status(404).json({ error: 'Not found' });
+  if(!fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Source file missing' });
+  var outPath = rec.file_path.replace(/\.webm$/i, '') + '.mp4';
+  var t0 = Date.now();
+  // -movflags +faststart makes the MP4 seekable and web-streamable; copy nothing, re-encode for compatibility.
+  var args = ['-y', '-i', rec.file_path, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-movflags', '+faststart', outPath];
+  execFile('ffmpeg', args, { timeout: 1000*60*5, maxBuffer: 1024*1024*20 }, function(err, stdout, stderr){
+    if(err){
+      return res.json({ ok:false, stage:'ffmpeg', error:String(err).slice(0,300), stderrTail:String(stderr||'').slice(-600) });
+    }
+    var size = 0; try{ size = fs.statSync(outPath).size; }catch(e){}
+    res.json({ ok:true, outPath:outPath, mp4Bytes:size, mp4MB:(size/1048576).toFixed(2), tookMs: Date.now()-t0, ffmpegStderrTail:String(stderr||'').slice(-200) });
+  });
 });
 
 // Public share stream (no auth needed, uses share token)
