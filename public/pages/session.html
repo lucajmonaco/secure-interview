@@ -471,7 +471,7 @@ function startRec(){
   mediaRecorder = new MediaRecorder(cs,{mimeType:mime});
   recChunks=[]; mediaRecorder.ondataavailable=function(e){if(e.data.size>0)recChunks.push(e.data);};
   mediaRecorder.start(1000);
-  $('rec-btn').textContent='Stop & Save'; $('rec-btn').className='btn btn-outline btn-sm';
+  $('rec-btn').textContent='Recording...'; $('rec-btn').className='btn btn-outline btn-sm'; $('rec-btn').disabled=true; $('rec-btn').style.opacity='0.6'; $('rec-btn').style.cursor='default';
   $('rec-ind').style.display='flex';
   toast('Recording both participants','green');
 }
@@ -649,7 +649,7 @@ async function connectSocket(){
         acts.style.cssText='margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;justify-content:center';
         var dash=document.createElement('a'); dash.href='/dashboard'; dash.textContent='Back to dashboard';
         dash.style.cssText='background:transparent;color:rgba(255,255,255,.7);font-weight:600;font-size:14px;padding:11px 18px;border:1px solid rgba(255,255,255,.25);border-radius:9px;text-decoration:none;display:inline-block';
-        acts.appendChild(dash);
+        var lib=document.createElement('a'); lib.href='/recordings'; lib.textContent='Go to Recordings Library'; lib.style.cssText='background:#16a34a;color:#fff;font-weight:700;font-size:14px;padding:11px 20px;border-radius:9px;text-decoration:none;display:inline-block'; acts.appendChild(lib); acts.appendChild(dash);
         var box=ov.querySelector('div'); if(ov.lastElementChild){ ov.appendChild(acts); }
       }
     }
@@ -713,8 +713,7 @@ async function confirmEndSession(){
   await patch('/api/sessions/'+sessionId,{status:'ended'});
   try{await post('/api/recordings/session/'+sessionId+'/sync',{});}catch(e){}
   // Recording saved - send the interviewer straight to their library.
-  if(typeof toast==='function') toast('Recording saved to your library.','green',2500);
-  setTimeout(function(){location.href='/recordings';},900);
+  if(typeof showConcluded==='function') showConcluded('Interview concluded. Recording saved to your library.'); else { if(typeof toast==='function') toast('Recording saved to your library.','green',2500); setTimeout(function(){location.href='/recordings';},900); }
 }
 
 function emailInvite(){
