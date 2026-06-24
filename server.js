@@ -563,15 +563,28 @@ app.post('/api/recordings/:id/convert-test', requireAuth, function(req, res){
   if(!rec) return res.status(404).json({ error: 'Not found' });
   if(!fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Source file missing' });
   var outPath = rec.file_path.replace(/\.webm$/i, '') + '.mp4';
-  var t0 = Date.now();
-  // -movflags +faststart makes the MP4 seekable and web-streamable; copy nothing, re-encode for compatibility.
-  var args = ['-y', '-i', rec.file_path, '-c:v', 'libx264', '-preset', 'veryfast', '-crf', '23', '-c:a', 'aac', '-movflags', '+faststart', outPath];
-  execFile('ffmpeg', args, { timeout: 1000*60*5, maxBuffer: 1024*1024*20 }, function(err, stdout, stderr){
-    if(err){
-      return res.json({ ok:false, stage:'ffmpeg', error:String(err).slice(0,300), stderrTail:String(stderr||'').slice(-600) });
-    }
-    var size = 0; try{ size = fs.statSync(outPath).size; }catch(e){}
-    res.json({ ok:true, outPath:outPath, mp4Bytes:size, mp4MB:(size/1048576).toFixed(2), tookMs: Date.now()-t0, ffmpegStderrTail:String(stderr||'').slice(-200) });
+  // Clean up any broken MP4 from a previous failed attempt.
+  try{ if(fs.existsSync(outPath)) fs.unlinkSync(outPath); }catch(e){}
+  // Step A: probe the source codecs so we know what we are dealing with.
+  execFile('ffprobe', ['-v','error','-show_entries','stream=codec_type,codec_name','-of','json', rec.file_path], { timeout: 30000 }, function(perr, pout){
+    var codecs = null; try{ codecs = JSON.parse(pout||'{}'); }catch(e){}
+    // Step B: attempt a FAST remux (no re-encode) into MP4.
+    var t0 = Date.now();
+    execFile('ffmpeg', ['-y','-i', rec.file_path, '-c','copy','-movflags','+faststart', outPath], { timeout: 60000, maxBuffer: 1024*1024*20 }, function(err, stdout, stderr){
+      var remuxOk = !err;
+      var size = 0; try{ size = fs.statSync(outPath).size; }catch(e){}
+      if(!remuxOk){ try{ if(fs.existsSync(outPath)) fs.unlinkSync(outPath); }catch(e){} }
+      res.json({
+        probeCodecs: codecs,
+        probeError: perr ? String(perr).slice(0,200) : null,
+        remuxOk: remuxOk,
+        remuxTookMs: Date.now()-t0,
+        mp4Bytes: size,
+        mp4MB: (size/1048576).toFixed(2),
+        remuxError: err ? String(err).slice(0,200) : null,
+        stderrTail: String(stderr||'').slice(-400)
+      });
+    });
   });
 });
 
