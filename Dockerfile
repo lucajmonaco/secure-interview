@@ -9,10 +9,12 @@ RUN apt-get update -qq && apt-get install --no-install-recommends -y build-essen
 COPY package.json ./
 RUN npm install
 COPY server.js ./
-# CACHE_BUST=1782269278478
+# CACHE_BUST=1782324129865
 COPY public ./public
 
 FROM base
+# ffmpeg: convert recordings (WebM) to seekable MP4 for employer delivery
+RUN apt-get update -qq && apt-get install --no-install-recommends -y ffmpeg && rm -rf /var/lib/apt/lists/*
 COPY --from=build /app /app
 RUN mkdir -p /app/recordings
 EXPOSE 8080
