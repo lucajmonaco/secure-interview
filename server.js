@@ -506,6 +506,20 @@ app.post('/api/recordings/upload', requireAuth, upload.single('recording'), asyn
     const id = uuidv4();
     db.prepare('INSERT INTO recordings (id,session_id,interviewer_id,org_id,session_title,candidate_name,file_path,file_size,duration_secs,trust_score,flag_count,share_token) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)')
       .run(id, sessionId, req.session.userId, req.session.orgId, sess.title, sess.candidate_name, req.file.path, req.file.size, parseInt(durationSecs) || 0, freshSess.trust_score || 100, flagCount.cnt || 0, shareToken);
+    // Background faststart remux: makes DOWNLOADED mp4 files seekable in external players (moov atom to front).
+    // Fast container rewrite only (-c copy) ~1-2s, no re-encode. Errors are non-fatal: original file still plays.
+    (function(){
+      try{
+        var srcPath = req.file.path;
+        if (srcPath && /\.mp4$/i.test(srcPath)) {
+          var tmpPath = srcPath.replace(/\.mp4$/i, '') + '.faststart.mp4';
+          execFile('ffmpeg', ['-y','-i', srcPath, '-c','copy','-movflags','+faststart', tmpPath], { timeout: 1000*60*2, maxBuffer: 1024*1024*20 }, function(err){
+            if (err) { try{ if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); }catch(e){} return; }
+            try{ fs.renameSync(tmpPath, srcPath); }catch(e){ try{ if (fs.existsSync(tmpPath)) fs.unlinkSync(tmpPath); }catch(e2){} }
+          });
+        }
+      }catch(e){}
+    })();
     res.json({ ok: true, id, shareToken });
   } catch(e) { res.json({ error: e.message }); }
 });
@@ -558,35 +572,6 @@ app.get('/api/recordings/:id/stream', requireAuth, (req, res) => {
 
 // TEMPORARY verification endpoint (Step 2): convert one recording's WebM to MP4 and report.
 // This proves ffmpeg is installed and produces a good MP4 before wiring auto-conversion. Remove after.
-app.post('/api/recordings/:id/convert-test', requireAuth, function(req, res){
-  var rec = db.prepare('SELECT * FROM recordings WHERE id=? AND interviewer_id=?').get(req.params.id, req.session.userId);
-  if(!rec) return res.status(404).json({ error: 'Not found' });
-  if(!fs.existsSync(rec.file_path)) return res.status(404).json({ error: 'Source file missing' });
-  var outPath = rec.file_path.replace(/\.webm$/i, '') + '.mp4';
-  // Clean up any broken MP4 from a previous failed attempt.
-  try{ if(fs.existsSync(outPath)) fs.unlinkSync(outPath); }catch(e){}
-  // Step A: probe the source codecs so we know what we are dealing with.
-  execFile('ffprobe', ['-v','error','-show_entries','stream=codec_type,codec_name','-of','json', rec.file_path], { timeout: 30000 }, function(perr, pout){
-    var codecs = null; try{ codecs = JSON.parse(pout||'{}'); }catch(e){}
-    // Step B: attempt a FAST remux (no re-encode) into MP4.
-    var t0 = Date.now();
-    execFile('ffmpeg', ['-y','-i', rec.file_path, '-c:v','libx264','-preset','veryfast','-crf','23','-c:a','aac','-movflags','+faststart', outPath], { timeout: 1000*60*10, maxBuffer: 1024*1024*20 }, function(err, stdout, stderr){
-      var remuxOk = !err;
-      var size = 0; try{ size = fs.statSync(outPath).size; }catch(e){}
-      if(!remuxOk){ try{ if(fs.existsSync(outPath)) fs.unlinkSync(outPath); }catch(e){} }
-      res.json({
-        probeCodecs: codecs,
-        probeError: perr ? String(perr).slice(0,200) : null,
-        remuxOk: remuxOk,
-        remuxTookMs: Date.now()-t0,
-        mp4Bytes: size,
-        mp4MB: (size/1048576).toFixed(2),
-        remuxError: err ? String(err).slice(0,200) : null,
-        stderrTail: String(stderr||'').slice(-400)
-      });
-    });
-  });
-});
 
 // Public share stream (no auth needed, uses share token)
 app.get('/api/recordings/share/:token/stream', (req, res) => {
