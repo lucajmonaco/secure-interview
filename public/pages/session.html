@@ -468,7 +468,7 @@ function startRec(){
   // Remember the chosen format so the saved blob + filename match what was actually recorded.
   window._recMime = mime;
   window._recExt = (mime.indexOf('mp4')>=0) ? 'mp4' : 'webm';
-  mediaRecorder = new MediaRecorder(cs,{mimeType:mime});
+  mediaRecorder = new MediaRecorder(cs,{mimeType:mime,videoBitsPerSecond:4000000,audioBitsPerSecond:128000});
   recChunks=[]; mediaRecorder.ondataavailable=function(e){if(e.data.size>0)recChunks.push(e.data);};
   mediaRecorder.start(1000);
   $('rec-btn').textContent='Recording...'; $('rec-btn').className='btn btn-outline btn-sm'; $('rec-btn').disabled=true; $('rec-btn').style.opacity='0.6'; $('rec-btn').style.cursor='default';
