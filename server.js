@@ -196,8 +196,11 @@ function generateSessionCode() {
 
 function logAudit(req, action, detail) {
   try {
+    var _uid = (req.session&&req.session.userId)||null;
+    var _uname = (req.session&&req.session.name)||null;
+    if(!_uname && _uid){ try{ var _u = db.prepare('SELECT name FROM users WHERE id=?').get(_uid); if(_u && _u.name) _uname = _u.name; }catch(e){} }
     db.prepare('INSERT INTO audit_log (id, org_id, user_id, user_name, action, detail) VALUES (?,?,?,?,?,?)')
-      .run(uuidv4(), (req.session&&req.session.orgId)||null, (req.session&&req.session.userId)||null, (req.session&&req.session.name)||'Unknown', action, detail||'');
+      .run(uuidv4(), (req.session&&req.session.orgId)||null, _uid, _uname||'Unknown', action, detail||'');
   } catch (e) {}
 }
 
