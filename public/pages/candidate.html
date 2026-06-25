@@ -395,7 +395,7 @@ async function requireScreenGate(){
     doJoin(); return;
   }
   try{
-    var ss = await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor'},audio:false});
+    var ss = await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor',width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false});
     var vt = ss.getVideoTracks()[0];
     var surf = (vt && vt.getSettings) ? vt.getSettings().displaySurface : null;
     if(surf && surf !== 'monitor'){ try{ ss.getTracks().forEach(function(t){t.stop();}); }catch(e){} throw new Error('partial-share'); }
@@ -707,7 +707,7 @@ function connectSocket(){
   window.startScreen=async function(){
     window._screenGrace=Date.now();
     if(window._screenPreCaptured && screenStream && screenStream.getVideoTracks().length && screenStream.getVideoTracks()[0].readyState==='live'){ window._screenPreCaptured=false; /* reuse screen captured by join gate - no re-prompt */ }
-    else try{ screenStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor'},audio:false}); window._screenGrace=Date.now(); }
+    else try{ screenStream=await navigator.mediaDevices.getDisplayMedia({video:{displaySurface:'monitor',width:{ideal:1920},height:{ideal:1080},frameRate:{ideal:30}},audio:false}); window._screenGrace=Date.now(); }
     catch(err){ warn('Screen share is required - please share your ENTIRE screen.'); sendFlagOnce('screen-declined','Screen Share Declined','Candidate declined to share their screen','high'); return; }
     var vt=screenStream.getVideoTracks()[0];
     var surf=(vt&&vt.getSettings)?vt.getSettings().displaySurface:null;
